@@ -1,365 +1,299 @@
-# 学习路线：推理系统的 12 节核心课
+# 新版课程路线：从一个 token 到完整推理判断
 
 ## 结论
 
-核心课程固定为 **12 节**，预计需要 **约 32～44 个专注小时**。六个心智模型是分析问题的视角，不是六节课；具体论文、框架和优化方法是案例，也不单独占用核心课编号。
+核心课程调整为 **8 课**。前 7 课解释模型和推理过程，第 8 课才使用这些理论判断优化方法。
 
-这条路线面向已经维护推理服务、希望补齐理论主干的工程师。目标不是记住术语，而是形成一套稳定的判断过程：
+旧版 12 课路线的问题在于，它把 GPU、Runtime、测量和服务系统放在了语言模型理论之前。读者还不知道 Attention、FFN、KV Cache 为什么存在，就要开始分析性能，知识顺序倒置。新版路线按模型真实的数据流组织：
 
 ```text
-先确定模型必须做什么
-→ 再计算需要多少工作和数据
-→ 再判断硬件上限与实际执行
-→ 再分析并发、调度和通信
-→ 最后用测量验证优化是否成立
+先知道模型要完成什么
+→ 再知道一层模型怎样完成
+→ 再知道多层、状态和生成步骤怎样连接
+→ 最后判断一种优化改变了哪部分
 ```
 
-正确性、数值误差、业务效果和 SLO 是贯穿全程的约束。
+## 最少但够用的三个问题
 
-## 为什么是 12 节
+面对任何语言模型结构，先问三个问题：
 
-课程按知识依赖拆分，而不是按流行术语分类：
-
-1. 不认识完整计算图，就不知道该统计哪些工作；
-2. 不会计算工作量、数据量和状态量，就无法判断硬件瓶颈；
-3. 不理解 GPU 与 Runtime，就无法解释理论值和实测值的差距；
-4. 不会正确测量，就无法证明瓶颈和优化收益；
-5. 不理解单请求的自回归和 KV，就无法推导 LLM 调度；
-6. 不理解单卡关键路径，就无法计算多卡通信是否值得。
-
-因此，第一课之后不能直接跳到 Roofline、KV Cache 或调度。第二课先补齐“完整计算图与算子族”，第三课才开始算三本账。
-
-## 六个分析视角
-
-| 视角 | 必须回答的问题 | 主要对应课程 |
+| 问题 | 要看懂的对象 | 对推理判断的意义 |
 | --- | --- | --- |
-| 计算语义与依赖 | 输入输出是什么？哪些步骤并行，哪些步骤串行？ | 1、2、7 |
-| 计算、搬运与状态 | 做多少计算？搬多少数据？保留多少容量？ | 3、8、10 |
-| 硬件资源上界 | 受计算、带宽、延迟、容量还是并行度限制？ | 4 |
-| 图到 Kernel 的执行 | 图怎样被专化、融合、选 Kernel 并真正运行？ | 5、6 |
-| 并发、排队与调度 | Batch 为什么同时改变吞吐、等待和尾延迟？ | 9 |
-| 分片、通信与同步 | 扩卡减少了什么，又引入了哪些通信和等待？ | 11 |
+| 当前数据表示什么？ | token ID、向量、logit、概率 | 避免把不同阶段的张量混为一谈 |
+| 信息怎样被混合？ | Attention/Gated DeltaNet 跨 token 混合；FFN 在单个 token 内混合特征 | 找到模型能力和主要计算的来源 |
+| 哪些历史结果需要保留？ | KV Cache、Gated DeltaNet recurrent state | 理解 Prefill、Decode、显存和并发限制 |
 
-第 12 课把六个视角合并成一次完整判断。
+这三个问题就是课程的主干。算子、公式和优化方法都挂在这条主干上。
 
-## 课程总览
+## 数学不单独设门槛
 
-| 阶段 | 课次 | 主题 | 学完后的能力 | 预计时间 | 状态 |
-| --- | ---: | --- | --- | ---: | --- |
-| 一、看懂模型 | 1 | 张量、算子、依赖与 Linear | 能标注 shape、依赖和并行边界 | 2～3 小时 | 已完成 |
-| 一、看懂模型 | 2 | 完整计算图与核心算子族 | 能从请求画到模型输出，并识别主要算子族 | 2～3 小时 | 已完成 |
-| 二、建立性能模型 | 3 | 计算、搬运与状态三本账 | 能完成数量级成本估算 | 3～4 小时 | 下一课 |
-| 二、建立性能模型 | 4 | GPU 执行模型与性能上界 | 能区分计算、带宽、延迟和并行度限制 | 3～4 小时 | 待学习 |
-| 二、建立性能模型 | 5 | 计算图如何变成 GPU 工作 | 能解释专化、融合、Kernel 选择和动态 Shape | 2～3 小时 | 待学习 |
-| 二、建立性能模型 | 6 | 测量、Timeline 与证据闭环 | 能选择指标和工具验证瓶颈 | 2～3 小时 | 待学习 |
-| 三、理解 LLM 链路 | 7 | Decoder-only LLM 的单请求链路 | 能解释一次 Prefill 和逐步 Decode | 2～3 小时 | 待学习 |
-| 三、理解 LLM 链路 | 8 | Attention 与 KV Cache 的成本 | 能估算 KV，并判断相关优化的作用条件 | 3～4 小时 | 待学习 |
-| 三、理解 LLM 链路 | 9 | 在线服务、Batching 与调度 | 能从 workload 和 SLO 判断调度方案 | 3～4 小时 | 待学习 |
-| 四、做优化判断 | 10 | 数值精度与量化 | 能判断精度、容量、带宽和计算的交换 | 2～3 小时 | 待学习 |
-| 四、做优化判断 | 11 | 多 GPU、通信与集群扩展 | 能画出分片、集合通信和关键路径 | 3～4 小时 | 待学习 |
-| 四、做优化判断 | 12 | 综合案例与优化决策闭环 | 能独立提出、验证和复盘优化方案 | 4～6 小时 | 待学习 |
-
-## 第一阶段：看懂模型必须做什么
-
-### 第 1 课：张量、算子、依赖与 Linear 的成本直觉
-
-**核心问题**：一次推理的最小组成是什么？`T`、shape 和数据依赖分别意味着什么？
-
-**学习内容**：
-
-- 张量的 shape、dtype、layout 和存储大小；
-- 算子、数据依赖、串行关键路径和批内并行；
-- Linear 的 `FLOPs`、权重容量和 `T` 的关系；
-- `FLOPs` 与 `FLOP/s` 的量纲区别；
-- Prefill 和 Decode 的第一层性能直觉。
-
-**本课边界**：只用 Linear 建立数量级直觉，不展开完整 Transformer、Roofline 或 KV 公式。
-
-**通过标准**：给定一个 Linear 和输入 shape，能写出输出 shape、计算量、权重大小，并判断哪些 token 能并行。
-
-**正文**：[第一课：张量、算子、依赖与 Linear 的成本直觉](lessons/01-tensors-operators-and-dependencies.md)
-
-### 第 2 课：完整计算图与核心算子族
-
-**核心问题**：一个请求从输入到输出到底经过哪些节点？不同算子在图中承担什么角色？
-
-**学习内容**：
-
-- 计算图的节点、边、参数、常量、中间值和拓扑顺序；
-- shape 传播、广播、reshape/transpose 和 layout 变化；
-- GEMM/GEMV、Conv、Attention、Reduction、Elementwise、Gather/Scatter；
-- Tokenizer、Resize、Decode、NMS、Sampling 等前后处理；
-- 用一个 Decoder Block 和一个 OCR/CV 图识别算子族、依赖与活跃张量。
-
-**本课边界**：只回答“算什么、按什么顺序算”，暂不计算完整 FLOPs/Bytes，也不讨论具体 Kernel 快慢。
-
-**通过标准**：能从模型图中圈出主干、分支、可融合邻接段和关键路径，并说明每个主要张量为何存在。
-
-**正文**：[第二课：完整计算图与核心算子族](lessons/02-computation-graphs-and-operator-families.md)
-
-**主要资料**：
-
-- [ONNX Intermediate Representation](https://onnx.ai/onnx/repo-docs/IR.html)
-- [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
-
-## 第二阶段：从理论成本走到真实执行
-
-### 第 3 课：计算、搬运与状态三本账
-
-**核心问题**：一次推理需要做多少计算、搬多少数据、保留多少容量？
-
-**学习内容**：
-
-- 计算账：GEMM/GEMV、Conv、Attention、Reduction 的数量级；
-- 搬运账：权重、输入输出和中间值的理想最小流量与实际流量；
-- 状态账：权重、激活、KV、workspace、通信 buffer 和碎片；
-- 算术强度 `FLOPs/Byte` 及其假设；
-- 缓存、重计算、量化和 Fusion 分别改变哪本账。
-
-**本课边界**：先建立算法级成本模型，不把理论字节数误称为实测 HBM 流量。
-
-**通过标准**：能为一个 Decoder Block 和一个 OCR 子图列出三本账，写清单位、假设和数量级。
-
-**主要资料**：
-
-- [Efficiently Scaling Transformer Inference](https://arxiv.org/abs/2211.05102)
-- [FlashAttention](https://arxiv.org/abs/2205.14135)
-
-### 第 4 课：GPU 执行模型与性能上界
-
-**核心问题**：为什么同样的 FLOPs 在不同 shape、batch 和 GPU 上耗时不同？
-
-**学习内容**：
-
-- Host、Device、Kernel、Grid、Block、Warp、SM 和 SIMT；
-- Register、Shared Memory、Cache、HBM 与主机—设备链路；
-- 峰值计算速率、带宽、延迟、并行度和占用率；
-- Roofline、ridge point 和分层 Roofline；
-- Kernel launch、同步、尾块、分支和小工作量造成的效率损失。
-
-**本课边界**：目标是读懂性能现象，不要求编写 CUDA 或学习 PTX/ISA。
-
-**通过标准**：给定三本账和硬件规格，能估计理论下界，并列出不能达到下界的主要原因。
-
-**主要资料**：
-
-- [CUDA Programming Guide](https://docs.nvidia.com/cuda/cuda-programming-guide/)
-- [Nsight Compute：Roofline](https://docs.nvidia.com/nsight-compute/NsightCompute/index.html#rooflines)
-
-### 第 5 课：计算图如何变成 GPU 工作
-
-**核心问题**：模型图经过哪些步骤，才变成 Timeline 上的 Kernel 和 Memcpy？
-
-**学习内容**：
-
-- 模型导出、图优化、常量折叠和子图分区；
-- shape、dtype、layout 专化与 tactic/Kernel 选择；
-- 算子 Fusion、Plugin、自定义 Kernel 和回退路径；
-- 内存规划、workspace、stream 与 CUDA Graph；
-- 动态 shape、optimization profile 和首次运行成本。
-
-**本课边界**：用 TensorRT/ONNX 说明通用机制，不学习一套框架的全部参数。
-
-**通过标准**：能把“模型节点少了”“Kernel 变了”“动态 shape 变慢”分别定位到正确层次。
-
-**主要资料**：
-
-- [TensorRT Inference Library](https://docs.nvidia.com/deeplearning/tensorrt/latest/inference-library/)
-- [TensorRT Dynamic Shapes](https://docs.nvidia.com/deeplearning/tensorrt/latest/inference-library/work-with-dynamic-shapes.html)
-
-### 第 6 课：测量、Timeline 与证据闭环
-
-**核心问题**：怎样证明瓶颈在哪里，而不是根据单个利用率指标猜测？
-
-**学习内容**：
-
-- workload 的 batch、shape、输入长度、输出长度和到达分布；
-- 冷启动、warmup、稳态、同步方式和测量边界；
-- 端到端、Server、Model、GPU、Kernel 五层时间；
-- latency、throughput、p50/p99、TTFT、TPOT/ITL 和 goodput；
-- Nsight Systems 看系统 Timeline，Nsight Compute 看单 Kernel；
-- 假设、观测、反证、修改和复测的最小闭环。
-
-**本课边界**：工具是取证手段，不把某个 profiler 指标当作通用结论。
-
-**通过标准**：能为一次性能回归设计可复现的基线，并说明每条证据支持或排除了什么。
-
-**主要资料**：
-
-- [TensorRT Performance Best Practices](https://docs.nvidia.com/deeplearning/tensorrt/latest/performance/best-practices.html)
-- [Nsight Systems User Guide](https://docs.nvidia.com/nsight-systems/UserGuide/)
-- [Nsight Compute](https://docs.nvidia.com/nsight-compute/)
-
-## 第三阶段：理解自回归 LLM 的特殊链路
-
-### 第 7 课：Decoder-only LLM 的单请求链路
-
-**核心问题**：Prompt 怎样变成第一个 token，后续 token 为什么必须逐步生成？
-
-**学习内容**：
-
-- Tokenizer、Embedding、Decoder Blocks、LM Head、Logits 和 Sampling；
-- Norm、Q/K/V Projection、Attention、MLP、Residual 的依赖；
-- Causal Mask 与自回归条件概率；
-- Prefill、首次 Decode 和后续 Decode 的输入输出；
-- 请求内串行、单步内部并行和请求间并行的区别。
-
-**本课边界**：先建立正确的执行语义，暂不展开 KV 内存管理和在线调度。
-
-**通过标准**：能画出一个请求从 Prompt 到多个输出 token 的时序图，并指出每一步可复用的结果。
-
-**主要资料**：
-
-- [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
-- [Efficiently Scaling Transformer Inference](https://arxiv.org/abs/2211.05102)
-
-### 第 8 课：Attention 与 KV Cache 的成本
-
-**核心问题**：上下文增长时，Attention 的计算、KV 容量和读取流量怎样变化？
-
-**学习内容**：
-
-- Q、K、V、Attention Score、Softmax 和输出投影的 shape；
-- Prefill Attention 与 Decode Attention 的不同成本；
-- KV Cache 的逐层公式、生命周期、容量和每步读取；
-- MHA、GQA、MQA 的核心差别；
-- FlashAttention、PagedAttention 和 Prefix Cache 分别解决哪本账。
-
-**本课边界**：第一轮不系统展开所有 Attention 变体、MLA、稀疏 Attention 或长上下文论文。
-
-**通过标准**：给定模型配置、并发和上下文长度，能估算 KV 容量，并判断容量瓶颈和带宽瓶颈是否混淆。
-
-**主要资料**：
-
-- [FlashAttention](https://arxiv.org/abs/2205.14135)
-- [PagedAttention](https://arxiv.org/abs/2309.06180)
-- [Efficiently Scaling Transformer Inference](https://arxiv.org/abs/2211.05102)
-
-### 第 9 课：在线服务、Batching 与调度
-
-**核心问题**：为什么提高吞吐常常会增加等待和尾延迟，调度器到底在分配什么？
-
-**学习内容**：
-
-- 到达率、服务时间、队列等待、利用率和 Little's Law；
-- request throughput、token throughput、TTFT、TPOT/ITL 和 SLO goodput；
-- 静态 Batch、Continuous Batching 和 iteration-level scheduling；
-- token budget、KV budget、preemption、chunked prefill 和优先级；
-- Prefill/Decode 干扰与分离的收益、KV 传输和资源代价。
-
-**本课边界**：先学习可推导的调度约束，不比较某一版本框架的所有调度参数。
-
-**通过标准**：给定请求长度分布、到达率、KV 容量和 SLO，能解释调度策略改善了哪个指标、牺牲了什么。
-
-**主要资料**：
-
-- [Orca](https://www.usenix.org/conference/osdi22/presentation/yu)
-- [Sarathi-Serve](https://arxiv.org/abs/2403.02310)
-- [DistServe](https://arxiv.org/abs/2401.09670)
-
-## 第四阶段：把原理用于优化与扩展
-
-### 第 10 课：数值精度与量化
-
-**核心问题**：低精度为什么可能更快、更省，又为什么有时没有收益或损害效果？
-
-**学习内容**：
-
-- 表示范围、有效精度、舍入、溢出和累加；
-- FP32、TF32、FP16、BF16、FP8、INT8、INT4 的核心差异；
-- Weight-only、Weight-Activation 和 KV 量化；
-- scale、granularity、对称/非对称、静态/动态和 calibration；
-- Q/DQ、转换开销、硬件支持、Kernel 可用性与精度验证。
-
-**本课边界**：掌握统一原理，不背完所有厂商格式或每种量化算法。
-
-**通过标准**：能说明一个量化方案改变了哪些字节、哪些运算和哪些误差，并设计性能与效果的双重验收。
-
-**主要资料**：
-
-- [TensorRT Accuracy Considerations](https://docs.nvidia.com/deeplearning/tensorrt/latest/inference-library/accuracy-considerations.html)
-- [SmoothQuant](https://arxiv.org/abs/2211.10438)
-- [AWQ](https://arxiv.org/abs/2306.00978)
-
-### 第 11 课：多 GPU、通信与集群扩展
-
-**核心问题**：增加 GPU 后，每张卡少算了什么，又新增了哪些通信、同步和空泡？
-
-**学习内容**：
-
-- Data、Tensor、Pipeline、Expert 和 Context Parallel 的分片对象；
-- AllReduce、AllGather、ReduceScatter、AllToAll 和点对点通信；
-- 消息大小、带宽、单次延迟、频率、拓扑和关键路径；
-- Pipeline bubble、负载不均、跨节点链路和副本路由；
-- 单实例模型并行、跨实例数据并行与 Prefill/Decode 分离的边界。
-
-**本课边界**：先会计算通信与同步，不深入 NCCL 算法、协议和环境变量调优。
-
-**通过标准**：能为一种并行方案画出每卡权重、激活、KV 和通信路径，并判断扩卡收益何时被通信抵消。
-
-**主要资料**：
-
-- [NCCL Collective Operations](https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives.html)
-- [Megatron-LM](https://arxiv.org/abs/1909.08053)
-- [Efficiently Scaling Transformer Inference](https://arxiv.org/abs/2211.05102)
-
-### 第 12 课：综合案例与优化决策闭环
-
-**核心问题**：面对一个真实性能问题，怎样从现象走到可验证的优化结论？
-
-**学习内容**：
-
-- 固定 workload、硬件、软件版本、SLO 和正确性基线；
-- 画计算图与关键路径，完成三本账和理论下界；
-- 读取端到端 Timeline，定位主要差距所在层次；
-- 提出一个优化假设，明确收益、代价和适用条件；
-- 用对照实验验证性能、容量、尾延迟、稳定性和效果；
-- 把结论写成可复查的工程判断，而不是只报告一个加速比。
-
-**贯穿案例**：
-
-1. 一个常规 Decoder-only LLM，用于自回归、KV、调度和多卡；
-2. 一个常规 OCR/CV TensorRT 模型，用于完整计算图、动态 shape、前后处理、Plugin 和 Fusion。
-
-**通过标准**：能独立完成“问题定义 → 理论估算 → 证据定位 → 方案选择 → 实验验证 → 适用边界”的报告。
-
-## 第一轮明确不学什么
-
-以下内容有价值，但不是掌握主线的前置条件：
-
-- 训练、反向传播和优化器；
-- CUDA ISA/PTX 与手写高性能 Kernel；
-- 每一种量化格式和每一种 Attention 变体；
-- MoE、MLA、稀疏 Attention 的全部实现细节；
-- 每个推理框架的参数清单；
-- NCCL 内部算法、协议和网卡调优；
-- 每篇最新调度论文的具体策略。
-
-完成 12 节后，再按工作需要选择 Speculative Decoding、MoE/MLA、长上下文与 Offload、Prefix Cache、Triton/CUDA Kernel、超低比特量化或多模态推理等专题。它们都应从六个分析视角推导，不改变核心课编号。
-
-## 每节课的固定写法
-
-后续正文统一采用以下结构：
+课程不先安排一整套线性代数预科，也不默认读者已经熟练。标量、向量、矩阵、shape、点积、求和、平均、指数等工具，在第一次需要时现场解释：
 
 ```text
-核心问题
-→ 必要概念与量纲
-→ 一个最小定量例子
-→ LLM 与 OCR/CV 两类工程映射
-→ 常见误判
-→ 理解检查
-→ 学习过程中的疑问与解答
-→ 原始资料
+先看一个具体数
+→ 再看一小组数
+→ 再把一批小组写成矩阵
+→ 最后给这种计算起名字
 ```
 
-课程变更遵循两条规则：
+例如，讲 Attention 之前才解释点积；讲 RMSNorm 之前才解释平方、平均和平方根；讲 Linear 之前才解释“输出中的一个数如何由一行输入和一列权重得到”。读者不需要先背一批暂时不知道用途的公式。
 
-1. 开始新课前，先检查本路线中的前置知识、边界和通过标准；
-2. 若必须调整核心顺序，先更新本文件和 README，再编写正文，避免在对话中临时改变课次。
+## 贯穿模型：Qwen3.5
 
-## 资料选择原则
+第一轮只研究文本生成路径，不展开视觉编码器。
 
-- 数学与算法结论优先引用原始论文；
-- 图格式、Runtime、CUDA 和通信语义优先引用官方规范与文档；
-- 版本相关实现只作为案例，写作时标明版本和测量条件；
-- 论文中的加速比只证明论文实验范围内的结果，不直接外推到其他 workload。
+### Dense 案例：Qwen3.5-9B
+
+官方模型说明给出的文本模型结构为 32 层，每四层组成一组：前三层使用 Gated DeltaNet，第四层使用 Full Attention；每个 token mixer 后面都连接 Dense FFN。
+
+```mermaid
+flowchart TB
+    X["输入 hidden state"] --> N1["RMSNorm"]
+    N1 --> M["Gated DeltaNet 或 Full Attention"]
+    M --> A1["Residual Add"]
+    X --> A1
+    A1 --> N2["RMSNorm"]
+    N2 --> F["Dense FFN"]
+    F --> A2["Residual Add"]
+    A1 --> A2
+    A2 --> Y["输出 hidden state"]
+```
+
+### MoE 案例：Qwen3.5-35B-A3B
+
+MoE 模型保留相同的层骨架，把 Dense FFN 换成 Sparse MoE。官方配置给出 256 个路由专家、每个 token 选择 8 个专家，并额外使用共享专家。模型约有 35B 总参数，每个 token 激活约 3B 参数。
+
+```mermaid
+flowchart LR
+    X["单个 token 的向量"] --> R["Router 打分"]
+    R --> K["选择 Top-8"]
+    K --> E["8 个路由专家分别计算"]
+    X --> S["共享专家计算"]
+    E --> C["按路由权重合并"]
+    S --> C
+    C --> Y["MoE 输出"]
+```
+
+Dense 和 MoE 不作为两套互不相关的模型讲解。先看懂 Dense FFN，再在原位置替换成 MoE，这样能准确看出什么没有变、什么发生了变化。
+
+## 八课总览
+
+| 课次 | 核心问题 | 本课必须讲清的结构与算子 | 学完后的能力 |
+| ---: | --- | --- | --- |
+| 1 | 文字怎样变成下一个 token？ | Tokenizer、Embedding/Gather、Linear、Logits、Softmax、Top-K、Sampling | 能画出完整生成主链路，区分 ID、向量、分数和概率 |
+| 2 | Dense 模型的一层为什么这样设计？ | hidden state、RMSNorm、Residual、SwiGLU FFN；Reduction、Rsqrt、Mul、Add、SiLU、Broadcast | 能解释一层中每个模块的作用和 shape |
+| 3 | 当前 token 怎样读取上下文？ | Q/K/V、因果 Mask、Softmax Attention、MHA、GQA、RoPE；MatMul、Reshape、Transpose | 能用小例子走完一次 Attention，并解释位置和多头 |
+| 4 | 为什么生成必须逐步进行？ | 条件概率、Prefill、Decode、KV Cache；Concat、Slice、索引读写 | 能解释请求内串行、单步并行，以及 KV 为何可复用 |
+| 5 | Qwen3.5 为什么混用两种 token mixer？ | Gated DeltaNet、因果卷积、门控、recurrent state、Full Attention 间隔层 | 能区分 KV Cache 与 recurrent state，读懂混合层排列 |
+| 6 | MoE 与 Dense 到底差在哪里？ | Router、Softmax、Top-K、路由专家、共享专家、加权合并；Gather/Scatter | 能解释总参数、激活参数、专家选择和 token 分发 |
+| 7 | 怎样从配置还原完整模型？ | 层数、hidden size、head 数、expert 数、dtype、参数量、权重/KV/状态容量 | 能阅读 Qwen3.5 配置并完成数量级估算 |
+| 8 | 怎样用理论判断优化方向？ | 量化、FlashAttention、Prefix Cache、Batching、TP/EP、推测解码/MTP | 能说明优化改了什么、为什么可能有效、代价是什么 |
+
+## 第 1 课：文字怎样变成下一个 token
+
+### 只解决一件事
+
+建立从字符串到下一个 token 的完整地图：
+
+```text
+文字
+→ Tokenizer 切分并查表
+→ token IDs
+→ Embedding 查到向量
+→ 多层 Decoder 修改向量
+→ LM Head 为词表中每个 token 打分
+→ Softmax 变成概率
+→ Sampling 选出下一个 token
+```
+
+### 基本算子随链路出现
+
+- `Gather/Embedding`：根据 ID 从大表中取一行；
+- `Linear`：把一个向量变成另一组分数；
+- `Softmax`：把任意分数转换成总和为 1 的概率；
+- `Top-K/Argmax/Sampling`：从概率分布中选择 token。
+
+本课不讨论 FLOPs、GPU 和服务吞吐。通过标准是能用自己的话解释“模型没有直接输出文字，而是先输出词表上的分数”。
+
+## 第 2 课：Dense 模型的一层为什么这样设计
+
+### 先建立两种混合
+
+一层模型反复做两件事：
+
+1. token mixer 让当前 token 获得其他位置的信息；
+2. channel mixer 在当前 token 自己的特征维度内进行加工。
+
+Dense FFN 属于第二种。它对每个 token 使用同一套权重，但各 token 可以并行计算。
+
+### 本课解释的基本算子
+
+- `Reduction`：把一组数汇总成一个统计量，RMSNorm 用它计算均方；
+- `Rsqrt`：计算平方根的倒数，用于缩放；
+- `Add`：残差连接保留原输入；
+- `Linear`：混合特征维度；
+- `SiLU`：提供非线性；
+- `Mul`：让一条分支控制另一条分支；
+- `Broadcast`：让一个缩放量应用到一整组元素。
+
+公式最后出现。先用 4 维向量逐步计算 RMSNorm 和简化 FFN，再写通用 shape。
+
+## 第 3 课：当前 token 怎样读取上下文
+
+Attention 不从公式开始，而从一个具体问题开始：代词“它”应该关注前文中的哪个词？
+
+```mermaid
+flowchart LR
+    Q["Query：我正在找什么"] --> SCORE["相似度打分"]
+    K["Key：每个位置提供什么索引"] --> SCORE
+    SCORE --> MASK["因果 Mask：禁止看未来"]
+    MASK --> P["Softmax：注意力比例"]
+    P --> SUM["按比例汇总"]
+    V["Value：每个位置真正提供的内容"] --> SUM
+```
+
+先用两个 token、每个向量两维的例子手算，再引入矩阵写法。随后解释：
+
+- 多头不是重复计算同一件事，而是允许不同子空间形成不同关系；
+- GQA 让多组 Query 共享较少的 K/V 头；
+- RoPE 让 Q/K 的匹配带上位置信息；
+- `Reshape` 和 `Transpose` 为什么出现在实现中。
+
+## 第 4 课：为什么生成必须逐步进行
+
+本课把模型结构变成时间过程：
+
+```mermaid
+sequenceDiagram
+    participant P as Prompt
+    participant M as 模型
+    participant C as Cache
+    P->>M: 所有已知 prompt token
+    M->>C: 写入每层历史状态
+    M-->>P: 产生第 1 个新 token
+    P->>M: 第 1 个新 token
+    C->>M: 读取历史状态
+    M->>C: 追加本轮状态
+    M-->>P: 产生第 2 个新 token
+```
+
+重点是分清：
+
+- Prompt 已经全部已知，可以一起做 Prefill；
+- 未来 token 尚未产生，普通自回归 Decode 不能提前计算；
+- KV Cache 保存各 Attention 层过去的 K/V，避免重复计算；
+- Cache 节省的是重复计算，也会占用显存并产生读取流量。
+
+## 第 5 课：Qwen3.5 的混合结构
+
+标准 Full Attention 能直接比较当前 token 与历史 token，但历史越长，需要处理的 K/V 越多。Gated DeltaNet 使用固定大小的 recurrent state 压缩历史，并通过门控和 delta update 决定写入、修改和遗忘什么。
+
+本课只建立工程上够用的理解：
+
+```text
+Full Attention：保留较完整的历史 K/V，再按需读取
+Gated DeltaNet：把历史持续压缩进固定形状的状态
+```
+
+随后解释“3 层 Gated DeltaNet + 1 层 Full Attention”的排列试图兼顾哪些能力和成本。这里会明确区分官方公开的结构事实与根据结构作出的工程解释，不把推测写成官方设计结论。复杂的并行训练推导和核实现不进入第一轮。
+
+## 第 6 课：MoE 与 Dense 到底差在哪里
+
+先复用第 2 课的 Dense FFN，再加入 Router：
+
+| 比较项 | Dense FFN | Sparse MoE |
+| --- | --- | --- |
+| 每个 token 使用谁 | 同一个 FFN | Router 选中的少量路由专家，加共享专家 |
+| 参数是否全部存储 | 是 | 是，未选中的专家本轮不计算，但权重仍需存放 |
+| 单 token 激活参数 | 使用该层整个 FFN | 只使用 Top-K 路由专家及共享部分 |
+| 新增动作 | 无 | 打分、选择、token 分发、专家计算、加权合并 |
+| 新增风险 | 无专家路由问题 | 负载不均、跨卡 All-to-All、专家热点 |
+
+必须澄清：专家不是人工指定的“数学专家”或“代码专家”；它们是训练形成的参数分工。`35B-A3B` 也不表示模型只需存储 3B 参数。
+
+## 第 7 课：怎样从配置还原完整模型
+
+前 6 课建立语义，本课才开始集中使用公式。所有计算遵循同一顺序：
+
+```text
+读字段
+→ 翻译成结构
+→ 写出 shape
+→ 代入小数字检查
+→ 再代入真实配置
+→ 标明单位和近似条件
+```
+
+读者将分别还原 Qwen3.5-9B 和 Qwen3.5-35B-A3B：
+
+- 层排列；
+- Dense FFN 或 MoE；
+- Q/K/V 头数和维度；
+- 权重参数与存储量；
+- Full Attention KV Cache；
+- Gated DeltaNet recurrent state；
+- 为什么总参数不等于单 token 激活参数。
+
+## 第 8 课：怎样用理论判断优化方向
+
+本课不再建立一套独立的“GPU 课程”或“服务系统课程”。每种优化回到前 7 课的模型对象：
+
+| 优化 | 直接改变什么 | 首先检查什么 |
+| --- | --- | --- |
+| 权重量化 | 每个参数的字节数和数值误差 | 权重是否是主要容量/流量，硬件是否有对应计算路径 |
+| KV 量化 | Cache 的容量和读取字节 | Full Attention 层数量、KV shape、精度影响 |
+| FlashAttention | Attention 中间值的读写方式 | 没有改变 Attention 数学结果，也没有消除 Decode 的历史依赖 |
+| Prefix Cache | 复用相同前缀的已有状态 | 前缀命中率、状态占用和生命周期 |
+| Batching | 一次处理更多已知 token | 吞吐收益与排队、单步等待的交换 |
+| TP | 分片同一层的权重和计算 | 每层同步与通信是否进入关键路径 |
+| EP | 把不同专家放到不同设备 | token 路由、All-to-All 和负载均衡 |
+| 推测解码/MTP | 尝试一次提出并验证多个未来 token | 接受率、验证成本和额外模型成本 |
+
+最终使用固定判断模板：
+
+```text
+它改变模型链路中的哪个对象？
+→ 少算了什么、少存了什么或少搬了什么？
+→ 新增了什么计算、状态、通信或误差？
+→ 哪种 workload 下收益才会出现？
+→ 用什么指标验证？
+```
+
+## 第一轮明确不展开的内容
+
+- 训练、反向传播、优化器和 MoE 负载均衡损失的推导；
+- Qwen3.5 视觉编码器和多模态训练；
+- CUDA、PTX、Kernel 调优和 profiler 使用教程；
+- 在线服务框架的完整调度策略和参数列表；
+- OCR/CV、语音等其他模型案例；
+- 每一种 Attention、量化和并行变体。
+
+这些内容以后作为专题添加。它们不能打断“一个 token 怎样产生”的第一轮主线。
+
+## 通过课程的标准
+
+完成课程不以背公式为标准。读者需要能够完成以下任务：
+
+1. 不看资料画出文本到下一个 token 的链路；
+2. 指着一层结构说明 Norm、token mixer、FFN/MoE 和 Residual 的作用；
+3. 用两三个 token 的小例子解释 Attention；
+4. 解释 Prefill、Decode、KV Cache 与 recurrent state；
+5. 对比 Dense 和 MoE，并正确解释总参数与激活参数；
+6. 从 Qwen3.5 配置中恢复层数、层类型、头数和专家数；
+7. 面对一种优化，先指出它改变的模型对象，再判断可能收益。
+
+## 原始资料
+
+课程结构和术语以原始论文及官方配置为准，正文不会要求初学者直接阅读完这些资料。Qwen3.5 的配置字段于 2026-08-03 按官方仓库复核；以后编写对应正文时还要再次核对当前版本。
+
+- [Qwen3.5-9B 官方模型说明](https://huggingface.co/Qwen/Qwen3.5-9B)
+- [Qwen3.5-9B 官方配置](https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/config.json)
+- [Qwen3.5-35B-A3B 官方模型说明](https://huggingface.co/Qwen/Qwen3.5-35B-A3B)
+- [Qwen3.5-35B-A3B 官方配置](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/main/config.json)
+- [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
+- [Root Mean Square Layer Normalization](https://arxiv.org/abs/1910.07467)
+- [GLU Variants Improve Transformer](https://arxiv.org/abs/2002.05202)
+- [RoFormer：Rotary Position Embedding](https://arxiv.org/abs/2104.09864)
+- [GQA：Grouped-Query Attention](https://arxiv.org/abs/2305.13245)
+- [Switch Transformers](https://arxiv.org/abs/2101.03961)
+- [Gated Delta Networks](https://arxiv.org/abs/2412.06464)
