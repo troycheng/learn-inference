@@ -91,6 +91,8 @@ Dense 和 MoE 不作为两套互不相关的模型讲解。先看懂 Dense FFN�
 
 ## 第 1 课：文字怎样变成下一个 token
 
+正文：[第一课：从一句话到下一个 Token](lessons/01-text-to-next-token.md)
+
 ### 只解决一件事
 
 建立从字符串到下一个 token 的完整地图：
