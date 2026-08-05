@@ -1,295 +1,264 @@
-# 新版课程路线：从一个 token 到完整推理判断
+# 课程路线：从模型怎样生成，到怎样判断推理优化
 
-## 结论
+## 课程目标
 
-核心课程调整为 **8 课**。前 7 课解释模型和推理过程，第 8 课才使用这些理论判断优化方法。
+这套课程面向已经参与推理系统研发，但缺少模型理论主干的工程师。目标不是覆盖所有论文和框架参数，而是掌握一组能够解释大多数推理问题的核心概念。
 
-旧版 12 课路线的问题在于，它把 GPU、Runtime、测量和服务系统放在了语言模型理论之前。读者还不知道 Attention、FFN、KV Cache 为什么存在，就要开始分析性能，知识顺序倒置。新版路线按模型真实的数据流组织：
+学完后，应当能够沿着同一条因果链思考：
 
 ```text
-先知道模型要完成什么
-→ 再知道一层模型怎样完成
-→ 再知道多层、状态和生成步骤怎样连接
-→ 最后判断一种优化改变了哪部分
+输入怎样表示
+→ 一个 Decoder Layer 怎样处理表示
+→ 不同 token 怎样交换信息
+→ 为什么生成必须逐步进行并保存历史状态
+→ Qwen3.5 怎样组合不同层和 Dense/MoE
+→ 多模态输入怎样进入语言模型
+→ 配置中的数字怎样变成参数、状态和计算
+→ 一种优化到底改变了什么
 ```
 
-## 最少但够用的三个问题
+## 三个贯穿问题
 
 面对任何语言模型结构，先问三个问题：
 
-| 问题 | 要看懂的对象 | 对推理判断的意义 |
+| 问题 | 要识别的对象 | 对工程判断的意义 |
 | --- | --- | --- |
-| 当前数据表示什么？ | token ID、向量、logit、概率 | 避免把不同阶段的张量混为一谈 |
-| 信息怎样被混合？ | Attention/Gated DeltaNet 跨 token 混合；FFN 在单个 token 内混合特征 | 找到模型能力和主要计算的来源 |
+| 当前数据表示什么？ | Token ID、Embedding、Hidden State、Logit、概率 | 避免把不同阶段的张量混为一谈 |
+| 信息怎样被混合？ | Token Mixer 跨 token；FFN 在单 token 内加工特征 | 找到模型能力和主要计算的来源 |
 | 哪些历史结果需要保留？ | KV Cache、Gated DeltaNet recurrent state | 理解 Prefill、Decode、显存和并发限制 |
 
-这三个问题就是课程的主干。算子、公式和优化方法都挂在这条主干上。
+算子、公式和优化方法都挂在这三条主线上。
 
-## 数学不单独设门槛
+## 两种尺度的例子
 
-课程不先安排一整套线性代数预科，也不默认读者已经熟练。标量、向量、矩阵、shape、点积、求和、平均、指数等工具，在第一次需要时现场解释：
+课程不会一上来用 4096×12288 的矩阵解释基本计算，也不会只停留在玩具模型。
+
+### 小数字教学模型
+
+按概念需要选用类似下面的小尺寸：
 
 ```text
-先看一个具体数
-→ 再看一小组数
-→ 再把一批小组写成矩阵
-→ 最后给这种计算起名字
+B=1，T=3，H=4，I=6，V=5，Attention Head=2
 ```
 
-例如，讲 Attention 之前才解释点积；讲 RMSNorm 之前才解释平方、平均和平方根；讲 Linear 之前才解释“输出中的一个数如何由一行输入和一列权重得到”。读者不需要先背一批暂时不知道用途的公式。
+它不是任何真实模型，只用于手算、画矩阵和检查 shape。
 
-## 贯穿模型：Qwen3.5
+### 真实模型
 
-第一轮只研究文本生成路径，不展开视觉编码器。
+- Qwen3.5-9B-Base：讲 Dense FFN、混合层结构和视觉输入；
+- Qwen3.5-35B-A3B：讲 MoE、总参数与激活参数；
+- 官方 `config.json` 和 Transformers 实现：核对真实字段、shape 和数据流。
 
-### Dense 案例：Qwen3.5-9B
+每个重要概念都按“小数字看清计算 → 通用 shape → 真实配置看规模”的顺序讲解。
 
-官方模型说明给出的文本模型结构为 32 层，每四层组成一组：前三层使用 Gated DeltaNet，第四层使用 Full Attention；每个 token mixer 后面都连接 Dense FFN。
+## 当前课程顺序
 
-```mermaid
-flowchart TB
-    X["输入 hidden state"] --> N1["RMSNorm"]
-    N1 --> M["Gated DeltaNet 或 Full Attention"]
-    M --> A1["Residual Add"]
-    X --> A1
-    A1 --> N2["RMSNorm"]
-    N2 --> F["Dense FFN"]
-    F --> A2["Residual Add"]
-    A1 --> A2
-    A2 --> Y["输出 hidden state"]
-```
+当前主线按 0～9 编号。编号是依赖顺序，不是对篇幅的限制；某个主题如果无法在一课内讲清，可以继续拆分。
 
-### MoE 案例：Qwen3.5-35B-A3B
-
-MoE 模型保留相同的层骨架，把 Dense FFN 换成 Sparse MoE。官方配置给出 256 个路由专家、每个 token 选择 8 个专家，并额外使用共享专家。模型约有 35B 总参数，每个 token 激活约 3B 参数。
-
-```mermaid
-flowchart LR
-    X["单个 token 的向量"] --> R["Router 打分"]
-    R --> K["选择 Top-8"]
-    K --> E["8 个路由专家分别计算"]
-    X --> S["共享专家计算"]
-    E --> C["按路由权重合并"]
-    S --> C
-    C --> Y["MoE 输出"]
-```
-
-Dense 和 MoE 不作为两套互不相关的模型讲解。先看懂 Dense FFN，再在原位置替换成 MoE，这样能准确看出什么没有变、什么发生了变化。
-
-## 八课总览
-
-| 课次 | 核心问题 | 本课必须讲清的结构与算子 | 学完后的能力 |
+| 课次 | 核心问题 | 必须掌握的内容 | 学完后的能力 |
 | ---: | --- | --- | --- |
-| 1 | 文字怎样变成下一个 token？ | Tokenizer、Embedding/Gather、Linear、Logits、Softmax、Top-K、Sampling | 能画出完整生成主链路，区分 ID、向量、分数和概率 |
-| 2 | Dense 模型的一层为什么这样设计？ | hidden state、RMSNorm、Residual、SwiGLU FFN；Reduction、Rsqrt、Mul、Add、SiLU、Broadcast | 能解释一层中每个模块的作用和 shape |
-| 3 | 当前 token 怎样读取上下文？ | Q/K/V、因果 Mask、Softmax Attention、MHA、GQA、RoPE；MatMul、Reshape、Transpose | 能用小例子走完一次 Attention，并解释位置和多头 |
-| 4 | 为什么生成必须逐步进行？ | 条件概率、Prefill、Decode、KV Cache；Concat、Slice、索引读写 | 能解释请求内串行、单步并行，以及 KV 为何可复用 |
-| 5 | Qwen3.5 为什么混用两种 token mixer？ | Gated DeltaNet、因果卷积、门控、recurrent state、Full Attention 间隔层 | 能区分 KV Cache 与 recurrent state，读懂混合层排列 |
-| 6 | MoE 与 Dense 到底差在哪里？ | Router、Softmax、Top-K、路由专家、共享专家、加权合并；Gather/Scatter | 能解释总参数、激活参数、专家选择和 token 分发 |
-| 7 | 怎样从配置还原完整模型？ | 层数、hidden size、head 数、expert 数、dtype、参数量、权重/KV/状态容量 | 能阅读 Qwen3.5 配置并完成数量级估算 |
-| 8 | 怎样用理论判断优化方向？ | 量化、FlashAttention、Prefix Cache、Batching、TP/EP、推测解码/MTP | 能说明优化改了什么、为什么可能有效、代价是什么 |
+| 0 | 后面的张量和公式怎样读？ | 标量、向量、矩阵、shape、轴、索引、归约、广播、点积、矩阵乘法、Linear、Embedding | 能看懂算子对哪些数计算，并推导基本 shape |
+| 1 | 一句话怎样变成下一个 token？ | Chat Template、Tokenizer、Embedding、Decoder 黑盒、LM Head、Logits、Softmax、采样 | 能区分文字、ID、向量、分数和概率，画出完整生成链路 |
+| 2 | 一个 Decoder Layer 为什么这样设计？ | Hidden State、RMSNorm、Residual、Token Mixer/FFN 分工、Dense SwiGLU | 能解释一层中每个公共模块的目的、计算和 shape |
+| 3 | 当前 token 怎样读取上下文？ | Q/K/V、因果 Mask、缩放点积 Attention、多头、GQA、RoPE | 能用小数字走完一次 Attention，解释位置和头的作用 |
+| 4 | 为什么生成必须逐步进行？ | 条件概率、Prefill、Decode、KV Cache、请求内串行与批内并行 | 能解释缓存复用了什么、占用了什么，以及 TTFT/TPOT 的模型来源 |
+| 5 | Qwen3.5 为什么混用两类 Token Mixer？ | Gated DeltaNet、因果卷积、门控更新、recurrent state、Full Attention 间隔层 | 能区分 KV Cache 与 recurrent state，读懂 3+1 混合排列 |
+| 6 | Dense 和 MoE 到底差在哪里？ | Dense FFN、Router、Top-K、路由专家、共享专家、加权合并、token 分发 | 能解释总参数、激活参数、专家路由和通信来源 |
+| 7 | 图片和视频怎样进入语言模型？ | 图像预处理、Patch、视觉编码器、特征压缩与投影、视觉 token、统一输入序列 | 能定位视觉编码与语言模型开销，解释分辨率为什么影响序列长度 |
+| 8 | 怎样从配置还原模型和运行时数据？ | 层数、H/I/V、头数、专家数、dtype、权重、KV/状态容量、主要计算量 | 能读配置并完成带假设和单位的数量级估算 |
+| 9 | 怎样用理论判断推理优化？ | 量化、FlashAttention、Prefix Cache、Batching、TP/EP、推测解码/MTP | 能说明优化改了什么、少了什么、新增什么、何时收益成立 |
 
-## 第 1 课：文字怎样变成下一个 token
+## 第 0 课：只够后续使用的数学与张量
+
+正文：[第 0 课：看懂推理链路所需的数学与张量](lessons/00-math-and-tensors.md)
+
+这节课解决阅读门槛，不展开完整线性代数。范围严格限制为后续会直接使用的内容：
+
+```text
+数据怎样组织
+→ shape 和索引怎样定位数据
+→ 轴和归约怎样减少维度
+→ 广播怎样应用逐元素计算
+→ 点积怎样产生一个分数
+→ 矩阵乘法怎样批量执行点积
+→ Linear 和 Embedding 怎样使用这些动作
+```
+
+通过标准：看到 `X:[B,T,H]` 和 `W:[I,H]`，能解释 `B/T/H/I`，并推出 Linear 输出 `[B,T,I]`。
+
+## 第 1 课：从一句话到下一个 token
 
 正文：[第一课：从一句话到下一个 Token](lessons/01-text-to-next-token.md)
 
-### 只解决一件事
-
-建立从字符串到下一个 token 的完整地图：
+建立完整地图：
 
 ```text
-文字
-→ Tokenizer 切分并查表
-→ token IDs
-→ Embedding 查到向量
-→ 多层 Decoder 修改向量
-→ LM Head 为词表中每个 token 打分
-→ Softmax 变成概率
-→ Sampling 选出下一个 token
+对话消息
+→ Chat Template
+→ Tokenizer
+→ Token IDs
+→ Embedding
+→ Decoder
+→ LM Head
+→ Logits
+→ 贪心或采样
+→ 下一个 Token ID
+→ Tokenizer Decode
 ```
 
-### 基本算子随链路出现
+通过标准：能够解释模型为什么不直接接收或输出文字，并准确区分 Token ID、Embedding、Hidden State、Logit 和概率。
 
-- `Gather/Embedding`：根据 ID 从大表中取一行；
-- `Linear`：把一个向量变成另一组分数；
-- `Softmax`：把任意分数转换成总和为 1 的概率；
-- `Top-K/Argmax/Sampling`：从概率分布中选择 token。
+## 第 2 课：看懂一个 Decoder Layer
 
-本课不讨论 FLOPs、GPU 和服务吞吐。通过标准是能用自己的话解释“模型没有直接输出文字，而是先输出词表上的分数”。
+正文：[第二课：一个 Decoder Layer 怎样处理 Token](lessons/02-inside-a-decoder-layer.md)
 
-## 第 2 课：Dense 模型的一层为什么这样设计
-
-### 先建立两种混合
-
-一层模型反复做两件事：
-
-1. token mixer 让当前 token 获得其他位置的信息；
-2. channel mixer 在当前 token 自己的特征维度内进行加工。
-
-Dense FFN 属于第二种。它对每个 token 使用同一套权重，但各 token 可以并行计算。
-
-### 本课解释的基本算子
-
-- `Reduction`：把一组数汇总成一个统计量，RMSNorm 用它计算均方；
-- `Rsqrt`：计算平方根的倒数，用于缩放；
-- `Add`：残差连接保留原输入；
-- `Linear`：混合特征维度；
-- `SiLU`：提供非线性；
-- `Mul`：让一条分支控制另一条分支；
-- `Broadcast`：让一个缩放量应用到一整组元素。
-
-公式最后出现。先用 4 维向量逐步计算 RMSNorm 和简化 FFN，再写通用 shape。
-
-## 第 3 课：当前 token 怎样读取上下文
-
-Attention 不从公式开始，而从一个具体问题开始：代词“它”应该关注前文中的哪个词？
-
-```mermaid
-flowchart LR
-    Q["Query：我正在找什么"] --> SCORE["相似度打分"]
-    K["Key：每个位置提供什么索引"] --> SCORE
-    SCORE --> MASK["因果 Mask：禁止看未来"]
-    MASK --> P["Softmax：注意力比例"]
-    P --> SUM["按比例汇总"]
-    V["Value：每个位置真正提供的内容"] --> SUM
-```
-
-先用两个 token、每个向量两维的例子手算，再引入矩阵写法。随后解释：
-
-- 多头不是重复计算同一件事，而是允许不同子空间形成不同关系；
-- GQA 让多组 Query 共享较少的 K/V 头；
-- RoPE 让 Q/K 的匹配带上位置信息；
-- `Reshape` 和 `Transpose` 为什么出现在实现中。
-
-## 第 4 课：为什么生成必须逐步进行
-
-本课把模型结构变成时间过程：
-
-```mermaid
-sequenceDiagram
-    participant P as Prompt
-    participant M as 模型
-    participant C as Cache
-    P->>M: 所有已知 prompt token
-    M->>C: 写入每层历史状态
-    M-->>P: 产生第 1 个新 token
-    P->>M: 第 1 个新 token
-    C->>M: 读取历史状态
-    M->>C: 追加本轮状态
-    M-->>P: 产生第 2 个新 token
-```
-
-重点是分清：
-
-- Prompt 已经全部已知，可以一起做 Prefill；
-- 未来 token 尚未产生，普通自回归 Decode 不能提前计算；
-- KV Cache 保存各 Attention 层过去的 K/V，避免重复计算；
-- Cache 节省的是重复计算，也会占用显存并产生读取流量。
-
-## 第 5 课：Qwen3.5 的混合结构
-
-标准 Full Attention 能直接比较当前 token 与历史 token，但历史越长，需要处理的 K/V 越多。Gated DeltaNet 使用固定大小的 recurrent state 压缩历史，并通过门控和 delta update 决定写入、修改和遗忘什么。
-
-本课只建立工程上够用的理解：
+一层反复使用同一骨架：
 
 ```text
-Full Attention：保留较完整的历史 K/V，再按需读取
-Gated DeltaNet：把历史持续压缩进固定形状的状态
+保存输入 → RMSNorm → Token Mixer → 残差相加
+保存输入 → RMSNorm → SwiGLU FFN → 残差相加
 ```
 
-随后解释“3 层 Gated DeltaNet + 1 层 Full Attention”的排列试图兼顾哪些能力和成本。这里会明确区分官方公开的结构事实与根据结构作出的工程解释，不把推测写成官方设计结论。复杂的并行训练推导和核实现不进入第一轮。
+本课先把 Token Mixer 当成占位模块，集中讲清 Hidden State、RMSNorm、Residual 和 Dense SwiGLU。Attention 下一课再打开，避免同时引入两套复杂计算。
 
-## 第 6 课：MoE 与 Dense 到底差在哪里
+通过标准：能把 SwiGLU 展开成 `gate_proj → SiLU`、`up_proj`、逐元素乘法和 `down_proj`，并写出每一步 shape。
 
-先复用第 2 课的 Dense FFN，再加入 Router：
+## 第 3 课：Attention 怎样读取上下文
 
-| 比较项 | Dense FFN | Sparse MoE |
-| --- | --- | --- |
-| 每个 token 使用谁 | 同一个 FFN | Router 选中的少量路由专家，加共享专家 |
-| 参数是否全部存储 | 是 | 是，未选中的专家本轮不计算，但权重仍需存放 |
-| 单 token 激活参数 | 使用该层整个 FFN | 只使用 Top-K 路由专家及共享部分 |
-| 新增动作 | 无 | 打分、选择、token 分发、专家计算、加权合并 |
-| 新增风险 | 无专家路由问题 | 负载不均、跨卡 All-to-All、专家热点 |
-
-必须澄清：专家不是人工指定的“数学专家”或“代码专家”；它们是训练形成的参数分工。`35B-A3B` 也不表示模型只需存储 3B 参数。
-
-## 第 7 课：怎样从配置还原完整模型
-
-前 6 课建立语义，本课才开始集中使用公式。所有计算遵循同一顺序：
+从一个具体问题开始：当前 token 怎样判断前文哪些位置与自己有关？
 
 ```text
-读字段
-→ 翻译成结构
-→ 写出 shape
-→ 代入小数字检查
-→ 再代入真实配置
-→ 标明单位和近似条件
+Hidden State
+→ 产生 Q、K、V
+→ Q 与 K 点积打分
+→ 加因果 Mask
+→ Softmax 得到权重
+→ 按权重汇总 V
 ```
 
-读者将分别还原 Qwen3.5-9B 和 Qwen3.5-35B-A3B：
+随后解释多头、GQA 和 RoPE。结论必须区分结构事实与解释性直觉：不同头可以学习不同关系，不代表每个头都有人工固定职责。
 
-- 层排列；
-- Dense FFN 或 MoE；
-- Q/K/V 头数和维度；
-- 权重参数与存储量；
-- Full Attention KV Cache；
-- Gated DeltaNet recurrent state；
-- 为什么总参数不等于单 token 激活参数。
+## 第 4 课：自回归、Prefill、Decode 与 KV Cache
 
-## 第 8 课：怎样用理论判断优化方向
+把静态模型结构变成时间过程：
 
-本课不再建立一套独立的“GPU 课程”或“服务系统课程”。每种优化回到前 7 课的模型对象：
+```text
+Prompt 已全部知道 → Prefill 可同时处理多个位置
+第一个未来 token 尚未知 → 必须先生成
+新 token 确定 → 才能继续生成下一个
+```
+
+KV Cache 保存已经计算出的历史 K/V，减少重复计算，但不能提前知道未来 token。这里再解释 Continuous Batching 和 Chunked Prefill 为什么能把不同请求、不同阶段的已知 token 组织到同一轮执行。
+
+## 第 5 课：Qwen3.5 的混合 Token Mixer
+
+Qwen3.5-9B 使用 8 组：
+
+```text
+3 × (Gated DeltaNet → Dense FFN)
++ 1 × (Full Attention → Dense FFN)
+```
+
+Full Attention 保留并读取较完整的历史 K/V；Gated DeltaNet 把历史持续更新到固定 shape 的 recurrent state。课程会解释两类状态的语义、shape 与生命周期，不展开训练推导和 Kernel 实现。
+
+## 第 6 课：Dense 与 MoE
+
+MoE 不替换整个 Decoder Layer，主要替换 FFN 子层：
+
+```text
+Dense：每个 token 使用同一套完整 FFN
+MoE：Router 为每个 token 选择少量路由专家，并使用共享专家
+```
+
+重点区分：
+
+- 总参数必须存储，不等于每个 token 都参与计算；
+- 激活参数只描述本轮选中的参数，不直接等于显存、通信或延迟；
+- 专家是训练形成的参数分工，不是人工指定的“代码专家”或“数学专家”。
+
+## 第 7 课：视觉编码器与多模态输入
+
+这节课只讲理解多模态推理链路所需的视觉知识：
+
+```text
+图片或视频
+→ 缩放与归一化
+→ 切成 Patch
+→ 视觉编码器
+→ 视觉特征压缩与投影
+→ 与文本向量组成统一序列
+→ 语言模型 Decoder
+```
+
+必须讲清：视觉特征不是由文本 Token ID 查 Embedding 得到；图片分辨率、数量和视频帧数会改变视觉位置数，从而影响视觉编码耗时、语言模型 Prefill、缓存和显存。
+
+## 第 8 课：从配置还原结构与数量级
+
+前面先建立语义，这一课再集中估算：
+
+```text
+读配置字段
+→ 翻译成模块和 shape
+→ 用小数字检查公式
+→ 代入真实配置
+→ 标明单位、近似和忽略项
+```
+
+分别还原 Qwen3.5 Dense 与 MoE 模型的层排列、投影尺寸、头数、专家数、参数容量、KV Cache 和 recurrent state。
+
+## 第 9 课：用理论判断优化方向
+
+GPU 执行和服务调度不再各自成为孤立章节。每种优化都回到前面已经理解的模型对象：
 
 | 优化 | 直接改变什么 | 首先检查什么 |
 | --- | --- | --- |
-| 权重量化 | 每个参数的字节数和数值误差 | 权重是否是主要容量/流量，硬件是否有对应计算路径 |
-| KV 量化 | Cache 的容量和读取字节 | Full Attention 层数量、KV shape、精度影响 |
-| FlashAttention | Attention 中间值的读写方式 | 没有改变 Attention 数学结果，也没有消除 Decode 的历史依赖 |
-| Prefix Cache | 复用相同前缀的已有状态 | 前缀命中率、状态占用和生命周期 |
-| Batching | 一次处理更多已知 token | 吞吐收益与排队、单步等待的交换 |
-| TP | 分片同一层的权重和计算 | 每层同步与通信是否进入关键路径 |
-| EP | 把不同专家放到不同设备 | token 路由、All-to-All 和负载均衡 |
-| 推测解码/MTP | 尝试一次提出并验证多个未来 token | 接受率、验证成本和额外模型成本 |
+| 权重量化 | 权重字节数、数值精度和计算路径 | 权重容量或带宽是否构成主要限制 |
+| KV 量化 | Cache 容量和读取字节 | Full Attention 层、KV shape 和精度影响 |
+| FlashAttention | Attention 中间值的读写与分块方式 | 它不改变 Attention 语义，也不消除自回归依赖 |
+| Prefix Cache | 复用相同前缀的历史状态 | 命中率、状态容量和生命周期 |
+| Batching | 一轮处理更多已知 token | 吞吐收益与排队、TTFT、TPOT 的交换 |
+| TP | 分片同一层权重和计算 | 每层集合通信是否进入关键路径 |
+| EP | 把专家放到不同设备 | token 分发、All-to-All 和负载均衡 |
+| 推测解码/MTP | 提出并验证多个未来候选 | 接受率、验证成本和额外模型成本 |
 
-最终使用固定判断模板：
+固定判断模板：
 
 ```text
-它改变模型链路中的哪个对象？
-→ 少算了什么、少存了什么或少搬了什么？
+它改变链路中的哪个对象？
+→ 少算、少存或少搬了什么？
 → 新增了什么计算、状态、通信或误差？
 → 哪种 workload 下收益才会出现？
-→ 用什么指标验证？
+→ 用什么指标和对照实验验证？
 ```
 
-## 第一轮明确不展开的内容
+## 第一轮暂不展开
 
-- 训练、反向传播、优化器和 MoE 负载均衡损失的推导；
-- Qwen3.5 视觉编码器和多模态训练；
-- CUDA、PTX、Kernel 调优和 profiler 使用教程；
-- 在线服务框架的完整调度策略和参数列表；
-- OCR/CV、语音等其他模型案例；
-- 每一种 Attention、量化和并行变体。
+- 训练、反向传播、优化器和完整概率论；
+- 视觉模型训练方法和完整计算机视觉课程；
+- CUDA ISA、PTX、Kernel 编写和 profiler 操作教程；
+- 每个框架的参数清单和每一种调度算法；
+- 机械可解释性中的神经元、归纳头和知识编辑专题；
+- 每一种 Attention、量化、并行和采样变体；
+- OCR、语音和扩散模型等其他模型链路。
 
-这些内容以后作为专题添加。它们不能打断“一个 token 怎样产生”的第一轮主线。
+这些内容可以后续按工程需要作为专题添加，不打断第一轮主线。
 
-## 通过课程的标准
+## 总体验收标准
 
-完成课程不以背公式为标准。读者需要能够完成以下任务：
+完成课程不以背公式为标准。读者应当能够：
 
-1. 不看资料画出文本到下一个 token 的链路；
-2. 指着一层结构说明 Norm、token mixer、FFN/MoE 和 Residual 的作用；
-3. 用两三个 token 的小例子解释 Attention；
-4. 解释 Prefill、Decode、KV Cache 与 recurrent state；
-5. 对比 Dense 和 MoE，并正确解释总参数与激活参数；
-6. 从 Qwen3.5 配置中恢复层数、层类型、头数和专家数；
-7. 面对一种优化，先指出它改变的模型对象，再判断可能收益。
+1. 画出文本或图片到下一个 token 的数据流；
+2. 指着 Decoder Layer 解释 Norm、Token Mixer、FFN/MoE 和 Residual；
+3. 用两三个 token 的小例子完成 Attention 计算；
+4. 解释 Prefill、Decode、KV Cache 和 recurrent state；
+5. 对比 Dense 与 MoE，并区分总参数和激活参数；
+6. 从 Qwen3.5 配置恢复层数、层类型、头数和专家数；
+7. 面对一种优化，先指出它改变哪个模型对象，再判断收益条件和代价。
 
 ## 原始资料
 
-课程结构和术语以原始论文及官方配置为准，正文不会要求初学者直接阅读完这些资料。Qwen3.5 的配置字段于 2026-08-03 按官方仓库复核；以后编写对应正文时还要再次核对当前版本。
-
-- [Qwen3.5-9B 官方模型说明](https://huggingface.co/Qwen/Qwen3.5-9B)
-- [Qwen3.5-9B 官方配置](https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/config.json)
+- [Qwen3.5-9B-Base 官方模型说明](https://huggingface.co/Qwen/Qwen3.5-9B-Base)
+- [Qwen3.5-9B-Base 官方配置](https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/main/config.json)
 - [Qwen3.5-35B-A3B 官方模型说明](https://huggingface.co/Qwen/Qwen3.5-35B-A3B)
 - [Qwen3.5-35B-A3B 官方配置](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/main/config.json)
 - [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
@@ -297,5 +266,5 @@ Gated DeltaNet：把历史持续压缩进固定形状的状态
 - [GLU Variants Improve Transformer](https://arxiv.org/abs/2002.05202)
 - [RoFormer：Rotary Position Embedding](https://arxiv.org/abs/2104.09864)
 - [GQA：Grouped-Query Attention](https://arxiv.org/abs/2305.13245)
-- [Switch Transformers](https://arxiv.org/abs/2101.03961)
+- [Mixtral of Experts](https://arxiv.org/abs/2401.04088)
 - [Gated Delta Networks](https://arxiv.org/abs/2412.06464)

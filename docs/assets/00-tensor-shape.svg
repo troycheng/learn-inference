@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" width="960" height="430">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 22px; font-weight: 600; }
+    .label { font-size: 15px; font-weight: 600; }
+    .sub { font-size: 13px; fill: #6b7280; }
+    .cell { font-size: 12px; fill: #374151; }
+  </style>
+  <rect width="960" height="430" fill="#ffffff"/>
+  <text x="40" y="42" class="title">怎样读 [B, T, H]</text>
+  <text x="40" y="68" class="sub">从外到内：一批序列 → 每条序列的 token 位置 → 每个位置的特征坐标</text>
+
+  <rect x="44" y="100" width="872" height="272" rx="14" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+  <text x="66" y="130" class="label">B = 2：一批有 2 条序列</text>
+
+  <rect x="74" y="150" width="390" height="190" rx="12" fill="#ffffff" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="94" y="178" class="label">序列 0</text>
+  <rect x="96" y="198" width="158" height="106" rx="8" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="112" y="224" class="label">token 0</text>
+  <text x="112" y="250" class="cell">[ x0, x1, …, x(H-1) ]</text>
+  <text x="112" y="278" class="sub">H 个特征坐标</text>
+  <rect x="274" y="198" width="158" height="106" rx="8" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="290" y="224" class="label">token 1 …</text>
+  <text x="290" y="250" class="cell">[ x0, x1, …, x(H-1) ]</text>
+  <text x="290" y="278" class="sub">共 T 个位置</text>
+
+  <rect x="496" y="150" width="390" height="190" rx="12" fill="#ffffff" stroke="#60a5fa" stroke-width="1.5"/>
+  <text x="516" y="178" class="label">序列 1</text>
+  <rect x="518" y="198" width="158" height="106" rx="8" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="534" y="224" class="label">token 0</text>
+  <text x="534" y="250" class="cell">[ x0, x1, …, x(H-1) ]</text>
+  <text x="534" y="278" class="sub">H 个特征坐标</text>
+  <rect x="696" y="198" width="158" height="106" rx="8" fill="#f0fdf4" stroke="#86efac"/>
+  <text x="712" y="224" class="label">token 1 …</text>
+  <text x="712" y="250" class="cell">[ x0, x1, …, x(H-1) ]</text>
+  <text x="712" y="278" class="sub">共 T 个位置</text>
+
+  <text x="480" y="406" text-anchor="middle" class="label">[B, T, H] = [2, T, H]</text>
+</svg>
