@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 460" width="760" height="460">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 22px; font-weight: 600; }
+    .label { font-size: 13px; fill: #374151; }
+    .sub { font-size: 12px; fill: #6b7280; }
+  </style>
+  <rect width="760" height="460" fill="#ffffff"/>
+  <text x="38" y="42" class="title">SiLU(z) = z × sigmoid(z)</text>
+  <text x="38" y="67" class="sub">负数被平滑压低；较大的正数逐渐接近 y=z</text>
+  <line x1="85" y1="320" x2="700" y2="320" stroke="#9ca3af" stroke-width="1.5"/>
+  <line x1="390" y1="90" x2="390" y2="385" stroke="#9ca3af" stroke-width="1.5"/>
+  <text x="704" y="340" class="label">z</text><text x="402" y="98" class="label">SiLU(z)</text>
+  <g class="sub" text-anchor="middle"><text x="90" y="343">-3</text><text x="190" y="343">-2</text><text x="290" y="343">-1</text><text x="390" y="343">0</text><text x="490" y="343">1</text><text x="590" y="343">2</text><text x="690" y="343">3</text></g>
+  <polyline points="90,333 140,337 190,341 240,345 290,344 340,337 390,320 440,292 490,254 540,210 590,161 640,112 690,63" fill="none" stroke="#2563eb" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="390" y1="320" x2="690" y2="50" stroke="#d1d5db" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <circle cx="290" cy="344" r="5" fill="#2563eb"/><circle cx="390" cy="320" r="5" fill="#2563eb"/><circle cx="490" cy="254" r="5" fill="#2563eb"/><circle cx="690" cy="63" r="5" fill="#2563eb"/>
+  <text x="250" y="375" class="label">SiLU(-1)≈-0.269</text><text x="413" y="309" class="label">0</text><text x="498" y="240" class="label">0.731</text><text x="624" y="93" class="label">2.858</text>
+  <rect x="88" y="390" width="584" height="42" rx="8" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="380" y="416" text-anchor="middle" class="label">SiLU 是平滑的非线性函数，不是只能输出 0 或 1 的开关</text>
+</svg>

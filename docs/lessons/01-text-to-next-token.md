@@ -5,8 +5,12 @@
 > 用户发来一句话后，语言模型怎样产生下一个 token？
 
 先不打开 Decoder 内部，也不讨论 GPU、FLOPs 和服务吞吐。学完这一课，
-你应该能够区分文字、Token ID、Embedding、Hidden State、Logit 和概率，
+你应该能够区分文字、Token ID、嵌入（Embedding）、隐藏状态（Hidden State）、未归一化分数（Logit）和概率，
 并能从头画出一次生成的完整链路。
+
+如果对 `[B,T,H]`、轴、点积或 Linear 的 shape 还不熟悉，先阅读[第 0 课：看懂推理链路所需的数学与张量](00-math-and-tensors.md)。
+
+本课程统一术语见[课程术语与符号表](../glossary.md)。
 
 ## 1. 先看全局：模型并不直接接收和输出文字
 
@@ -18,16 +22,7 @@
 
 但模型内部不认识 JSON 字段，也不直接计算汉字。一次文本生成实际经过以下步骤：
 
-```mermaid
-flowchart LR
-    A["对话消息"] --> B["Chat Template<br/>组织角色和边界"]
-    B --> C["Tokenizer<br/>文字变成 Token IDs"]
-    C --> D["Embedding<br/>IDs 变成初始向量"]
-    D --> E["多层 Decoder<br/>结合上下文"]
-    E --> F["LM Head<br/>为全词表打分"]
-    F --> G["贪心或采样<br/>选择下一个 ID"]
-    G --> H["Tokenizer Decode<br/>ID 还原为文字"]
-```
+![从对话消息到下一个 token](../assets/01-text-to-token.svg)
 
 如果需要生成一句完整回答，模型会重复中间的生成步骤：
 
@@ -42,15 +37,15 @@ flowchart LR
 
 | 组件 | 输入 | 输出 | 核心职责 |
 | --- | --- | --- | --- |
-| Chat Template | 对话消息 | 格式化提示文本 | 表达角色、消息边界和生成起点 |
-| Tokenizer | 文字 | Token IDs | 在文字与模型词表编号之间转换 |
-| Embedding | Token IDs | 初始向量 | 为每个 ID 取出一行可学习向量 |
-| Decoder | 初始或中间向量 | Hidden States | 让每个位置的表示结合上下文 |
-| LM Head | Hidden State | Logits | 为词表中的每个候选 token 打分 |
+| 对话模板（Chat Template） | 对话消息 | 格式化提示文本 | 表达角色、消息边界和生成起点 |
+| 分词器（Tokenizer） | 文字 | Token IDs | 在文字与模型词表编号之间转换 |
+| 嵌入（Embedding） | Token IDs | 初始向量 | 为每个 ID 取出一行可学习向量 |
+| 解码器（Decoder） | 初始或中间向量 | Hidden States | 让每个位置的表示结合上下文 |
+| 语言模型输出层（LM Head） | Hidden State | Logits | 为词表中的每个候选 token 打分 |
 | 选择策略 | Logits | 下一个 Token ID | 贪心选择或按概率采样 |
 | Tokenizer Decode | Token IDs | 文字 | 把模型生成的编号还原为可见文字 |
 
-## 2. Chat Template：模型看到的不只是用户输入
+## 2. 对话模板（Chat Template）：模型看到的不只是用户输入
 
 ### 2.1 它解决什么问题
 
@@ -78,7 +73,7 @@ Chat Template 会改变真正送入模型的 token 序列，因此会影响：
 
 所以，接口中的 `content` 不是模型的完整输入。分析上下文长度或比对两个推理后端时，应比较应用模板后的 Token IDs。
 
-## 3. Tokenizer：为什么不能直接把文字交给模型
+## 3. 分词器（Tokenizer）：为什么不能直接把文字交给模型
 
 ### 3.1 它解决什么问题
 
@@ -182,7 +177,7 @@ input_ids.shape = [2, 8]
 
 Tokenizer 到这里已经完成。接下来查 Embedding 表是模型的工作，不是 Tokenizer 的工作。
 
-## 4. Embedding：把离散编号变成可计算的向量
+## 4. 嵌入（Embedding）：把离散编号变成可计算的向量
 
 ### 4.1 为什么不能直接拿 Token ID 做数学计算
 
@@ -222,6 +217,8 @@ Embedding 根据每个 ID 取出对应行：
 ```
 
 这个动作也常被描述为 `Gather`：根据索引从一张大表中取出指定的行。
+
+![Embedding 按 Token ID 查表](../assets/01-embedding-lookup.svg)
 
 ### 4.3 Shape 怎样变化
 
@@ -268,7 +265,7 @@ Embedding 是训练得到的模型参数，包含基础的词义、语法和相�
 
 Embedding 和 Hidden State 可以具有相同 shape，但不是同一个概念。
 
-## 5. Decoder：把初始表示变成上下文表示
+## 5. 解码器（Decoder）：把初始表示变成上下文表示
 
 Qwen3.5-9B 的文本模型使用 `H=4096`，共有 32 层。Embedding 输出进入这些层后，模型会反复更新每个 token 的向量。
 
@@ -316,7 +313,7 @@ h3 用来预测尚未出现的 x4
 Qwen3.5 的 Transformers 实现提供 `logits_to_keep`，允许限制需要产生
 Logits 的位置；这改变实现成本，不改变上述语义。
 
-## 6. LM Head：为词表中每个候选 token 打分
+## 6. 语言模型输出层（LM Head）：为词表中每个候选 token 打分
 
 ### 6.1 它解决什么问题
 
@@ -418,7 +415,7 @@ next_token_id = argmax(logits)
 
 贪心选择不必计算 Softmax，因为 Softmax 不会改变候选之间的大小顺序。
 
-### 7.2 Softmax：把分数变成概率
+### 7.2 概率归一化（Softmax）：把分数变成概率
 
 采样需要概率。对有限实数 Logit，Softmax 会把它们转换成：
 
@@ -517,7 +514,7 @@ token 尚未确定，第二步就缺少输入。因此，不能把同一个请�
 
 停止 token 可能由模型和生成配置共同决定，不应假设所有模型都只有同一个 EOS ID。
 
-## 9. Tokenizer Decode：怎样还原用户看到的文字
+## 9. 分词器解码（Tokenizer Decode）：怎样还原用户看到的文字
 
 假设模型连续生成：
 
@@ -720,7 +717,7 @@ Hidden State → 全词表分数：LM Head
 
 ## 原始资料
 
-以下事实于 2026-08-03 按官方配置与实现复核：
+以下事实于 2026-08-05 按官方配置与实现复核：
 
 - [Qwen3.5-9B 官方模型说明](https://huggingface.co/Qwen/Qwen3.5-9B)
 - [Qwen3.5-9B `config.json`](https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/config.json)

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 440" width="1080" height="440">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 22px; font-weight: 600; }
+    .label { font-size: 14px; font-weight: 600; }
+    .sub { font-size: 12px; fill: #6b7280; }
+  </style>
+  <defs><marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
+  <rect width="1080" height="440" fill="#ffffff"/>
+  <text x="40" y="42" class="title">RMSNorm：为每个 token 计算一个尺度，再缩放整条向量</text>
+  <text x="40" y="68" class="sub">小例子忽略 epsilon 与学习参数 γ，只展示核心归一化</text>
+  <g transform="translate(25,140)"><rect width="135" height="90" rx="10" fill="#eff6ff" stroke="#93c5fd"/><text x="67" y="35" text-anchor="middle" class="label">输入 x</text><text x="67" y="62" text-anchor="middle" class="label">[3, 4]</text></g>
+  <path d="M160 185 H195" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
+  <g transform="translate(205,140)"><rect width="135" height="90" rx="10" fill="#ffffff" stroke="#d1d5db"/><text x="67" y="35" text-anchor="middle" class="label">逐元素平方</text><text x="67" y="62" text-anchor="middle" class="label">[9, 16]</text></g>
+  <path d="M340 185 H375" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
+  <g transform="translate(385,140)"><rect width="135" height="90" rx="10" fill="#ffffff" stroke="#d1d5db"/><text x="67" y="31" text-anchor="middle" class="label">沿 H 求平均</text><text x="67" y="58" text-anchor="middle" class="label">12.5</text><text x="67" y="78" text-anchor="middle" class="sub">[H] → [1]</text></g>
+  <path d="M520 185 H555" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
+  <g transform="translate(565,140)"><rect width="150" height="90" rx="10" fill="#fff7ed" stroke="#fdba74"/><text x="75" y="31" text-anchor="middle" class="label">rsqrt(12.5)</text><text x="75" y="58" text-anchor="middle" class="label">≈ 0.283</text><text x="75" y="78" text-anchor="middle" class="sub">1 / sqrt(12.5)</text></g>
+  <path d="M715 185 H750" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
+  <g transform="translate(760,140)"><rect width="135" height="90" rx="10" fill="#ffffff" stroke="#d1d5db"/><text x="67" y="31" text-anchor="middle" class="label">广播相乘</text><text x="67" y="58" text-anchor="middle" class="label">[3,4] × 0.283</text></g>
+  <path d="M895 185 H930" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
+  <g transform="translate(940,140)"><rect width="115" height="90" rx="10" fill="#f0fdf4" stroke="#86efac"/><text x="57" y="32" text-anchor="middle" class="label">结果</text><text x="57" y="59" text-anchor="middle" class="label">[0.849,</text><text x="57" y="78" text-anchor="middle" class="label">1.131]</text></g>
+  <rect x="250" y="300" width="580" height="76" rx="10" fill="#faf5ff" stroke="#d8b4fe"/>
+  <text x="540" y="330" text-anchor="middle" class="label">[B,T,H] → 沿 H 求均方 → [B,T,1]</text>
+  <text x="540" y="356" text-anchor="middle" class="sub">每个 token 一个缩放系数，再广播回它自己的 H 个特征</text>
+  <text x="540" y="416" text-anchor="middle" class="sub">实际 Qwen3.5 还会加 epsilon，并乘以训练得到的 H 维缩放参数</text>
+</svg>
