@@ -10,7 +10,7 @@ Embedding 输出
 
 这一课打开其中一层，回答下面的问题：
 
-> 一组 token 向量进入一个 Decoder Layer 后，为什么要依次经过归一化、Token Mixer、残差连接和 FFN？
+> 一组 token 向量进入 Decoder Layer 后，怎样依次经过 Token Mixer 子层和 FFN 子层？两次残差连接分别在什么位置？
 
 Attention 和 Gated DeltaNet 的内部计算留到后续课程。这里暂时把它们统称为 **Token Mixer**，只保留两者共有的作用：让不同 token 位置的信息发生联系。
 
@@ -177,8 +177,8 @@ RMSNorm 后的元素不要求位于 `[-1,1]`。它约束的是整条向量的均
 RMSNorm 的核心计算可以写成：
 
 $$
-\operatorname{RMSNorm}(x)
-=\frac{x}{\sqrt{\operatorname{mean}(x^2)+\epsilon}}\odot \gamma
+\mathrm{RMSNorm}(x)
+=\frac{x}{\sqrt{\mathrm{mean}(x^2)+\epsilon}}\odot \gamma
 $$
 
 | 符号 | 含义 |
@@ -191,17 +191,20 @@ $$
 
 如果输入全为 0，均方值也是 0。没有 `epsilon` 时会出现除以 0。Qwen3.5-9B 的 `rms_norm_eps=1e-6`。
 
-代码常把“除以平方根”改写成“乘以平方根的倒数”：
+代码常把“除以平方根”改写成“乘以平方根的倒数”。这里直接代入 RMSNorm 使用的均方值和 `epsilon`：
 
 $$
-\frac{x}{\sqrt{s}}=x\times\frac{1}{\sqrt{s}}
+\frac{x}{\sqrt{\mathrm{mean}(x^2)+\epsilon}}
+=x\times\frac{1}{\sqrt{\mathrm{mean}(x^2)+\epsilon}}
 $$
 
-`rsqrt(s)` 就是 reciprocal square root，也就是：
+对任意正数 `a`，`rsqrt(a)` 表示 reciprocal square root，也就是：
 
 $$
-\operatorname{rsqrt}(s)=\frac{1}{\sqrt{s}}
+\mathrm{rsqrt}(a)=\frac{1}{\sqrt{a}}
 $$
+
+在 RMSNorm 代码中，传给 `rsqrt` 的 `a` 就是 `mean(x²) + epsilon`，并没有多出一个新的模型变量。
 
 所以 Qwen3.5 实现中的：
 
@@ -280,7 +283,37 @@ y = x + Sublayer(RMSNorm(x))
 
 也就是先保存 `x`，把归一化后的输入交给子层，最后把子层输出加回 `x`。
 
-## 6. FFN 为什么从 H 维扩展到 I 维，再回到 H 维
+## 6. FFN 在 Decoder Layer 中怎样计算
+
+完成 Token Mixer 子层及第一次残差相加后，得到中间结果 `X1:[B,T,H]`。FFN 子层从这里开始：
+
+```text
+X1 [B,T,H]
+├──────────────────────────────────────────────┐  残差分支：保存 X1
+│                                              │
+└→ RMSNorm → x_norm [B,T,H]                    │
+      ├→ gate_proj → SiLU ─┐                   │
+      └→ up_proj ──────────┴→ 逐元素相乘       │
+                              → down_proj       │
+                              → f [B,T,H]       │
+                                               ↓
+                                     Y = X1 + f
+```
+
+残差分支在 FFN 之前保存 `X1`，但残差相加发生在 FFN 计算完成之后。对整个 `[B,T,H]` 张量，计算可以写成下面的伪代码；这些操作会独立应用到其中的每个 token：
+
+```text
+X_norm = RMSNorm(X1)           # [B,T,H]
+G      = gate_proj(X_norm)     # [B,T,I]
+U      = up_proj(X_norm)       # [B,T,I]
+M      = SiLU(G) * U           # [B,T,I]，逐元素相乘
+F      = down_proj(M)          # [B,T,H]
+Y      = X1 + F                # [B,T,H]，残差相加
+```
+
+其中 `gate_proj` 和 `up_proj` 并行读取同一个归一化结果。两条分支合并后，`down_proj` 产生 FFN 对当前表示的更新量 `F`，最后才与原来的 `X1` 相加。
+
+FFN 不直接混合不同 token。上面的计算会独立应用到每个 `X1[b,t,:]`，所有位置共享同一套 FFN 权重。
 
 ### 6.1 H 和 I 分别是什么
 
@@ -300,11 +333,11 @@ H：模型层之间约定的公共接口宽度
 I：FFN 内部用于加工的中间特征通道数
 ```
 
-FFN 把一个 token 从 `H` 维映射到 `I` 维，是为了在更宽的中间空间中产生和组合更多学到的特征；随后回到 `H` 维，才能与残差分支相加，并交给下一层。
+`gate_proj` 和 `up_proj` 分别把一个 token 从 `H` 维映射到 `I` 维，在中间空间产生两组不同的特征。逐元素门控完成后，`down_proj` 把结果从 `I` 维重新组合回 `H` 维，作为这次 FFN 更新。
 
 `I` 不是新的 token 数量。`H→I` 只改变每个 token 的向量宽度，`B` 和 `T` 不变。
 
-### 6.2 线性投影怎样改变特征宽度
+### 6.2 三个线性投影分别做什么
 
 投影（Projection）在这里指一个学习得到的 Linear：把一组特征重新组合成另一组特征。它不等同于图像处理中的缩放或采样。
 
@@ -320,17 +353,15 @@ Qwen3.5 的 Dense FFN 使用三个投影：
 
 ## 7. SwiGLU：两条分支怎样形成门控
 
-Qwen3.5 的 Dense FFN 使用 SwiGLU：
+上面 FFN 数据流中的 `gate_proj → SiLU`、`up_proj` 和逐元素相乘，合在一起就是 SwiGLU。把这些调用压缩成一行：
 
-$$
-\operatorname{FFN}(x)
-=\operatorname{down\_proj}
-\left(
-\operatorname{SiLU}(\operatorname{gate\_proj}(x))
-\odot
-\operatorname{up\_proj}(x)
-\right)
-$$
+```text
+FFN(x) = down_proj(SiLU(gate_proj(x)) * up_proj(x))
+```
+
+这里的 `*` 表示逐元素相乘，不是矩阵乘法。
+
+这里的 `x` 是经过 RMSNorm 的单个 token 向量，不是残差分支中未经归一化的 `X1`。
 
 下面的数据流把公式中的连接关系展开了：
 
@@ -355,24 +386,14 @@ $$
 SiLU 是激活函数（Activation Function），名称来自 Sigmoid Linear Unit：
 
 $$
-\operatorname{SiLU}(z)=z\times\operatorname{sigmoid}(z)
+\mathrm{SiLU}(z)=z\times\mathrm{sigmoid}(z)
 $$
 
-几个具体数值能帮助理解这条曲线：
-
-| `z` | `SiLU(z)` 近似值 |
-| ---: | ---: |
-| -3 | -0.142 |
-| -1 | -0.269 |
-| 0 | 0 |
-| 1 | 0.731 |
-| 3 | 2.858 |
+![SiLU 函数曲线](../assets/02-silu-curve.svg)
 
 较大的负输入被压到接近 0，正输入较大时输出逐渐接近输入本身。SiLU 给网络加入非线性：如果只连续堆叠 Linear，没有激活或门控，多个 Linear 可以通过结合律合成一个 Linear，表达能力不会因堆叠而发生同样的增长。
 
 `SiLU` 中最后一个字母是大写 `U`，不是数字或笔误。
-
-![SiLU 函数曲线](../assets/02-silu-curve.svg)
 
 ## 8. 用一个小例子走完 SwiGLU
 
@@ -381,7 +402,7 @@ $$
 ```text
 H = 2
 I = 3
-x = [1, 2]
+x = [1, 2]    # 把 x 看作 RMSNorm 后交给 FFN 的单个 token 向量
 ```
 
 为了能手算，假设三组权重如下，并省略偏置。Qwen3.5 的这三个 Linear 本来也不使用偏置。
@@ -448,15 +469,7 @@ W_down = [[1, 0,   0],
 down_proj(...) ≈ [2.193, 1.977]
 ```
 
-FFN 输出重新回到 `[H]=[2]`。如果这一小段的残差输入就是 `x=[1,2]`，最终相加：
-
-```text
-x + FFN(x)
-= [1,2] + [2.193,1.977]
-= [3.193,3.977]
-```
-
-真实 Decoder Layer 会先对 `x` 做 RMSNorm，再把结果送入 FFN。这里暂时省略 RMSNorm，只为单独看清三个投影和门控的连接关系。
+FFN 输出重新回到 `[H]=[2]`。这个例子只计算 FFN 分支，因此没有把它与残差输入相加。真实 Decoder Layer 中，残差分支保存的是 RMSNorm 之前的 `X1`，不能直接把这里的 `x` 当成残差输入。完整的残差关系已经在第 6 节给出。
 
 ## 9. 把 shape 从头接起来
 
@@ -510,11 +523,11 @@ T 始终不变
 对应公式：
 
 $$
-X_1=X+\operatorname{TokenMixer}(\operatorname{RMSNorm}(X))
+X_1=X+\mathrm{TokenMixer}(\mathrm{RMSNorm}(X))
 $$
 
 $$
-Y=X_1+\operatorname{FFN}(\operatorname{RMSNorm}(X_1))
+Y=X_1+\mathrm{FFN}(\mathrm{RMSNorm}(X_1))
 $$
 
 公式是上面八个步骤的压缩写法。读到它时，应该能重新展开每个箭头，知道两个加号分别接回哪条残差路径。
@@ -586,7 +599,7 @@ RMSNorm 调整整条向量的均方根，不限制单个元素的范围。
 
 ### 误解三：`rsqrt` 是 RMSNorm 之外又多做了一种归一化
 
-`rsqrt(s)=1/sqrt(s)`。它只是实现“除以均方根”的一种写法。
+`rsqrt(a)=1/sqrt(a)`。它只是实现“除以平方根”的一种写法，RMSNorm 中的 `a` 是 `mean(x²)+epsilon`。
 
 ### 误解四：Residual 只是防止数值变成 0
 
