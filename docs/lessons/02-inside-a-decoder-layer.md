@@ -8,15 +8,15 @@ Embedding 输出
 → Hidden States
 ```
 
-这一课打开其中一层，只解决一个问题：
+这一课打开其中一层，回答下面的问题：
 
 > 一组 token 向量进入一个 Decoder Layer 后，为什么要依次经过归一化、Token Mixer、残差连接和 FFN？
 
-Attention 和 Gated DeltaNet 的内部计算留到后续课程。本课先把它们统称为 **Token Mixer**，只使用一个事实：它负责让不同 token 位置的信息发生联系。
+Attention 和 Gated DeltaNet 的内部计算留到后续课程。这里暂时把它们统称为 **Token Mixer**，只保留两者共有的作用：让不同 token 位置的信息发生联系。
 
 如果遇到中英文名称或 shape 符号不确定，可以查看[课程术语与符号表](../glossary.md)。
 
-## 1. 先看这一层在完整模型中的位置
+## 1. 这一层在完整模型中的位置
 
 Qwen3.5-9B 的文本模型有 32 个 Decoder Layer。每层接收和输出相同宽度的隐藏状态（Hidden States）：
 
@@ -50,7 +50,7 @@ flowchart TB
     A2 --> Y["本层输出 Y<br/>[B,T,H]"]
 ```
 
-先不要记模块名。把它看成两次相同的动作：
+暂时放下模块名，这个结构可以拆成两次相同的动作：
 
 ```text
 保存原输入 → 归一化 → 做一次变换 → 加回原输入
@@ -88,7 +88,7 @@ $$
 
 ## 3. 一层只反复做两类信息处理
 
-理解 Decoder Layer 的主线，不是背算子，而是区分两种混合。
+理解 Decoder Layer，关键是分清两种不同的信息处理方式。
 
 ### 3.1 Token Mixer：不同 token 之间交换信息
 
@@ -119,7 +119,7 @@ token 3 的 H 维向量 ─→ 同一套 FFN ─→ 更新后的 H 维向量
 
 FFN 不在 token 1 和 token 2 之间直接做运算。不同 token 使用同一套 FFN 权重，各自独立计算，因此可以并行处理。
 
-一句话记忆：
+两者的分工可以概括为：
 
 ```text
 Token Mixer 混合不同 token 的信息；
@@ -141,7 +141,7 @@ FFN 混合一个 token 内部的特征。
 
 均方根归一化（Root Mean Square Normalization，RMSNorm）先根据一个 token 自己的全部 `H` 个数计算整体尺度，再把整条向量按这个尺度缩放。它主要消除“整条向量被同时放大或缩小”的影响。
 
-### 4.2 先手算 `[3,4]`
+### 4.2 手算 `[3,4]`
 
 RMS 是“平方 → 平均 → 开平方”：
 
@@ -172,7 +172,7 @@ RMSNorm 后的元素不要求位于 `[-1,1]`。它约束的是整条向量的均
 
 输入整体乘 10，RMS 也乘 10，因此归一化结果基本不变。这叫对整体缩放不敏感。实际计算还会加入一个很小的 `epsilon`，所以严格数值可能有极小差异。
 
-### 4.4 `epsilon`、`rsqrt` 从哪里来
+### 4.4 公式中的 `epsilon` 和代码里的 `rsqrt`
 
 RMSNorm 的核心计算可以写成：
 
@@ -215,7 +215,7 @@ x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + eps)
 
 RMSNorm 对每条序列的每个 token 独立计算，沿最后一个 `H` 轴求平均：
 
-| 步骤 | Shape |
+| 步骤 | shape |
 | --- | --- |
 | 输入 `X` | `[B,T,H]` |
 | `X²` | `[B,T,H]` |
@@ -235,7 +235,7 @@ RMSNorm 对每条序列的每个 token 独立计算，沿最后一个 `H` 轴求
 
 ### 4.6 RMSNorm 与 LayerNorm 的区别
 
-本节不是为了证明 RMSNorm 总比 LayerNorm 好。只需要知道数学差异：
+这里比较两者，是为了说明 Qwen3.5 中 RMSNorm 的计算特点，不是要证明 RMSNorm 在所有模型中都优于 LayerNorm。
 
 | 操作 | RMSNorm | LayerNorm |
 | --- | --- | --- |
@@ -244,7 +244,7 @@ RMSNorm 对每条序列的每个 token 独立计算，沿最后一个 `H` 轴求
 | 学习缩放参数 | 有 | 有 |
 | 学习平移参数 | 通常没有 | 通常有 |
 
-RMSNorm 论文提出：在其研究设置中，去掉重新居中仍可取得相当效果，并减少一部分计算。Qwen3.5 选择的是 RMSNorm；这里学习它是为了读懂 Qwen3.5，而不是给所有模型下统一结论。
+RMSNorm 论文的实验表明，在论文的研究设置中，去掉重新居中仍能取得相当的效果，同时减少一部分计算。Qwen3.5 采用 RMSNorm，因此需要了解它的计算，但不能据此给所有模型下统一结论。
 
 ## 5. Residual：保留旧表示，只学习本次更新
 
@@ -280,7 +280,7 @@ y = x + Sublayer(RMSNorm(x))
 
 也就是先保存 `x`，把归一化后的输入交给子层，最后把子层输出加回 `x`。
 
-## 6. FFN 为什么先到 I 维，再回到 H 维
+## 6. FFN 为什么从 H 维扩展到 I 维，再回到 H 维
 
 ### 6.1 H 和 I 分别是什么
 
@@ -310,7 +310,7 @@ FFN 把一个 token 从 `H` 维映射到 `I` 维，是为了在更宽的中间�
 
 Qwen3.5 的 Dense FFN 使用三个投影：
 
-| 代码名 | 本课中文名 | 方向 | 作用 |
+| 代码名 | 中文名 | 方向 | 作用 |
 | --- | --- | --- | --- |
 | `gate_proj` | 门控投影 | `H→I` | 生成经过 SiLU 后的逐元素调节系数 |
 | `up_proj` | 扩展投影 | `H→I` | 生成将被调节的中间特征 |
@@ -332,7 +332,7 @@ $$
 \right)
 $$
 
-先用数据流读这条公式：
+下面的数据流把公式中的连接关系展开了：
 
 ![SwiGLU 的三条投影连接](../assets/02-swiglu.svg)
 
@@ -358,7 +358,7 @@ $$
 \operatorname{SiLU}(z)=z\times\operatorname{sigmoid}(z)
 $$
 
-几个数值可以建立直觉：
+几个具体数值能帮助理解这条曲线：
 
 | `z` | `SiLU(z)` 近似值 |
 | ---: | ---: |
@@ -458,7 +458,7 @@ x + FFN(x)
 
 真实 Decoder Layer 会先对 `x` 做 RMSNorm，再把结果送入 FFN。这里暂时省略 RMSNorm，只为单独看清三个投影和门控的连接关系。
 
-## 9. 把 Shape 从头接起来
+## 9. 把 shape 从头接起来
 
 Qwen3.5-9B 使用：
 
@@ -471,7 +471,7 @@ I = 12288
 
 Dense SwiGLU FFN 中每一步的 shape：
 
-| 步骤 | 输入与权重 | 输出 Shape |
+| 步骤 | 输入与权重 | 输出 shape |
 | --- | --- | --- |
 | `gate_proj` | `[2,8,4096]`，权重 `[12288,4096]` | `[2,8,12288]` |
 | `SiLU` | `[2,8,12288]` | `[2,8,12288]` |
@@ -480,7 +480,7 @@ Dense SwiGLU FFN 中每一步的 shape：
 | `down_proj` | `[2,8,12288]`，权重 `[4096,12288]` | `[2,8,4096]` |
 | 残差相加 | 两个 `[2,8,4096]` | `[2,8,4096]` |
 
-这张表最重要的不是数字大，而是三个不变量：
+读这张表时，重点看三个不变量：
 
 ```text
 B 始终不变
@@ -490,7 +490,7 @@ T 始终不变
 
 因此 Dense FFN 对每个 token 独立使用同一套权重。这里的 Dense 表示每个 token 都使用这一整套 FFN 参数，不表示不同 token 之间建立全连接。
 
-## 10. 完整复述一个 Decoder Layer
+## 10. 把一个 Decoder Layer 完整接起来
 
 把所有模块接回去：
 
@@ -517,7 +517,7 @@ $$
 Y=X_1+\operatorname{FFN}(\operatorname{RMSNorm}(X_1))
 $$
 
-公式只是上面八个步骤的压缩写法。读公式时应当能重新展开出每个箭头，而不是只记住两个加号。
+公式是上面八个步骤的压缩写法。读到它时，应该能重新展开每个箭头，知道两个加号分别接回哪条残差路径。
 
 ## 11. Qwen3.5 中哪些层共享这套骨架
 
@@ -557,7 +557,7 @@ Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第六�
 | Prefill | 通常同时处理多个已知 prompt token | 同一套 FFN 独立应用到所有位置 |
 | Decode | 每个运行中请求通常贡献一个新 token 位置 | 同一套 FFN 应用到各请求的新位置 |
 
-因为 Linear 和 FFN 都是逐 token 使用同一套权重，Runtime 在满足模型、dtype、状态和调度约束时，可以把多个位置组织成更大的矩阵计算。这是 Chunked Prefill 能把部分 Prefill token 与 Decode token 放入同一轮执行的基础之一。
+因为 Linear 和 FFN 都是逐 token 使用同一套权重，runtime 在满足模型、dtype、状态和调度约束时，可以把多个位置组织成更大的矩阵计算。这是 Chunked Prefill 能把部分 Prefill token 与 Decode token 放入同一轮执行的基础之一。
 
 但不能只看 FFN 就断言整个 Decoder Layer 可以随意拼接。Token Mixer 还必须正确处理每个序列的因果关系、位置和缓存边界。第四课再展开这部分。
 
@@ -634,9 +634,9 @@ Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的�
 13. 不直接混合。每个 token 独立使用同一套 FFN；跨 token 混合由 Token Mixer 完成。
 14. 保存输入、RMSNorm、Token Mixer、残差相加；再保存中间结果、RMSNorm、Dense SwiGLU FFN、残差相加。
 
-## 16. 本课通过标准
+## 16. 学完后应能做到
 
-不看正文，能够画出并解释下面两行，就可以进入 Attention：
+不看正文时，如果能画出并解释下面两行，就可以进入 Attention：
 
 ```text
 X  → RMSNorm → Token Mixer → 加回 X  → X1
