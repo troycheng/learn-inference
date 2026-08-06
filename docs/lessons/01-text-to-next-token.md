@@ -281,7 +281,7 @@ flowchart LR
 
 > 它把每个 token 的初始表示，变成已经结合前文和当前位置的 Hidden State。
 
-第 2 课会打开一个 Decoder Layer，解释 RMSNorm、Residual 和 FFN；第 3 课再说明 Attention 怎样读取上下文。
+第 2 课会打开一个 Decoder Layer，解释 RMSNorm、Residual 和 FFN；第 3 课再说明 Attention 如何关联前文。
 
 ### 5.1 为什么使用最后一个位置
 

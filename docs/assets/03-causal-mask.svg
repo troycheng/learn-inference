@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="620" viewBox="0 0 1000 620" role="img" aria-labelledby="title desc">
+  <title id="title">三位置因果遮罩</title>
+  <desc id="desc">行表示正在计算的位置，列表示可以读取的位置。下三角区域允许读取，右上角未来位置被遮住。</desc>
+  <style>
+    text { font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill: #0F172A; }
+    .title { font-size: 30px; font-weight: 700; }
+    .head { font-size: 20px; font-weight: 650; }
+    .cell { font-size: 20px; font-weight: 650; }
+    .note { font-size: 18px; fill: #475569; }
+  </style>
+  <rect width="1000" height="620" fill="#FFFFFF"/>
+  <text x="55" y="60" class="title">因果遮罩：当前位置不能偷看未来</text>
+  <text x="55" y="96" class="note">行是正在计算的位置，列是它想读取的位置</text>
+
+  <text x="395" y="155" text-anchor="middle" class="head">位置 1</text>
+  <text x="555" y="155" text-anchor="middle" class="head">位置 2</text>
+  <text x="715" y="155" text-anchor="middle" class="head">位置 3</text>
+  <text x="235" y="235" text-anchor="middle" class="head">位置 1</text>
+  <text x="235" y="355" text-anchor="middle" class="head">位置 2</text>
+  <text x="235" y="475" text-anchor="middle" class="head">位置 3</text>
+
+  <rect x="315" y="175" width="160" height="120" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <rect x="475" y="175" width="160" height="120" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+  <rect x="635" y="175" width="160" height="120" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+  <rect x="315" y="295" width="160" height="120" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <rect x="475" y="295" width="160" height="120" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <rect x="635" y="295" width="160" height="120" fill="#FEE2E2" stroke="#DC2626" stroke-width="2"/>
+  <rect x="315" y="415" width="160" height="120" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <rect x="475" y="415" width="160" height="120" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+  <rect x="635" y="415" width="160" height="120" fill="#DCFCE7" stroke="#16A34A" stroke-width="2"/>
+
+  <text x="395" y="242" text-anchor="middle" class="cell">可读</text>
+  <text x="555" y="242" text-anchor="middle" class="cell">遮住</text>
+  <text x="715" y="242" text-anchor="middle" class="cell">遮住</text>
+  <text x="395" y="362" text-anchor="middle" class="cell">可读</text>
+  <text x="555" y="362" text-anchor="middle" class="cell">可读</text>
+  <text x="715" y="362" text-anchor="middle" class="cell">遮住</text>
+  <text x="395" y="482" text-anchor="middle" class="cell">可读</text>
+  <text x="555" y="482" text-anchor="middle" class="cell">可读</text>
+  <text x="715" y="482" text-anchor="middle" class="cell">可读</text>
+
+  <rect x="830" y="205" width="110" height="44" rx="8" fill="#FEE2E2" stroke="#DC2626"/>
+  <text x="885" y="233" text-anchor="middle" class="note">未来位置</text>
+  <text x="830" y="281" class="note">分数加上负无穷</text>
+  <text x="830" y="313" class="note">Softmax 后权重为 0</text>
+  <rect x="830" y="405" width="110" height="44" rx="8" fill="#DCFCE7" stroke="#16A34A"/>
+  <text x="885" y="433" text-anchor="middle" class="note">过去和自己</text>
+  <text x="830" y="481" class="note">可以参与计算</text>
+</svg>

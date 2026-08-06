@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="570" viewBox="0 0 1000 570" role="img" aria-labelledby="title desc">
+  <title id="title">RoPE 用旋转写入位置信息</title>
+  <desc id="desc">同一个二维特征对在不同位置按不同角度旋转，查询和键点积时便能感知相对位置。</desc>
+  <defs>
+    <marker id="blueArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2563EB"/></marker>
+    <style>
+      text { font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill: #0F172A; }
+      .title { font-size: 30px; font-weight: 700; }
+      .label { font-size: 20px; font-weight: 650; }
+      .note { font-size: 18px; fill: #475569; }
+      .axis { stroke: #94A3B8; stroke-width: 2; }
+      .vector { stroke: #2563EB; stroke-width: 5; marker-end: url(#blueArrow); }
+      .arc { fill: none; stroke: #EA580C; stroke-width: 3; stroke-dasharray: 7 6; }
+    </style>
+  </defs>
+  <rect width="1000" height="570" fill="#FFFFFF"/>
+  <text x="55" y="60" class="title">RoPE：给 Q 和 K 写入位置信息</text>
+  <text x="55" y="96" class="note">把特征两两分组，再按 token 所在位置旋转。位置不同，旋转角度也不同。</text>
+
+  <g transform="translate(90 150)">
+    <line x1="0" y1="170" x2="250" y2="170" class="axis"/>
+    <line x1="60" y1="250" x2="60" y2="0" class="axis"/>
+    <line x1="60" y1="170" x2="210" y2="95" class="vector"/>
+    <text x="135" y="70" class="label">位置 1</text>
+    <text x="10" y="285" class="note">同一组原始特征</text>
+  </g>
+  <g transform="translate(385 150)">
+    <line x1="0" y1="170" x2="250" y2="170" class="axis"/>
+    <line x1="60" y1="250" x2="60" y2="0" class="axis"/>
+    <line x1="60" y1="170" x2="160" y2="35" class="vector"/>
+    <path d="M155 122 A110 110 0 0 0 122 77" class="arc"/>
+    <text x="137" y="70" class="label">位置 2</text>
+    <text x="32" y="285" class="note">旋转得更多</text>
+  </g>
+  <g transform="translate(680 150)">
+    <line x1="0" y1="170" x2="250" y2="170" class="axis"/>
+    <line x1="60" y1="250" x2="60" y2="0" class="axis"/>
+    <line x1="60" y1="170" x2="75" y2="5" class="vector"/>
+    <path d="M155 122 A125 125 0 0 0 70 45" class="arc"/>
+    <text x="112" y="70" class="label">位置 3</text>
+    <text x="32" y="285" class="note">旋转角度继续变化</text>
+  </g>
+
+  <rect x="55" y="485" width="890" height="52" rx="10" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="500" y="518" text-anchor="middle" class="note">Attention 比较旋转后的 Q 和 K，因此点积不只受内容影响，也会随相对位置变化。V 不做这一步。</text>
+</svg>

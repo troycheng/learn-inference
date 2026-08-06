@@ -11,6 +11,9 @@
 | `H` | 隐藏维度 | Hidden Size | 每个 token 的公共表示宽度 |
 | `I` | 中间维度 | Intermediate Size | FFN 内部的特征宽度 |
 | `V` | 词表大小 | Vocabulary Size | 模型可输出的 token 候选数 |
+| `Nq` | 查询头数 | Number of Query Heads | Attention 中查询头的数量 |
+| `Nkv` | 键值头数 | Number of Key/Value Heads | Attention 中键头和值头的数量 |
+| `D` | 头维度 | Head Dimension | 每个 Attention 头包含的特征数 |
 
 ## 数学与张量
 
@@ -73,10 +76,27 @@
 | SwiGLU | SwiGLU | `SiLU(gate_proj(x))` 与 `up_proj(x)` 逐元素相乘后做 `down_proj` |
 | Dense FFN | Dense FFN | 每个 token 使用同一套完整 FFN 参数 |
 
+## Attention
+
+| 正文用词 | 英文或代码名 | 简短含义 |
+| --- | --- | --- |
+| 自注意力 | Self-Attention | Q、K、V 来自同一组隐藏状态的 Attention |
+| 查询向量 | Query / Q | 当前位置用于和其他位置比较的向量 |
+| 键向量 | Key / K | 每个候选位置用于接受比较的向量 |
+| 值向量 | Value / V | 每个位置被加权汇总的信息向量 |
+| 相关性分数 | Attention Score | Q 与 K 点积并缩放后得到的原始分数 |
+| 注意力权重 | Attention Weight | 分数经过遮罩和 Softmax 后得到的权重 |
+| 因果遮罩 | Causal Mask | 让当前位置不能读取未来 token 的约束 |
+| 头 | Attention Head | 独立执行一组 Q/K/V 和加权汇总的表示子空间 |
+| 多头注意力 | Multi-Head Attention / MHA | 并行使用多个 Attention 头，再拼接结果 |
+| 分组查询注意力 | Grouped-Query Attention / GQA | 多个查询头共享一组 K 和 V |
+| 旋转位置编码 | Rotary Position Embedding / RoPE | 按 token 位置旋转 Q/K 的部分特征，让点积感知相对位置 |
+| 输出投影 | Output Projection / `o_proj` | 重新混合各头结果并回到 H 维的 Linear |
+
 ## 书写约定
 
 - `token` 在正文中通常小写；正式组件名 `Tokenizer`、`Token ID` 保留大写。
 - `shape`、`dtype`、`runtime` 等工程语境中常见词保留英文，首次出现时解释中文含义。
 - 数学公式使用 `XW^T`；Python/PyTorch 代码使用 `X @ W.T`。
 - 逐元素乘法使用 `*`、`×` 或 `⊙`，并在上下文中明确说明；矩阵乘法不使用 `*`。
-- 课程始终用 `B/T/H/I/V` 表示上述五个维度。需要把 `B×T` 合并为实现维度时，必须当场说明，不突然引入新符号。
+- 课程统一使用本表中的 shape 符号。某一课第一次使用新符号时，必须先说明含义。需要把多个轴合并为实现维度时，也要当场解释。
