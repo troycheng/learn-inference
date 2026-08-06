@@ -48,9 +48,10 @@ flowchart LR
 1. [第 0 课：模型推理中的张量计算](docs/lessons/00-math-and-tensors.md)
 2. [第 1 课：模型如何生成下一个 token](docs/lessons/01-text-to-next-token.md)
 3. [第 2 课：Decoder Layer 内部的数据流](docs/lessons/02-inside-a-decoder-layer.md)
-4. [完整课程路线](docs/roadmap.md)
-5. [课程术语与符号表](docs/glossary.md)
-6. [课程讲解原则](docs/teaching-method.md)
+4. [第 3 课：Attention 如何关联前文](docs/lessons/03-attention.md)
+5. [完整课程路线](docs/roadmap.md)
+6. [课程术语与符号表](docs/glossary.md)
+7. [课程讲解原则](docs/teaching-method.md)
 
 正文按当前路线逐课编写。旧内容保存在 [`docs/archive`](docs/archive) 中，只用于记录学习过程，不再作为主课材料。
 
@@ -58,8 +59,8 @@ flowchart LR
 
 - 核心路线：已按理论依赖重新组织；
 - 课程讲解规范：已完成；
-- 第 0～2 课正文：已完成本轮重写，等待学习问答复核；
-- 第 3～9 课正文：待逐课学习、问答和整理；
+- 第 0～3 课正文：已完成本轮重写，等待学习问答复核；
+- 第 4～9 课正文：待逐课学习、问答和整理；
 - 旧版第 1 课和第 2 课：已归档。
 
 这个仓库目前首先用于个人学习和校验。每课经过提问、修正和复核后，会继续整理成其他工程师也能阅读的入门笔记。

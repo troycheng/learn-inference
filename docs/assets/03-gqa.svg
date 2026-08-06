@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610" role="img" aria-labelledby="title desc">
+  <title id="title">Qwen3.5 的分组查询注意力</title>
+  <desc id="desc">Qwen3.5 有十六个查询头和四个键值头，每四个查询头共享一组键和值。</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#64748B"/></marker>
+    <style>
+      text { font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill: #0F172A; }
+      .title { font-size: 30px; font-weight: 700; }
+      .group { font-size: 21px; font-weight: 650; }
+      .label { font-size: 18px; font-weight: 650; }
+      .note { font-size: 17px; fill: #475569; }
+      .q { fill: #EFF6FF; stroke: #2563EB; stroke-width: 2; }
+      .kv { fill: #F0FDF4; stroke: #16A34A; stroke-width: 2; }
+      .frame { fill: #F8FAFC; stroke: #CBD5E1; stroke-width: 2; }
+      .line { stroke: #64748B; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1200" height="610" fill="#FFFFFF"/>
+  <text x="55" y="60" class="title">Qwen3.5-9B：16 个查询头，4 组键值头</text>
+  <text x="55" y="96" class="note">每 4 个查询头共享同一组 K 和 V。共享的是历史 K/V，不是查询 Q。</text>
+
+  <g transform="translate(55 145)">
+    <rect width="260" height="330" rx="14" class="frame"/>
+    <text x="130" y="42" text-anchor="middle" class="group">第 1 组</text>
+    <rect x="25" y="75" width="48" height="48" rx="8" class="q"/><text x="49" y="106" text-anchor="middle" class="label">Q1</text>
+    <rect x="85" y="75" width="48" height="48" rx="8" class="q"/><text x="109" y="106" text-anchor="middle" class="label">Q2</text>
+    <rect x="145" y="75" width="48" height="48" rx="8" class="q"/><text x="169" y="106" text-anchor="middle" class="label">Q3</text>
+    <rect x="205" y="75" width="48" height="48" rx="8" class="q"/><text x="229" y="106" text-anchor="middle" class="label">Q4</text>
+    <line x1="130" y1="140" x2="130" y2="205" class="line"/>
+    <rect x="44" y="220" width="72" height="54" rx="9" class="kv"/><text x="80" y="254" text-anchor="middle" class="label">K1</text>
+    <rect x="144" y="220" width="72" height="54" rx="9" class="kv"/><text x="180" y="254" text-anchor="middle" class="label">V1</text>
+    <text x="130" y="307" text-anchor="middle" class="note">共享一组 K/V</text>
+  </g>
+  <g transform="translate(340 145)">
+    <rect width="260" height="330" rx="14" class="frame"/>
+    <text x="130" y="42" text-anchor="middle" class="group">第 2 组</text>
+    <rect x="25" y="75" width="48" height="48" rx="8" class="q"/><text x="49" y="106" text-anchor="middle" class="label">Q5</text>
+    <rect x="85" y="75" width="48" height="48" rx="8" class="q"/><text x="109" y="106" text-anchor="middle" class="label">Q6</text>
+    <rect x="145" y="75" width="48" height="48" rx="8" class="q"/><text x="169" y="106" text-anchor="middle" class="label">Q7</text>
+    <rect x="205" y="75" width="48" height="48" rx="8" class="q"/><text x="229" y="106" text-anchor="middle" class="label">Q8</text>
+    <line x1="130" y1="140" x2="130" y2="205" class="line"/>
+    <rect x="44" y="220" width="72" height="54" rx="9" class="kv"/><text x="80" y="254" text-anchor="middle" class="label">K2</text>
+    <rect x="144" y="220" width="72" height="54" rx="9" class="kv"/><text x="180" y="254" text-anchor="middle" class="label">V2</text>
+    <text x="130" y="307" text-anchor="middle" class="note">共享一组 K/V</text>
+  </g>
+  <g transform="translate(625 145)">
+    <rect width="260" height="330" rx="14" class="frame"/>
+    <text x="130" y="42" text-anchor="middle" class="group">第 3 组</text>
+    <rect x="25" y="75" width="48" height="48" rx="8" class="q"/><text x="49" y="106" text-anchor="middle" class="label">Q9</text>
+    <rect x="85" y="75" width="48" height="48" rx="8" class="q"/><text x="109" y="106" text-anchor="middle" class="label">Q10</text>
+    <rect x="145" y="75" width="48" height="48" rx="8" class="q"/><text x="169" y="106" text-anchor="middle" class="label">Q11</text>
+    <rect x="205" y="75" width="48" height="48" rx="8" class="q"/><text x="229" y="106" text-anchor="middle" class="label">Q12</text>
+    <line x1="130" y1="140" x2="130" y2="205" class="line"/>
+    <rect x="44" y="220" width="72" height="54" rx="9" class="kv"/><text x="80" y="254" text-anchor="middle" class="label">K3</text>
+    <rect x="144" y="220" width="72" height="54" rx="9" class="kv"/><text x="180" y="254" text-anchor="middle" class="label">V3</text>
+    <text x="130" y="307" text-anchor="middle" class="note">共享一组 K/V</text>
+  </g>
+  <g transform="translate(910 145)">
+    <rect width="235" height="330" rx="14" class="frame"/>
+    <text x="117" y="42" text-anchor="middle" class="group">第 4 组</text>
+    <rect x="12" y="75" width="48" height="48" rx="8" class="q"/><text x="36" y="106" text-anchor="middle" class="label">Q13</text>
+    <rect x="67" y="75" width="48" height="48" rx="8" class="q"/><text x="91" y="106" text-anchor="middle" class="label">Q14</text>
+    <rect x="122" y="75" width="48" height="48" rx="8" class="q"/><text x="146" y="106" text-anchor="middle" class="label">Q15</text>
+    <rect x="177" y="75" width="48" height="48" rx="8" class="q"/><text x="201" y="106" text-anchor="middle" class="label">Q16</text>
+    <line x1="117" y1="140" x2="117" y2="205" class="line"/>
+    <rect x="31" y="220" width="72" height="54" rx="9" class="kv"/><text x="67" y="254" text-anchor="middle" class="label">K4</text>
+    <rect x="131" y="220" width="72" height="54" rx="9" class="kv"/><text x="167" y="254" text-anchor="middle" class="label">V4</text>
+    <text x="117" y="307" text-anchor="middle" class="note">共享一组 K/V</text>
+  </g>
+  <text x="600" y="540" text-anchor="middle" class="note">相同 Head Dimension 下，K/V 的宽度和缓存元素数是 16 组 K/V 时的 1/4</text>
+</svg>
