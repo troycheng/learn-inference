@@ -68,9 +68,9 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 | 8 | 怎样从配置还原模型和运行时数据？ | 层数、H/I/V、头数、专家数、dtype、权重、KV/状态容量、主要计算量 | 能读配置并完成带假设和单位的数量级估算 |
 | 9 | 怎样用理论判断推理优化？ | 量化、FlashAttention、Prefix Cache、Batching、TP/EP、推测解码/MTP | 能说明优化改了什么、少了什么、新增什么、何时收益成立 |
 
-## 第 0 课：只够后续使用的数学与张量
+## 第 0 课：模型推理中的张量计算
 
-正文：[第 0 课：看懂推理链路所需的数学与张量](lessons/00-math-and-tensors.md)
+正文：[第 0 课：模型推理中的张量计算](lessons/00-math-and-tensors.md)
 
 这节课补齐阅读后文所需的数学，不展开完整线性代数。内容限于后面会直接用到的部分：
 
@@ -86,9 +86,9 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 
 学到这里，应该能解释 `X:[B,T,H]` 和 `W:[I,H]` 中的 `B/T/H/I`，并推出 Linear 输出 `[B,T,I]`。
 
-## 第 1 课：从一句话到下一个 token
+## 第 1 课：模型如何生成下一个 token
 
-正文：[第一课：从一句话到下一个 Token](lessons/01-text-to-next-token.md)
+正文：[第 1 课：模型如何生成下一个 token](lessons/01-text-to-next-token.md)
 
 这一课建立完整的生成地图：
 
@@ -108,9 +108,9 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 
 学完后，应该能解释模型为什么不直接接收或输出文字，并准确区分 Token ID、Embedding、Hidden State、Logit 和概率。
 
-## 第 2 课：看懂一个 Decoder Layer
+## 第 2 课：Decoder Layer 内部的数据流
 
-正文：[第二课：一个 Decoder Layer 怎样处理 Token](lessons/02-inside-a-decoder-layer.md)
+正文：[第 2 课：Decoder Layer 内部的数据流](lessons/02-inside-a-decoder-layer.md)
 
 一层反复使用同一骨架：
 

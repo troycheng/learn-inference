@@ -1,6 +1,6 @@
-# 第二课：一个 Decoder Layer 怎样处理 Token
+# 第 2 课：Decoder Layer 内部的数据流
 
-第一课把 Decoder 暂时画成了一个黑盒：
+第 1 课把 Decoder 暂时画成了一个黑盒：
 
 ```text
 Embedding 输出
@@ -82,7 +82,7 @@ $$
 
 这些坐标通常没有稳定的人工名称。不能看到第 17 列就断言它只表示“名词”，也不能把一列等同于一个人类可解释概念。模型使用很多坐标的组合表示语义、语法、位置和上下文关系。
 
-第一课中的 Embedding 是最初的表示。经过每个 Decoder Layer 后，同一位置的向量不断变化，于是成为越来越深的 Hidden State。
+第 1 课中的 Embedding 是最初的表示。经过每个 Decoder Layer 后，同一位置的向量不断变化，于是成为越来越深的 Hidden State。
 
 ![Hidden State 的行与列](../assets/02-hidden-state.svg)
 
@@ -559,7 +559,7 @@ RMSNorm → Token Mixer → Residual
 → RMSNorm → Router + 少量专家 FFN → Residual
 ```
 
-Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第六课完整对比。
+Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 课完整对比。
 
 ## 12. Prefill 和 Decode 时，本层数学是否变化
 
@@ -572,7 +572,7 @@ Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第六�
 
 因为 Linear 和 FFN 都是逐 token 使用同一套权重，runtime 在满足模型、dtype、状态和调度约束时，可以把多个位置组织成更大的矩阵计算。这是 Chunked Prefill 能把部分 Prefill token 与 Decode token 放入同一轮执行的基础之一。
 
-但不能只看 FFN 就断言整个 Decoder Layer 可以随意拼接。Token Mixer 还必须正确处理每个序列的因果关系、位置和缓存边界。第四课再展开这部分。
+但不能只看 FFN 就断言整个 Decoder Layer 可以随意拼接。Token Mixer 还必须正确处理每个序列的因果关系、位置和缓存边界。第 4 课再展开这部分。
 
 ## 13. 算子卡片
 
