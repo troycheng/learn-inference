@@ -1,46 +1,75 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="570" viewBox="0 0 1000 570" role="img" aria-labelledby="title desc">
-  <title id="title">RoPE 用旋转写入位置信息</title>
-  <desc id="desc">同一个二维特征对在不同位置按不同角度旋转，查询和键点积时便能感知相对位置。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
+  <title id="title">RoPE 为什么使用旋转</title>
+  <desc id="desc">RoPE 让查询和键按各自 token 位置旋转。两个 token 一起移动时，共同旋转会在点积中抵消，保留下来的位置影响只与相对距离有关。</desc>
   <defs>
-    <marker id="blueArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2563EB"/></marker>
+    <marker id="blue-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#2563EB"/>
+    </marker>
+    <marker id="orange-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0L10 5L0 10z" fill="#EA580C"/>
+    </marker>
     <style>
       text { font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill: #0F172A; }
-      .title { font-size: 30px; font-weight: 700; }
-      .label { font-size: 20px; font-weight: 650; }
-      .note { font-size: 18px; fill: #475569; }
-      .axis { stroke: #94A3B8; stroke-width: 2; }
-      .vector { stroke: #2563EB; stroke-width: 5; marker-end: url(#blueArrow); }
-      .arc { fill: none; stroke: #EA580C; stroke-width: 3; stroke-dasharray: 7 6; }
+      .title { font-size: 32px; font-weight: 700; }
+      .panel-title { font-size: 23px; font-weight: 700; }
+      .label { font-size: 19px; font-weight: 600; }
+      .note { font-size: 17px; fill: #475569; }
+      .small { font-size: 15px; fill: #64748B; }
+      .panel { fill: #F8FAFC; stroke: #CBD5E1; stroke-width: 2; }
+      .axis { stroke: #94A3B8; stroke-width: 1.5; }
+      .q { stroke: #2563EB; stroke-width: 5; marker-end: url(#blue-arrow); }
+      .k { stroke: #EA580C; stroke-width: 5; marker-end: url(#orange-arrow); }
+      .arc { fill: none; stroke: #7C3AED; stroke-width: 3; stroke-dasharray: 7 6; }
     </style>
   </defs>
-  <rect width="1000" height="570" fill="#FFFFFF"/>
-  <text x="55" y="60" class="title">RoPE：给 Q 和 K 写入位置信息</text>
-  <text x="55" y="96" class="note">把特征两两分组，再按 token 所在位置旋转。位置不同，旋转角度也不同。</text>
+  <rect width="1200" height="700" fill="#FFFFFF"/>
+  <text x="60" y="58" class="title">RoPE 的用处：让点积看见两个 token 相差多少位置</text>
+  <text x="60" y="94" class="note">位置决定各自旋转多少；Attention 比较 Q 和 K 时，真正留下的是两次旋转的差。</text>
 
-  <g transform="translate(90 150)">
-    <line x1="0" y1="170" x2="250" y2="170" class="axis"/>
-    <line x1="60" y1="250" x2="60" y2="0" class="axis"/>
-    <line x1="60" y1="170" x2="210" y2="95" class="vector"/>
-    <text x="135" y="70" class="label">位置 1</text>
-    <text x="10" y="285" class="note">同一组原始特征</text>
-  </g>
-  <g transform="translate(385 150)">
-    <line x1="0" y1="170" x2="250" y2="170" class="axis"/>
-    <line x1="60" y1="250" x2="60" y2="0" class="axis"/>
-    <line x1="60" y1="170" x2="160" y2="35" class="vector"/>
-    <path d="M155 122 A110 110 0 0 0 122 77" class="arc"/>
-    <text x="137" y="70" class="label">位置 2</text>
-    <text x="32" y="285" class="note">旋转得更多</text>
-  </g>
-  <g transform="translate(680 150)">
-    <line x1="0" y1="170" x2="250" y2="170" class="axis"/>
-    <line x1="60" y1="250" x2="60" y2="0" class="axis"/>
-    <line x1="60" y1="170" x2="75" y2="5" class="vector"/>
-    <path d="M155 122 A125 125 0 0 0 70 45" class="arc"/>
-    <text x="112" y="70" class="label">位置 3</text>
-    <text x="32" y="285" class="note">旋转角度继续变化</text>
-  </g>
+  <rect x="45" y="125" width="340" height="455" rx="18" class="panel"/>
+  <text x="70" y="165" class="panel-title">1. 先明确目标</text>
+  <text x="70" y="205" class="label">当前位置：它</text>
+  <text x="70" y="239" class="note">候选 A：前 2 个 token 的“杯子”</text>
+  <text x="70" y="271" class="note">候选 B：前 2000 个 token 的“杯子”</text>
+  <rect x="70" y="307" width="290" height="102" rx="12" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text x="215" y="344" text-anchor="middle" class="label">内容可以相似</text>
+  <text x="215" y="377" text-anchor="middle" class="label">位置关系却不同</text>
+  <text x="70" y="451" class="note">RoPE 不替模型判断谁更重要。</text>
+  <text x="70" y="482" class="note">它提供“相差几步”这个信号，</text>
+  <text x="70" y="513" class="note">供训练得到的 Q/K 使用。</text>
 
-  <rect x="55" y="485" width="890" height="52" rx="10" fill="#F8FAFC" stroke="#CBD5E1"/>
-  <text x="500" y="518" text-anchor="middle" class="note">Attention 比较旋转后的 Q 和 K，因此点积不只受内容影响，也会随相对位置变化。V 不做这一步。</text>
+  <rect x="430" y="125" width="340" height="455" rx="18" class="panel"/>
+  <text x="455" y="165" class="panel-title">2. 位置变成旋转角度</text>
+  <g transform="translate(600 335)">
+    <circle cx="0" cy="0" r="112" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+    <line x1="-132" y1="0" x2="132" y2="0" class="axis"/>
+    <line x1="0" y1="132" x2="0" y2="-132" class="axis"/>
+    <line x1="0" y1="0" x2="54" y2="-94" class="q"/>
+    <line x1="0" y1="0" x2="-54" y2="-94" class="k"/>
+    <path d="M45 -78 A90 90 0 0 0 -45 -78" class="arc"/>
+    <text x="74" y="-100" class="label" fill="#2563EB">Q：位置 2</text>
+    <text x="-129" y="-100" class="label" fill="#EA580C">K：位置 4</text>
+    <text x="0" y="-57" text-anchor="middle" class="label">相差 2 步</text>
+  </g>
+  <text x="600" y="500" text-anchor="middle" class="note">假设每前进 1 个位置多转 θ</text>
+  <text x="600" y="531" text-anchor="middle" class="note">两根箭头的夹角就是 2θ</text>
+
+  <rect x="815" y="125" width="340" height="455" rx="18" class="panel"/>
+  <text x="840" y="165" class="panel-title">3. 一起移动，关系不变</text>
+  <g transform="translate(985 335)">
+    <circle cx="0" cy="0" r="112" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+    <line x1="-132" y1="0" x2="132" y2="0" class="axis"/>
+    <line x1="0" y1="132" x2="0" y2="-132" class="axis"/>
+    <line x1="0" y1="0" x2="108" y2="0" class="q"/>
+    <line x1="0" y1="0" x2="54" y2="-94" class="k"/>
+    <path d="M82 0 A82 82 0 0 0 41 -71" class="arc"/>
+    <text x="54" y="34" class="label" fill="#2563EB">Q：位置 12</text>
+    <text x="56" y="-100" class="label" fill="#EA580C">K：位置 14</text>
+    <text x="56" y="-40" class="label">仍相差 2 步</text>
+  </g>
+  <text x="985" y="500" text-anchor="middle" class="note">绝对角度都变了</text>
+  <text x="985" y="531" text-anchor="middle" class="note">夹角仍是 2θ</text>
+
+  <rect x="45" y="612" width="1110" height="58" rx="12" fill="#EEF2FF" stroke="#A5B4FC"/>
+  <text x="600" y="649" text-anchor="middle" class="label">共同旋转在点积里抵消：R(m)^T × R(n) = R(n-m)，位置影响只通过相对距离 n-m 进入</text>
 </svg>

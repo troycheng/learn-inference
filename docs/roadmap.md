@@ -1,10 +1,10 @@
-# 课程路线：从模型怎样生成，到怎样判断推理优化
+# 课程路线：先看懂模型，再判断优化
 
 ## 课程目标
 
 这套课程写给已经参与推理系统研发、但模型理论基础还不完整的工程师。它不会覆盖所有论文和框架参数，而是集中讲清能解释大多数推理问题的那组核心概念。
 
-学完后，可以沿着下面这条因果链分析问题：
+整套课沿着下面这条链路展开：
 
 ```text
 输入怎样表示
@@ -55,13 +55,13 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 
 当前主线按 0～9 编号。编号是依赖顺序，不是对篇幅的限制；某个主题如果无法在一课内讲清，可以继续拆分。
 
-| 课次 | 这一课回答什么 | 主要内容 | 学完后能做什么 |
+| 课次 | 核心问题 | 主要内容 | 读完以后 |
 | ---: | --- | --- | --- |
 | 0 | 后面的张量和公式怎样读？ | 标量、向量、矩阵、shape、轴、索引、归约、广播、点积、矩阵乘法、Linear、Embedding | 能看懂算子对哪些数计算，并推导基本 shape |
 | 1 | 一句话怎样变成下一个 token？ | Chat Template、Tokenizer、Embedding、Decoder 黑盒、LM Head、Logits、Softmax、采样 | 能区分文字、ID、向量、分数和概率，画出完整生成链路 |
 | 2 | 一个 Decoder Layer 为什么这样设计？ | Hidden State、RMSNorm、Residual、Token Mixer/FFN 分工、Dense SwiGLU | 能解释一层中每个公共模块的目的、计算和 shape |
 | 3 | Full Attention 是怎样计算的？ | Q/K/V、因果遮罩、缩放点积 Attention、多头、GQA、RoPE | 能用小数字走完一次 Attention，解释位置和头的作用 |
-| 4 | 为什么生成必须逐步进行？ | 条件概率、Prefill、Decode、KV Cache、请求内串行与批内并行 | 能解释缓存复用了什么、占用了什么，以及 TTFT/TPOT 的模型来源 |
+| 4 | Prompt 为什么能一起计算，回答却要逐个 token 生成？ | 条件概率、Prefill、Decode、KV Cache、请求内串行与批内并行 | 能解释缓存复用了什么、占用了什么，以及 TTFT/TPOT 分别来自哪段计算 |
 | 5 | Qwen3.5 为什么混用两类 Token Mixer？ | Gated DeltaNet、因果卷积、门控更新、recurrent state、Full Attention 间隔层 | 能区分 KV Cache 与 recurrent state，读懂 3+1 混合排列 |
 | 6 | Dense 和 MoE 到底差在哪里？ | Dense FFN、Router、Top-K、路由专家、共享专家、加权合并、token 分发 | 能解释总参数、激活参数、专家路由和通信来源 |
 | 7 | 图片和视频怎样进入语言模型？ | 图像预处理、Patch、视觉编码器、特征压缩与投影、视觉 token、统一输入序列 | 能定位视觉编码与语言模型开销，解释分辨率为什么影响序列长度 |
@@ -90,7 +90,7 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 
 正文：[第 1 课：模型如何生成下一个 token](lessons/01-text-to-next-token.md)
 
-这一课建立完整的生成地图：
+这一课先把生成地图接起来：
 
 ```text
 对话消息
@@ -106,7 +106,7 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 → Tokenizer Decode
 ```
 
-学完后，应该能解释模型为什么不直接接收或输出文字，并准确区分 Token ID、Embedding、Hidden State、Logit 和概率。
+读完后，应当能解释模型为什么不直接接收或输出文字，并准确区分 Token ID、Embedding、Hidden State、Logit 和概率。
 
 ## 第 2 课：Decoder Layer 内部的数据流
 
@@ -121,13 +121,13 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 
 这里暂时不打开 Token Mixer 的内部计算，重点讲 Hidden State、RMSNorm、Residual 和 Dense SwiGLU。Attention 放到下一课单独展开。
 
-学完后，应该能把 SwiGLU 展开为 `gate_proj → SiLU`、`up_proj`、逐元素乘法和 `down_proj`，并写出每一步的 shape。
+读完后，应当能把 SwiGLU 展开为 `gate_proj → SiLU`、`up_proj`、逐元素乘法和 `down_proj`，并写出每一步的 shape。
 
 ## 第 3 课：图解 Attention 的完整计算过程
 
 正文：[第 3 课：图解 Attention 的完整计算过程](lessons/03-attention.md)
 
-这一课回答：当前 token 怎样判断前文哪些位置与自己有关？
+这一课拆开 Full Attention，看当前 token 怎样给可见位置分配权重，再把相关信息取回来。
 
 ```text
 Hidden State
@@ -138,19 +138,66 @@ Hidden State
 → 按权重汇总 V
 ```
 
-在这个计算基础上，再解释多头、GQA 和 RoPE。讲解会区分结构事实与便于理解的直觉：不同头可以学习不同关系，但不表示每个头都有人工指定的固定职责。
+在这段计算之后，再解释多头、GQA 和 RoPE。不同头可以学到不同关系，但没有人工指定的固定职责；RoPE 也不是单纯把向量转一下，而是把相对位置带进 Q/K 点积。
 
-## 第 4 课：自回归、Prefill、Decode 与 KV Cache
+## 第 4 课：读完 Prompt 之后，模型怎样逐个生成 token
 
-把静态模型结构变成时间过程：
+第 3 课看到的是一张静态 Attention 图。第 4 课沿着一次真实请求往前走，把每一步发生的时间和保存的状态接起来。
+
+开头只看一个请求。假设 Prompt 有 4 个 token，模型要继续生成 3 个 token：
 
 ```text
-Prompt 已全部知道 → Prefill 可同时处理多个位置
-第一个未来 token 尚未知 → 必须先生成
-新 token 确定 → 才能继续生成下一个
+已知 Prompt：p1 p2 p3 p4
+                     ↓ Prefill 结束，得到第一个候选分布
+生成第 1 步：         y1
+生成第 2 步：         y1 y2
+生成第 3 步：         y1 y2 y3
 ```
 
-KV Cache 保存已经计算出的历史 K/V，减少重复计算，但不能提前知道未来 token。这里再解释 Continuous Batching 和 Chunked Prefill 为什么能把不同请求、不同阶段的已知 token 组织到同一轮执行。
+Prompt 的 4 个 token 都已经由用户给出，所以可以在一次前向计算中同时处理。`y2` 却依赖 `y1` 实际选中了什么；在 `y1` 确定前，`y2` 的输入并不存在。这是 Prefill 可以并行处理多个位置，而普通 Decode 仍要逐步进行的根本原因。
+
+### Prefill 实际留下了什么
+
+Full Attention 的每一层都会为 Prompt 计算 K 和 V。它们在第一个新 token 生成以后仍然有用，所以 runtime 把这些历史 K/V 保留下来：
+
+```text
+第 L 层的 K Cache：[B,Nkv,T,D]
+第 L 层的 V Cache：[B,Nkv,T,D]
+```
+
+KV Cache 不保存 token 的“答案”，也不是把整个模型计算结果缓存一次。它保存的是每个 Full Attention 层已经算出的历史 K/V，避免后续步骤为相同前缀反复计算这些投影。
+
+### 一步 Decode 做什么
+
+新 token 到来后，每个 Full Attention 层只需为这个新位置计算 Q、K、V：
+
+```text
+新 Q：与历史 K Cache 加上当前 K 比较
+新 K/V：追加到本层 Cache
+Attention 输出：只更新当前新位置
+```
+
+历史越来越长，每一步要读取的 K/V 也越来越多。课程会在这里推导 KV Cache 的元素数和字节数，并解释 GQA 为什么直接影响缓存宽度。
+
+### 请求内串行，不等于 GPU 每轮只能算一个 token
+
+同一个请求的未来 token 有依赖，必须依次确定。但 runtime 可以把许多请求当前已经确定的 token 放进同一批计算。Chunked Prefill 也可以把长 Prompt 切成已知片段，与其他请求的 Decode token 一起调度。这里要分清三件事：
+
+- 一个请求未来 token 之间的逻辑依赖；
+- 一轮 GPU 计算中可以打包多少个已知 token；
+- 每个 token 对应哪条序列、哪个位置和哪段缓存。
+
+这三件事分清以后，Continuous Batching 和 Chunked Prefill 就不再只是框架术语，而是对已知计算的重新组织。
+
+### 本课会回答的工程问题
+
+- TTFT 为什么主要覆盖排队、Prefill 和第一次采样，TPOT 为什么主要对应连续 Decode 步骤；
+- KV Cache 保存什么、不保存什么，容量怎样随层数、`Nkv`、`D`、长度和 dtype 增长；
+- 为什么缓存减少重复计算，却不能把未来 100 个 token 一次算完；
+- 为什么 Prefill 常能形成较大的矩阵计算，而小批量 Decode 更容易暴露权重读取、KV 读取和调度开销；
+- Chunked Prefill 为什么可以和 Decode 同批，同时又必须维护各请求的因果遮罩、位置和缓存边界。
+
+Qwen3.5 是混合模型。第 4 课先把 Full Attention 的 KV Cache 讲透，并注明 Gated DeltaNet 层保存的是另一种 recurrent state。第 5 课再打开这种状态的更新过程，避免在同一课里混入两套算法。
 
 ## 第 5 课：Qwen3.5 的混合 Token Mixer
 

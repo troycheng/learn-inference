@@ -1,6 +1,6 @@
 # 课程术语与符号表
 
-正文第一次引入概念时使用“中文（English）”，后续优先使用中文。代码、配置字段和类名保留原始英文，例如 `hidden_size`、`gate_proj`、`input_ids`。
+正文第一次出现概念时写出中文和英文，后面优先使用中文。代码、配置字段和类名保留原名，例如 `hidden_size`、`gate_proj`、`input_ids`。
 
 ## shape 符号
 
@@ -90,7 +90,7 @@
 | 头 | Attention Head | 独立执行一组 Q/K/V 和加权汇总的表示子空间 |
 | 多头注意力 | Multi-Head Attention / MHA | 并行使用多个 Attention 头，再拼接结果 |
 | 分组查询注意力 | Grouped-Query Attention / GQA | 多个查询头共享一组 K 和 V |
-| 旋转位置编码 | Rotary Position Embedding / RoPE | 按 token 位置旋转 Q/K 的部分特征，让点积感知相对位置 |
+| 旋转位置编码 | Rotary Position Embedding / RoPE | 按各自位置旋转 Q/K，使点积中的位置影响通过两个 token 的相对距离进入 |
 | 输出投影 | Output Projection / `o_proj` | 重新混合各头结果并回到 H 维的 Linear |
 
 ## 书写约定

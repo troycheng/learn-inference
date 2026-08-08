@@ -8,15 +8,13 @@ Embedding 输出
 → Hidden States
 ```
 
-这一课打开其中一层，回答下面的问题：
-
-> 一组 token 向量进入 Decoder Layer 后，怎样依次经过 Token Mixer 子层和 FFN 子层？两次残差连接分别在什么位置？
+现在打开其中一层，看一组 token 向量怎样经过 Token Mixer 和 FFN，又怎样通过两条残差路径保留原来的表示。
 
 Attention 和 Gated DeltaNet 的内部计算留到后续课程。这里暂时把它们统称为 **Token Mixer**，只保留两者共有的作用：让不同 token 位置的信息发生联系。
 
 如果遇到中英文名称或 shape 符号不确定，可以查看[课程术语与符号表](../glossary.md)。
 
-## 1. 这一层在完整模型中的位置
+## 1. Decoder Layer 在完整模型中的位置
 
 Qwen3.5-9B 的文本模型有 32 个 Decoder Layer。每层接收和输出相同宽度的隐藏状态（Hidden States）：
 
@@ -58,7 +56,7 @@ flowchart TB
 
 第一次变换是 Token Mixer，第二次变换是 FFN。
 
-## 2. Hidden State 的每一行、每一列表示什么
+## 2. Hidden State 的行和列
 
 设一个极小例子只有 3 个 token，每个 token 用 4 个数表示：
 
@@ -86,7 +84,7 @@ $$
 
 ![Hidden State 的行与列](../assets/02-hidden-state.svg)
 
-## 3. 一层只反复做两类信息处理
+## 3. 一层里有两类信息处理
 
 理解 Decoder Layer，关键是分清两种不同的信息处理方式。
 
@@ -126,9 +124,9 @@ Token Mixer 混合不同 token 的信息；
 FFN 混合一个 token 内部的特征。
 ```
 
-## 4. RMSNorm：先把输入尺度拉回可控范围
+## 4. RMSNorm 调整每个 token 的数值尺度
 
-### 4.1 它解决什么问题
+### 4.1 数值尺度为什么需要调整
 
 同一层可能收到数值尺度差异很大的向量：
 
@@ -249,7 +247,7 @@ RMSNorm 对每条序列的每个 token 独立计算，沿最后一个 `H` 轴求
 
 RMSNorm 论文的实验表明，在论文的研究设置中，去掉重新居中仍能取得相当的效果，同时减少一部分计算。Qwen3.5 采用 RMSNorm，因此需要了解它的计算，但不能据此给所有模型下统一结论。
 
-## 5. Residual：保留旧表示，只学习本次更新
+## 5. 残差连接保留旧表示，再叠加本次更新
 
 残差连接（Residual Connection）做的计算非常简单：
 
@@ -283,7 +281,7 @@ y = x + Sublayer(RMSNorm(x))
 
 也就是先保存 `x`，把归一化后的输入交给子层，最后把子层输出加回 `x`。
 
-## 6. FFN 在 Decoder Layer 中怎样计算
+## 6. FFN 的完整计算
 
 完成 Token Mixer 子层及第一次残差相加后，得到中间结果 `X1:[B,T,H]`。FFN 子层从这里开始：
 
@@ -351,7 +349,7 @@ Qwen3.5 的 Dense FFN 使用三个投影：
 
 “扩展”和“回收”只描述特征宽度的变化。三个投影都会重新组合输入特征，并不是简单复制或删除若干列。
 
-## 7. SwiGLU：两条分支怎样形成门控
+## 7. SwiGLU 用两条分支调节中间特征
 
 上面 FFN 数据流中的 `gate_proj → SiLU`、`up_proj` 和逐元素相乘，合在一起就是 SwiGLU。把这些调用压缩成一行：
 
@@ -471,7 +469,7 @@ down_proj(...) ≈ [2.193, 1.977]
 
 FFN 输出重新回到 `[H]=[2]`。这个例子只计算 FFN 分支，因此没有把它与残差输入相加。真实 Decoder Layer 中，残差分支保存的是 RMSNorm 之前的 `X1`，不能直接把这里的 `x` 当成残差输入。完整的残差关系已经在第 6 节给出。
 
-## 9. 把 shape 从头接起来
+## 9. FFN 各步的 shape
 
 Qwen3.5-9B 使用：
 
@@ -503,7 +501,7 @@ T 始终不变
 
 因此 Dense FFN 对每个 token 独立使用同一套权重。这里的 Dense 表示每个 token 都使用这一整套 FFN 参数，不表示不同 token 之间建立全连接。
 
-## 10. 把一个 Decoder Layer 完整接起来
+## 10. 回到完整 Decoder Layer
 
 把所有模块接回去：
 
@@ -532,7 +530,7 @@ $$
 
 公式是上面八个步骤的压缩写法。读到它时，应该能重新展开每个箭头，知道两个加号分别接回哪条残差路径。
 
-## 11. Qwen3.5 中哪些层共享这套骨架
+## 11. Qwen3.5 中的两类 Decoder Layer
 
 Qwen3.5-9B 每四层为一组：
 
@@ -561,7 +559,7 @@ RMSNorm → Token Mixer → Residual
 
 Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 课完整对比。
 
-## 12. Prefill 和 Decode 时，本层数学是否变化
+## 12. Prefill 和 Decode 使用同一套层计算
 
 核心权重和公式不变，主要变化是本轮处理的 token 位置数与历史状态：
 
@@ -574,7 +572,7 @@ Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 �
 
 但不能只看 FFN 就断言整个 Decoder Layer 可以随意拼接。Token Mixer 还必须正确处理每个序列的因果关系、位置和缓存边界。第 4 课再展开这部分。
 
-## 13. 算子卡片
+## 13. 本课出现的算子
 
 | 算子 | 输入 → 输出 | 在本层中的作用 | 是否有模型参数 |
 | --- | --- | --- | --- |
@@ -587,33 +585,33 @@ Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 �
 | 逐元素乘法 | 两个相同 shape → 相同 shape | 实现 SwiGLU 门控 | 否 |
 | 残差加法 | 两个 `[B,T,H] → [B,T,H]` | 保留旧表示并叠加更新 | 否 |
 
-## 14. 常见误解
+## 14. 几组容易混淆的概念
 
-### 误解一：Hidden State 的每一列都有固定的人类含义
+### Hidden State 的一列通常没有固定的人类含义
 
 模型通常使用很多坐标的组合表示信息。单独一列很少能稳定对应一个人工命名的概念。
 
-### 误解二：RMSNorm 把每个元素都压到 `[-1,1]`
+### RMSNorm 不保证每个元素都落在 `[-1,1]`
 
 RMSNorm 调整整条向量的均方根，不限制单个元素的范围。
 
-### 误解三：`rsqrt` 是 RMSNorm 之外又多做了一种归一化
+### `rsqrt` 不是另一种归一化
 
 `rsqrt(a)=1/sqrt(a)`。它只是实现“除以平方根”的一种写法，RMSNorm 中的 `a` 是 `mean(x²)+epsilon`。
 
-### 误解四：Residual 只是防止数值变成 0
+### 残差连接不只是防止数值变成 0
 
 残差连接让输入直接传到输出，并让子层学习增量更新；训练时也为梯度提供直接路径。
 
-### 误解五：`gate_proj` 是二值开关
+### `gate_proj` 产生的不是二值开关
 
 SwiGLU 的门控值是连续数，可以压低、放大或改变对应中间特征的符号，不只取 0 或 1。
 
-### 误解六：Dense FFN 让不同 token 两两全连接
+### Dense FFN 不会让不同 token 两两全连接
 
 Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的信息交换由 Token Mixer 负责。
 
-## 15. 理解检查
+## 15. 练习
 
 1. `[B,T,H]` 中的一行和一列分别应怎样理解？
 2. Qwen3.5 一个 Decoder Layer 中，Token Mixer 和 FFN 分别混合什么？
@@ -647,9 +645,9 @@ Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的�
 13. 不直接混合。每个 token 独立使用同一套 FFN；跨 token 混合由 Token Mixer 完成。
 14. 保存输入、RMSNorm、Token Mixer、残差相加；再保存中间结果、RMSNorm、Dense SwiGLU FFN、残差相加。
 
-## 16. 学完后应能做到
+## 16. 进入 Attention 前
 
-不看正文时，如果能画出并解释下面两行，就可以进入 Attention：
+试着不看正文，画出并解释下面两行：
 
 ```text
 X  → RMSNorm → Token Mixer → 加回 X  → X1
