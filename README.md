@@ -48,7 +48,7 @@ flowchart LR
 1. [第 0 课：模型推理中的张量计算](docs/lessons/00-math-and-tensors.md)
 2. [第 1 课：模型如何生成下一个 token](docs/lessons/01-text-to-next-token.md)
 3. [第 2 课：Decoder Layer 内部的数据流](docs/lessons/02-inside-a-decoder-layer.md)
-4. [第 3 课：Attention 如何关联前文](docs/lessons/03-attention.md)
+4. [第 3 课：图解 Attention 的完整计算过程](docs/lessons/03-attention.md)
 5. [完整课程路线](docs/roadmap.md)
 6. [课程术语与符号表](docs/glossary.md)
 7. [课程讲解原则](docs/teaching-method.md)

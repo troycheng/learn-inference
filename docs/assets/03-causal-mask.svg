@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="620" viewBox="0 0 1000 620" role="img" aria-labelledby="title desc">
-  <title id="title">三位置因果遮罩</title>
-  <desc id="desc">行表示正在计算的位置，列表示可以读取的位置。下三角区域允许读取，右上角未来位置被遮住。</desc>
+  <title id="title">三个 token 位置的因果遮罩矩阵 M</title>
+  <desc id="desc">行表示发起查询的 token 位置，列表示被查询的 token 位置。下三角区域允许读取，右上角未来位置被遮住。</desc>
   <style>
     text { font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill: #0F172A; }
     .title { font-size: 30px; font-weight: 700; }
@@ -9,8 +9,8 @@
     .note { font-size: 18px; fill: #475569; }
   </style>
   <rect width="1000" height="620" fill="#FFFFFF"/>
-  <text x="55" y="60" class="title">因果遮罩：当前位置不能偷看未来</text>
-  <text x="55" y="96" class="note">行是正在计算的位置，列是它想读取的位置</text>
+  <text x="55" y="60" class="title">因果遮罩矩阵 M：当前位置不能偷看未来</text>
+  <text x="55" y="96" class="note">shape=[T,T]；行是发起查询的 token 位置，列是被查询的 token 位置</text>
 
   <text x="395" y="155" text-anchor="middle" class="head">位置 1</text>
   <text x="555" y="155" text-anchor="middle" class="head">位置 2</text>

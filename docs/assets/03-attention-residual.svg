@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="470" viewBox="0 0 1200 470" role="img" aria-labelledby="title desc">
+  <title id="title">Full Attention 子层中的输出投影和残差连接</title>
+  <desc id="desc">输入 x 分成两路。主计算路径经过 RMSNorm、Full Attention 和输出投影，残差路径保留原输入，两路最后逐元素相加得到 y。</desc>
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2563EB"/></marker>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#6B7280"/></marker>
+    <style>
+      text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #111827; }
+      .title { font-size: 30px; font-weight: 700; }
+      .head { font-size: 20px; font-weight: 650; }
+      .note { font-size: 16px; fill: #6B7280; }
+      .box { fill: #EFF6FF; stroke: #2563EB; stroke-width: 2; }
+    </style>
+  </defs>
+  <rect width="1200" height="470" fill="#FFFFFF"/>
+  <text x="55" y="58" class="title">Full Attention 算完后，才与原输入做残差相加</text>
+  <text x="55" y="92" class="note">Q/K/V、遮罩、Softmax 都在 Full Attention 盒子内部。</text>
+
+  <rect x="55" y="210" width="130" height="72" rx="10" class="box"/>
+  <text x="120" y="240" text-anchor="middle" class="head">输入 x</text>
+  <text x="120" y="266" text-anchor="middle" class="note">[B,T,H]</text>
+
+  <path d="M185 246 H235 V145 H1015 V216" fill="none" stroke="#6B7280" stroke-width="3" marker-end="url(#arrow-gray)"/>
+  <text x="550" y="130" text-anchor="middle" class="note">残差路径：原输入 x 保持不变</text>
+
+  <path d="M185 246 H255" fill="none" stroke="#2563EB" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <rect x="255" y="205" width="165" height="82" rx="10" class="box"/>
+  <text x="337" y="254" text-anchor="middle" class="head">RMSNorm</text>
+  <path d="M420 246 H485" fill="none" stroke="#2563EB" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <rect x="485" y="185" width="235" height="122" rx="10" class="box"/>
+  <text x="602" y="229" text-anchor="middle" class="head">Full Attention</text>
+  <text x="602" y="260" text-anchor="middle" class="note">Q/K/V → 分数 → 遮罩</text>
+  <text x="602" y="284" text-anchor="middle" class="note">→ Softmax → 权重乘 V</text>
+  <path d="M720 246 H770" fill="none" stroke="#2563EB" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <rect x="770" y="205" width="170" height="82" rx="10" class="box"/>
+  <text x="855" y="242" text-anchor="middle" class="head">o_proj</text>
+  <text x="855" y="268" text-anchor="middle" class="note">回到 [B,T,H]</text>
+  <path d="M940 246 H985" fill="none" stroke="#2563EB" stroke-width="3" marker-end="url(#arrow-blue)"/>
+
+  <circle cx="1015" cy="246" r="30" fill="#F0FDF4" stroke="#16A34A" stroke-width="3"/>
+  <text x="1015" y="255" text-anchor="middle" font-size="30" font-weight="700">+</text>
+  <path d="M1045 246 H1085" fill="none" stroke="#2563EB" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <rect x="1085" y="210" width="80" height="72" rx="10" fill="#F0FDF4" stroke="#16A34A" stroke-width="2"/>
+  <text x="1125" y="240" text-anchor="middle" class="head">输出 y</text>
+  <text x="1125" y="266" text-anchor="middle" class="note">[B,T,H]</text>
+
+  <line x1="55" y1="420" x2="95" y2="420" stroke="#2563EB" stroke-width="3" marker-end="url(#arrow-blue)"/><text x="110" y="426" class="note">Attention 计算路径</text>
+  <line x1="315" y1="420" x2="355" y2="420" stroke="#6B7280" stroke-width="3" marker-end="url(#arrow-gray)"/><text x="370" y="426" class="note">残差路径</text>
+</svg>
