@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="1200" height="500">
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; fill: #111827; }
+    .title { font-size: 22px; font-weight: 600; }
+    .label { font-size: 14px; font-weight: 600; }
+    .sub { font-size: 12px; fill: #6b7280; }
+    .formula { font-size: 14px; font-weight: 600; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#16a34a"/></marker>
+  </defs>
+  <rect width="1200" height="500" fill="#ffffff"/>
+  <text x="40" y="42" class="title">Qwen3.5 Decoder Layer：两次 Pre-Norm，两条残差</text>
+  <text x="40" y="68" class="sub">先跟踪一个位置 t 的向量；每条主线仍表示整个 hidden states 张量 [B,T,H]</text>
+
+  <!-- Residual paths are drawn before cards so that they remain behind the modules. -->
+  <path d="M128 230 V142 H510 V196" fill="none" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <path d="M660 230 V108 H1030 V196" fill="none" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <text x="315" y="130" text-anchor="middle" class="sub">残差：未归一化的 x</text>
+  <text x="845" y="96" text-anchor="middle" class="sub">残差：未归一化的 y</text>
+
+  <!-- Primary data flow. -->
+  <path d="M128 230 H165" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M290 230 H320" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M460 230 H482" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M538 230 H567" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M660 230 H690" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M815 230 H845" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M985 230 H1002" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M1058 230 H1080" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+
+  <g transform="translate(40,195)">
+    <rect width="88" height="70" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+    <text x="44" y="28" text-anchor="middle" class="label">输入 x</text>
+    <text x="44" y="50" text-anchor="middle" class="sub">[B,T,H]</text>
+  </g>
+  <g transform="translate(165,195)">
+    <rect width="125" height="70" rx="8" fill="#faf5ff" stroke="#d8b4fe" stroke-width="1.5"/>
+    <text x="62" y="28" text-anchor="middle" class="label">RMSNorm</text>
+    <text x="62" y="50" text-anchor="middle" class="sub">按每个 token 缩放</text>
+  </g>
+  <g transform="translate(320,195)">
+    <rect width="140" height="70" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+    <text x="70" y="28" text-anchor="middle" class="label">Token Mixer</text>
+    <text x="70" y="50" text-anchor="middle" class="sub">跨 token 联系上下文</text>
+  </g>
+  <g transform="translate(482,202)">
+    <circle cx="28" cy="28" r="28" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+    <text x="28" y="35" text-anchor="middle" style="font-size:30px;font-weight:600">+</text>
+  </g>
+  <g transform="translate(567,195)">
+    <rect width="93" height="70" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+    <text x="46" y="28" text-anchor="middle" class="label">中间 y</text>
+    <text x="46" y="50" text-anchor="middle" class="sub">[B,T,H]</text>
+  </g>
+  <g transform="translate(690,195)">
+    <rect width="125" height="70" rx="8" fill="#faf5ff" stroke="#d8b4fe" stroke-width="1.5"/>
+    <text x="62" y="28" text-anchor="middle" class="label">RMSNorm</text>
+    <text x="62" y="50" text-anchor="middle" class="sub">按每个 token 缩放</text>
+  </g>
+  <g transform="translate(845,195)">
+    <rect width="140" height="70" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+    <text x="70" y="28" text-anchor="middle" class="label">Dense SwiGLU FFN</text>
+    <text x="70" y="50" text-anchor="middle" class="sub">每个 token：H → I → H</text>
+  </g>
+  <g transform="translate(1002,202)">
+    <circle cx="28" cy="28" r="28" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
+    <text x="28" y="35" text-anchor="middle" style="font-size:30px;font-weight:600">+</text>
+  </g>
+  <g transform="translate(1080,195)">
+    <rect width="88" height="70" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
+    <text x="44" y="28" text-anchor="middle" class="label">输出 z</text>
+    <text x="44" y="50" text-anchor="middle" class="sub">[B,T,H]</text>
+  </g>
+
+  <text x="510" y="292" text-anchor="middle" class="sub">两项都是 [B,T,H]，才能逐元素相加</text>
+  <text x="1030" y="292" text-anchor="middle" class="sub">FFN 回到 H 维后才能相加</text>
+
+  <rect x="100" y="342" width="1000" height="82" rx="8" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text x="600" y="373" text-anchor="middle" class="formula">y = x + TokenMixer(RMSNorm(x))</text>
+  <text x="600" y="404" text-anchor="middle" class="formula">z = y + FFN(RMSNorm(y))</text>
+
+  <g transform="translate(40,456)">
+    <line x1="0" y1="0" x2="34" y2="0" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+    <text x="44" y="5" class="sub">主数据流</text>
+    <line x1="170" y1="0" x2="204" y2="0" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+    <text x="214" y="5" class="sub">残差路径，绕过 RMSNorm 和子层</text>
+  </g>
+</svg>

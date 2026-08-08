@@ -123,9 +123,9 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 
 读完后，应当能把 SwiGLU 展开为 `gate_proj → SiLU`、`up_proj`、逐元素乘法和 `down_proj`，并写出每一步的 shape。
 
-## 第 3 课：Attention 怎样找到相关的上下文
+## 第 3 课：Attention 怎样从前文取回信息
 
-正文：[第 3 课：Attention 怎样找到相关的上下文](lessons/03-attention.md)
+正文：[第 3 课：Attention 怎样从前文取回信息](lessons/03-attention.md)
 
 这一课拆开 Full Attention，看当前 token 怎样给可见位置分配权重，再从这些位置取回信息。
 

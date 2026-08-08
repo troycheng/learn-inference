@@ -48,7 +48,7 @@ flowchart LR
 1. [第 0 课：看懂模型里的数字和 shape](docs/lessons/00-math-and-tensors.md)
 2. [第 1 课：模型怎样生成下一个 token](docs/lessons/01-text-to-next-token.md)
 3. [第 2 课：一个 Decoder Layer 里发生了什么](docs/lessons/02-inside-a-decoder-layer.md)
-4. [第 3 课：Attention 怎样找到相关的上下文](docs/lessons/03-attention.md)
+4. [第 3 课：Attention 怎样从前文取回信息](docs/lessons/03-attention.md)
 5. [第 4 课：模型读完 Prompt 后怎样逐个生成 token](docs/lessons/04-prefill-decode-kv-cache.md)
 6. [第 5 课：Gated DeltaNet 怎样记住前文](docs/lessons/05-gated-deltanet.md)
 7. [第 6 课：Dense 和 MoE 有什么区别](docs/lessons/06-dense-and-moe.md)

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">位置 3 的查询向量依次和三条键向量打分</title>
+  <desc id="desc">查询向量 Q3 分别与 K1、K2、K3 点积，得到三个原始分数，再除以根号 2。</desc>
+  <style>
+    text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #111827; }
+    .title { font-size: 34px; font-weight: 600; }
+    .subtitle { font-size: 18px; fill: #6b7280; }
+    .label { font-size: 21px; font-weight: 600; }
+    .body { font-size: 19px; }
+    .small { font-size: 16px; fill: #6b7280; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="620" fill="#ffffff"/>
+  <text class="title" x="54" y="62">只看“它”：一条 Q 和所有 K 比较</text>
+  <text class="subtitle" x="54" y="96">每次点积得到一个分数；这里的向量只用于手算。</text>
+
+  <path d="M 318 294 H 390 V 182 H 445" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M 318 294 H 390 V 312 H 445" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M 318 294 H 390 V 442 H 445" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+
+  <rect x="54" y="225" width="264" height="138" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text class="label" x="186" y="268" text-anchor="middle">位置 3：“它”</text>
+  <text class="body" x="186" y="308" text-anchor="middle">Q3 = [1, 0]</text>
+  <text class="small" x="186" y="339" text-anchor="middle">同一条 Q 连续比较三次</text>
+
+  <rect x="445" y="132" width="220" height="100" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="2"/>
+  <text class="label" x="555" y="169" text-anchor="middle">位置 1：“小明”</text>
+  <text class="body" x="555" y="205" text-anchor="middle">K1 = [1, 0]</text>
+
+  <rect x="445" y="262" width="220" height="100" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="2"/>
+  <text class="label" x="555" y="299" text-anchor="middle">位置 2：“杯子”</text>
+  <text class="body" x="555" y="335" text-anchor="middle">K2 = [0, 1]</text>
+
+  <rect x="445" y="392" width="220" height="100" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="2"/>
+  <text class="label" x="555" y="429" text-anchor="middle">位置 3：“它”</text>
+  <text class="body" x="555" y="465" text-anchor="middle">K3 = [0.5, 0]</text>
+
+  <path d="M 665 182 H 760" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M 665 312 H 760" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M 665 442 H 760" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+
+  <rect x="760" y="132" width="382" height="100" rx="10" fill="#f9fafb" stroke="#d1d5db" stroke-width="2"/>
+  <text class="body" x="784" y="171">Q3 · K1 = 1</text>
+  <text class="body" x="784" y="207">缩放后：1 ÷ √2 ≈ 0.707</text>
+
+  <rect x="760" y="262" width="382" height="100" rx="10" fill="#f9fafb" stroke="#d1d5db" stroke-width="2"/>
+  <text class="body" x="784" y="301">Q3 · K2 = 0</text>
+  <text class="body" x="784" y="337">缩放后：0 ÷ √2 = 0</text>
+
+  <rect x="760" y="392" width="382" height="100" rx="10" fill="#f9fafb" stroke="#d1d5db" stroke-width="2"/>
+  <text class="body" x="784" y="431">Q3 · K3 = 0.5</text>
+  <text class="body" x="784" y="467">缩放后：0.5 ÷ √2 ≈ 0.354</text>
+
+  <rect x="300" y="538" width="600" height="58" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text class="label" x="600" y="575" text-anchor="middle">这一行分数：[0.707, 0, 0.354]</text>
+</svg>

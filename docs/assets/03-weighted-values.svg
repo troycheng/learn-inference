@@ -15,7 +15,7 @@
     </style>
   </defs>
   <rect width="1100" height="500" fill="#FFFFFF"/>
-  <text x="55" y="58" class="title">权重乘 V：保留相关信息，压低无关信息</text>
+  <text x="55" y="58" class="title">继续跟踪“它”：按权重汇总三条 V</text>
   <text x="55" y="92" class="note">权重是标量，会乘到对应 V 向量的每个元素上。</text>
 
   <text x="80" y="145" class="head">原始 V</text>
@@ -27,17 +27,17 @@
   <rect x="55" y="260" width="180" height="62" rx="9" class="value"/><text x="145" y="298" text-anchor="middle" class="label">V2 = [0, 2]</text>
   <rect x="55" y="345" width="180" height="62" rx="9" class="value"/><text x="145" y="383" text-anchor="middle" class="label">V3 = [1, 1]</text>
 
-  <rect x="295" y="175" width="145" height="62" rx="9" class="box"/><text x="367" y="213" text-anchor="middle" class="label">× 0.670</text>
-  <rect x="295" y="260" width="145" height="62" rx="9" class="box"/><text x="367" y="298" text-anchor="middle" class="label">× 0.330</text>
-  <rect x="295" y="345" width="145" height="62" rx="9" class="box"/><text x="367" y="383" text-anchor="middle" class="label">× 0</text>
+  <rect x="295" y="175" width="145" height="62" rx="9" class="box"/><text x="367" y="213" text-anchor="middle" class="label">× 0.456</text>
+  <rect x="295" y="260" width="145" height="62" rx="9" class="box"/><text x="367" y="298" text-anchor="middle" class="label">× 0.225</text>
+  <rect x="295" y="345" width="145" height="62" rx="9" class="box"/><text x="367" y="383" text-anchor="middle" class="label">× 0.320</text>
 
   <path d="M235 206 H295" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow)"/>
   <path d="M235 291 H295" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow)"/>
   <path d="M235 376 H295" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow)"/>
 
-  <rect x="500" y="175" width="210" height="62" rx="9" class="scaled"/><text x="605" y="213" text-anchor="middle" class="label">[1.340, 0]</text>
-  <rect x="500" y="260" width="210" height="62" rx="9" class="scaled"/><text x="605" y="298" text-anchor="middle" class="label">[0, 0.660]</text>
-  <rect x="500" y="345" width="210" height="62" rx="9" class="scaled"/><text x="605" y="383" text-anchor="middle" class="label">[0, 0]</text>
+  <rect x="500" y="175" width="210" height="62" rx="9" class="scaled"/><text x="605" y="213" text-anchor="middle" class="label">[0.912, 0]</text>
+  <rect x="500" y="260" width="210" height="62" rx="9" class="scaled"/><text x="605" y="298" text-anchor="middle" class="label">[0, 0.450]</text>
+  <rect x="500" y="345" width="210" height="62" rx="9" class="scaled"/><text x="605" y="383" text-anchor="middle" class="label">[0.320, 0.320]</text>
 
   <path d="M440 206 H500" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow)"/>
   <path d="M440 291 H500" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow)"/>
@@ -48,6 +48,6 @@
   <path d="M710 376 C790 376 785 312 845 312" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow)"/>
   <rect x="845" y="245" width="220" height="92" rx="10" fill="#DCFCE7" stroke="#16A34A" stroke-width="3"/>
   <text x="955" y="282" text-anchor="middle" class="head">输出 O</text>
-  <text x="955" y="316" text-anchor="middle" class="label">[1.340, 0.660]</text>
-  <text x="550" y="456" text-anchor="middle" class="note">权重为 0 的 V 不再影响结果；权重越大，对输出的影响越大。</text>
+  <text x="955" y="316" text-anchor="middle" class="label">[1.232, 0.770]</text>
+  <text x="550" y="456" text-anchor="middle" class="note">三条缩放后的 V 逐元素相加，得到位置 3 本轮取回的信息。</text>
 </svg>

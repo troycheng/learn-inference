@@ -32,21 +32,17 @@ Qwen3.5-9B 的 `H=4096`。这表示每个 token 位置始终用 4096 个数表�
 
 一个 Decoder Layer 的公共骨架是：
 
-```mermaid
-flowchart TB
-    X["输入 X<br/>[B,T,H]"] --> S1["保存原输入 X"]
-    X --> N1["RMSNorm<br/>调整每个 token 的尺度"]
-    N1 --> M["Token Mixer<br/>混合不同 token 的信息"]
-    M --> A1["逐元素相加"]
-    S1 --> A1
-    A1 --> X1["中间结果 X1<br/>[B,T,H]"]
-    X1 --> S2["保存 X1"]
-    X1 --> N2["RMSNorm<br/>再次调整尺度"]
-    N2 --> F["Dense SwiGLU FFN<br/>加工每个 token 自己的特征"]
-    F --> A2["逐元素相加"]
-    S2 --> A2
-    A2 --> Y["本层输出 Y<br/>[B,T,H]"]
-```
+![Qwen3.5 Decoder Layer 的 Pre-Norm 数据流](../assets/02-decoder-layer.svg)
+
+先只跟踪图中高亮的一个位置 `t`。它的向量先叫 `x[b,t,:]`。Token Mixer 给出更新量，和未归一化的 `x[b,t,:]` 相加后得到 `y[b,t,:]`。FFN 再给出另一份更新量，和未归一化的 `y[b,t,:]` 相加后得到 `z[b,t,:]`。图中的每条主线仍代表整个张量 `[B,T,H]`，只是先把注意力放在其中一行。
+
+$$
+y=x+\mathrm{TokenMixer}(\mathrm{RMSNorm}(x))
+$$
+
+$$
+z=y+\mathrm{FFN}(\mathrm{RMSNorm}(y))
+$$
 
 暂时放下模块名，这个结构可以拆成两次相同的动作：
 
@@ -283,35 +279,35 @@ y = x + Sublayer(RMSNorm(x))
 
 ## 6. FFN 的完整计算
 
-完成 Token Mixer 子层及第一次残差相加后，得到中间结果 `X1:[B,T,H]`。FFN 子层从这里开始：
+完成 Token Mixer 子层及第一次残差相加后，得到 `y:[B,T,H]`。FFN 子层从这里开始。第二条残差路径保存的是这个未经归一化的 `y`：
 
 ```text
-X1 [B,T,H]
-├──────────────────────────────────────────────┐  残差分支：保存 X1
+ y [B,T,H]
+├──────────────────────────────────────────────┐  残差分支：保存 y
 │                                              │
-└→ RMSNorm → x_norm [B,T,H]                    │
+└→ RMSNorm → y_norm [B,T,H]                    │
       ├→ gate_proj → SiLU ─┐                   │
       └→ up_proj ──────────┴→ 逐元素相乘       │
                               → down_proj       │
                               → f [B,T,H]       │
                                                ↓
-                                     Y = X1 + f
+                                      z = y + f
 ```
 
-残差分支在 FFN 之前保存 `X1`，但残差相加发生在 FFN 计算完成之后。对整个 `[B,T,H]` 张量，计算可以写成下面的伪代码；这些操作会独立应用到其中的每个 token：
+残差分支在 FFN 之前保存 `y`，但残差相加发生在 FFN 计算完成之后。对整个 `[B,T,H]` 张量，计算可以写成下面的伪代码；这些操作会独立应用到其中的每个 token：
 
 ```text
-X_norm = RMSNorm(X1)           # [B,T,H]
-G      = gate_proj(X_norm)     # [B,T,I]
-U      = up_proj(X_norm)       # [B,T,I]
-M      = SiLU(G) * U           # [B,T,I]，逐元素相乘
-F      = down_proj(M)          # [B,T,H]
-Y      = X1 + F                # [B,T,H]，残差相加
+y_norm = RMSNorm(y)            # [B,T,H]
+g      = gate_proj(y_norm)     # [B,T,I]
+u      = up_proj(y_norm)       # [B,T,I]
+m      = SiLU(g) * u           # [B,T,I]，逐元素相乘
+f      = down_proj(m)          # [B,T,H]
+z      = y + f                 # [B,T,H]，残差相加
 ```
 
-其中 `gate_proj` 和 `up_proj` 并行读取同一个归一化结果。两条分支合并后，`down_proj` 产生 FFN 对当前表示的更新量 `F`，最后才与原来的 `X1` 相加。
+其中 `gate_proj` 和 `up_proj` 并行读取同一个归一化结果。两条分支合并后，`down_proj` 产生 FFN 对当前表示的更新量 `f`，最后才与原来的 `y` 相加。
 
-FFN 不直接混合不同 token。上面的计算会独立应用到每个 `X1[b,t,:]`，所有位置共享同一套 FFN 权重。
+FFN 不直接混合不同 token。上面的计算会独立应用到每个 `y[b,t,:]`，所有位置共享同一套 FFN 权重。
 
 ### 6.1 H 和 I 分别是什么
 
@@ -353,13 +349,13 @@ Qwen3.5 的 Dense FFN 使用三个投影：
 
 上面 FFN 数据流中的 `gate_proj → SiLU`、`up_proj` 和逐元素相乘，合在一起就是 SwiGLU。把这些调用压缩成一行：
 
-```text
-FFN(x) = down_proj(SiLU(gate_proj(x)) * up_proj(x))
-```
+$$
+\mathrm{FFN}(y_{norm})=\mathrm{down\_proj}(\mathrm{SiLU}(\mathrm{gate\_proj}(y_{norm}))\odot\mathrm{up\_proj}(y_{norm}))
+$$
 
-这里的 `*` 表示逐元素相乘，不是矩阵乘法。
+这里的 `⊙` 表示逐元素相乘，不是矩阵乘法。
 
-这里的 `x` 是经过 RMSNorm 的单个 token 向量，不是残差分支中未经归一化的 `X1`。
+这里的 `y_norm` 是经过 RMSNorm 的单个 token 向量，不是残差分支中未经归一化的 `y`。下图与下一节都用同一个 `y_norm=[1,2]`，所以每个中间向量都可以对照手算。
 
 下面的数据流把公式中的连接关系展开了：
 
@@ -400,7 +396,7 @@ $$
 ```text
 H = 2
 I = 3
-x = [1, 2]    # 把 x 看作 RMSNorm 后交给 FFN 的单个 token 向量
+y_norm = [1, 2]    # RMSNorm 后交给 FFN 的单个 token 向量
 ```
 
 为了能手算，假设三组权重如下，并省略偏置。Qwen3.5 的这三个 Linear 本来也不使用偏置。
@@ -413,10 +409,10 @@ W_gate = [[1, 0],
           [1, 1]]           shape=[I,H]=[3,2]
 ```
 
-输入 `x` 分别与三行权重做点积：
+输入 `y_norm` 分别与三行权重做点积：
 
 ```text
-gate_proj(x)
+gate_proj(y_norm)
 = [1*1+2*0, 1*0+2*1, 1*1+2*1]
 = [1, 2, 3]
 ```
@@ -436,7 +432,7 @@ W_up = [[1,  1],
 ```
 
 ```text
-up_proj(x)
+up_proj(y_norm)
 = [1*1+2*1, 1*1+2*(-1), 1*0+2*1]
 = [3, -1, 2]
 ```
@@ -467,7 +463,7 @@ W_down = [[1, 0,   0],
 down_proj(...) ≈ [2.193, 1.977]
 ```
 
-FFN 输出重新回到 `[H]=[2]`。这个例子只计算 FFN 分支，因此没有把它与残差输入相加。真实 Decoder Layer 中，残差分支保存的是 RMSNorm 之前的 `X1`，不能直接把这里的 `x` 当成残差输入。完整的残差关系已经在第 6 节给出。
+FFN 输出重新回到 `[H]=[2]`。这个例子只计算 FFN 分支，因此没有把它与残差输入相加。真实 Decoder Layer 中，残差分支保存的是 RMSNorm 之前的 `y`，不能直接把这里的 `y_norm` 当成残差输入。完整的残差关系已经在第 6 节给出。
 
 ## 9. FFN 各步的 shape
 
@@ -506,26 +502,26 @@ T 始终不变
 把所有模块接回去：
 
 ```text
-输入 X
-1. 保存 X 作为第一条残差路径
-2. 对 X 做 RMSNorm
+输入 x
+1. 保存 x 作为第一条残差路径
+2. 对 x 做 RMSNorm
 3. Token Mixer 混合不同 token 的信息
-4. 把结果加回 X，得到 X1
+4. 把结果加回 x，得到 y
 
-5. 保存 X1 作为第二条残差路径
-6. 对 X1 做 RMSNorm
+5. 保存 y 作为第二条残差路径
+6. 对 y 做 RMSNorm
 7. Dense SwiGLU FFN 加工每个 token 内部的特征
-8. 把 FFN 输出加回 X1，得到本层输出 Y
+8. 把 FFN 输出加回 y，得到本层输出 z
 ```
 
 对应公式：
 
 $$
-X_1=X+\mathrm{TokenMixer}(\mathrm{RMSNorm}(X))
+y=x+\mathrm{TokenMixer}(\mathrm{RMSNorm}(x))
 $$
 
 $$
-Y=X_1+\mathrm{FFN}(\mathrm{RMSNorm}(X_1))
+z=y+\mathrm{FFN}(\mathrm{RMSNorm}(y))
 $$
 
 公式是上面八个步骤的压缩写法。读到它时，应该能重新展开每个箭头，知道两个加号分别接回哪条残差路径。
@@ -650,8 +646,8 @@ Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的�
 试着不看正文，画出并解释下面两行：
 
 ```text
-X  → RMSNorm → Token Mixer → 加回 X  → X1
-X1 → RMSNorm → SwiGLU FFN  → 加回 X1 → Y
+x → RMSNorm → Token Mixer → 加回 x → y
+y → RMSNorm → SwiGLU FFN  → 加回 y → z
 ```
 
 还应能把 SwiGLU 展开：

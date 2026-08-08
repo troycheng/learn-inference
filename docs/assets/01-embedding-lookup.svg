@@ -1,48 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 450" width="960" height="450">
-  <style>
-    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
-    .title { font-size: 22px; font-weight: 600; }
-    .label { font-size: 15px; font-weight: 600; }
-    .sub { font-size: 13px; fill: #6b7280; }
-    .num { font-size: 13px; }
-  </style>
-  <defs><marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
-  <rect width="960" height="450" fill="#ffffff"/>
-  <text x="40" y="42" class="title">Embedding 是按 Token ID 查表</text>
-  <text x="40" y="68" class="sub">ID 决定取哪一行，不参与“大小比较”</text>
-
-  <g transform="translate(55,135)">
-    <text x="80" y="-24" text-anchor="middle" class="label">输入 Token IDs</text>
-    <rect width="75" height="58" fill="#fff7ed" stroke="#fdba74"/><rect x="75" width="75" height="58" fill="#fff7ed" stroke="#fdba74"/>
-    <text x="37" y="36" text-anchor="middle" class="label">0</text><text x="112" y="36" text-anchor="middle" class="label">2</text>
-  </g>
-  <path d="M215 164 H300" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow)"/>
-  <text x="258" y="147" text-anchor="middle" class="sub">取第 0、2 行</text>
-
-  <g transform="translate(320,105)">
-    <text x="170" y="-18" text-anchor="middle" class="label">Embedding 参数表 [V,H]</text>
-    <g stroke="#93c5fd" fill="#eff6ff">
-      <rect x="0" y="0" width="70" height="55"/><rect x="70" y="0" width="90" height="55"/><rect x="160" y="0" width="90" height="55"/><rect x="250" y="0" width="90" height="55"/>
-      <rect x="0" y="55" width="70" height="55" fill="#ffffff"/><rect x="70" y="55" width="90" height="55" fill="#ffffff"/><rect x="160" y="55" width="90" height="55" fill="#ffffff"/><rect x="250" y="55" width="90" height="55" fill="#ffffff"/>
-      <rect x="0" y="110" width="70" height="55"/><rect x="70" y="110" width="90" height="55"/><rect x="160" y="110" width="90" height="55"/><rect x="250" y="110" width="90" height="55"/>
-      <rect x="0" y="165" width="70" height="55" fill="#ffffff"/><rect x="70" y="165" width="90" height="55" fill="#ffffff"/><rect x="160" y="165" width="90" height="55" fill="#ffffff"/><rect x="250" y="165" width="90" height="55" fill="#ffffff"/>
-    </g>
-    <text x="35" y="34" text-anchor="middle" class="label">ID 0</text><text x="115" y="34" text-anchor="middle" class="num">0.2</text><text x="205" y="34" text-anchor="middle" class="num">0.1</text><text x="295" y="34" text-anchor="middle" class="num">-0.4</text>
-    <text x="35" y="89" text-anchor="middle" class="label">ID 1</text><text x="115" y="89" text-anchor="middle" class="num">0.5</text><text x="205" y="89" text-anchor="middle" class="num">0.7</text><text x="295" y="89" text-anchor="middle" class="num">0.1</text>
-    <text x="35" y="144" text-anchor="middle" class="label">ID 2</text><text x="115" y="144" text-anchor="middle" class="num">0.8</text><text x="205" y="144" text-anchor="middle" class="num">-0.2</text><text x="295" y="144" text-anchor="middle" class="num">0.5</text>
-    <text x="35" y="199" text-anchor="middle" class="label">ID 3</text><text x="115" y="199" text-anchor="middle" class="num">-0.1</text><text x="205" y="199" text-anchor="middle" class="num">0.6</text><text x="295" y="199" text-anchor="middle" class="num">0.9</text>
-  </g>
-
-  <path d="M680 215 H745" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow)"/>
-  <g transform="translate(750,125)">
-    <text x="90" y="-18" text-anchor="middle" class="label">输出 [T=2,H=3]</text>
-    <g fill="#f0fdf4" stroke="#86efac">
-      <rect width="60" height="65"/><rect x="60" width="60" height="65"/><rect x="120" width="60" height="65"/>
-      <rect y="65" width="60" height="65"/><rect x="60" y="65" width="60" height="65"/><rect x="120" y="65" width="60" height="65"/>
-    </g>
-    <text x="30" y="39" text-anchor="middle" class="num">0.2</text><text x="90" y="39" text-anchor="middle" class="num">0.1</text><text x="150" y="39" text-anchor="middle" class="num">-0.4</text>
-    <text x="30" y="104" text-anchor="middle" class="num">0.8</text><text x="90" y="104" text-anchor="middle" class="num">-0.2</text><text x="150" y="104" text-anchor="middle" class="num">0.5</text>
-  </g>
-  <text x="480" y="405" text-anchor="middle" class="label">[B,T] → 查 [V,H] 参数表 → [B,T,H]</text>
-  <text x="480" y="430" text-anchor="middle" class="sub">B 和 T 不变；每个整数编号被替换为一个 H 维向量</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" width="960" height="380">
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:18px;font-weight:600}.label{font-size:14px;font-weight:600}.sub{font-size:12px;fill:#6b7280}.num{font-family:Menlo,Monaco,monospace;font-size:13px}</style>
+  <defs><marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
+  <rect width="960" height="380" fill="#ffffff"/>
+  <text x="40" y="42" class="title">Embedding 用 Token ID 取对应的一行</text>
+  <text x="40" y="67" class="sub">当前对象仍是“优化”，已核实 ID 为 99945；向量数值是教学示意。</text>
+  <rect x="48" y="142" width="148" height="82" rx="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <text x="122" y="171" text-anchor="middle" class="label">输入 Token ID</text><text x="122" y="202" text-anchor="middle" class="num">99945</text>
+  <path d="M216 183H304" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/><text x="260" y="167" text-anchor="middle" class="sub">按编号定位</text>
+  <text x="330" y="116" class="label">Embedding 参数表中的可见行</text>
+  <rect x="330" y="132" width="392" height="48" fill="#ffffff" stroke="#d1d5db"/><rect x="330" y="180" width="392" height="60" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/><rect x="330" y="240" width="392" height="48" fill="#ffffff" stroke="#d1d5db"/>
+  <text x="352" y="162" class="num">111892   推理     [0.2, 0.1, -0.4]</text>
+  <text x="352" y="216" class="num">99945    优化     [0.8, -0.2, 0.5]</text>
+  <text x="352" y="270" class="num">...      其他 token 的行</text>
+  <path d="M742 210H798" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <rect x="816" y="164" width="112" height="92" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
+  <text x="872" y="193" text-anchor="middle" class="label">初始向量</text><text x="872" y="222" text-anchor="middle" class="num">[0.8, -0.2, 0.5]</text>
+  <text x="40" y="337" class="sub">编号只决定取哪一行。它本身不参与大小比较，也不表示语义强弱。</text>
 </svg>
