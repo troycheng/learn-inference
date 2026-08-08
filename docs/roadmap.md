@@ -60,7 +60,7 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 | 0 | 后面的张量和公式怎样读？ | 标量、向量、矩阵、shape、轴、索引、归约、广播、点积、矩阵乘法、Linear、Embedding | 能看懂算子对哪些数计算，并推导基本 shape |
 | 1 | 一句话怎样变成下一个 token？ | Chat Template、Tokenizer、Embedding、Decoder 黑盒、LM Head、Logits、Softmax、采样 | 能区分文字、ID、向量、分数和概率，画出完整生成链路 |
 | 2 | 一个 Decoder Layer 为什么这样设计？ | Hidden State、RMSNorm、Residual、Token Mixer/FFN 分工、Dense SwiGLU | 能解释一层中每个公共模块的目的、计算和 shape |
-| 3 | Attention 如何关联前文？ | Q/K/V、因果遮罩、缩放点积 Attention、多头、GQA、RoPE | 能用小数字走完一次 Attention，解释位置和头的作用 |
+| 3 | Full Attention 是怎样计算的？ | Q/K/V、因果遮罩、缩放点积 Attention、多头、GQA、RoPE | 能用小数字走完一次 Attention，解释位置和头的作用 |
 | 4 | 为什么生成必须逐步进行？ | 条件概率、Prefill、Decode、KV Cache、请求内串行与批内并行 | 能解释缓存复用了什么、占用了什么，以及 TTFT/TPOT 的模型来源 |
 | 5 | Qwen3.5 为什么混用两类 Token Mixer？ | Gated DeltaNet、因果卷积、门控更新、recurrent state、Full Attention 间隔层 | 能区分 KV Cache 与 recurrent state，读懂 3+1 混合排列 |
 | 6 | Dense 和 MoE 到底差在哪里？ | Dense FFN、Router、Top-K、路由专家、共享专家、加权合并、token 分发 | 能解释总参数、激活参数、专家路由和通信来源 |
@@ -123,9 +123,9 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 
 学完后，应该能把 SwiGLU 展开为 `gate_proj → SiLU`、`up_proj`、逐元素乘法和 `down_proj`，并写出每一步的 shape。
 
-## 第 3 课：Attention 如何关联前文
+## 第 3 课：图解 Attention 的完整计算过程
 
-正文：[第 3 课：Attention 如何关联前文](lessons/03-attention.md)
+正文：[第 3 课：图解 Attention 的完整计算过程](lessons/03-attention.md)
 
 这一课回答：当前 token 怎样判断前文哪些位置与自己有关？
 
