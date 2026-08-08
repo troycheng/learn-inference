@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 540" role="img" aria-labelledby="title desc">
+  <title id="title">一行 Attention 分数经过 Softmax 变成权重</title>
+  <desc id="desc">位置 3 对三个位置的分数是 0.707、0、0.354，Softmax 后得到权重 0.456、0.225、0.320。</desc>
+  <style>
+    text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #111827; }
+    .title { font-size: 34px; font-weight: 600; }
+    .subtitle { font-size: 18px; fill: #6b7280; }
+    .label { font-size: 21px; font-weight: 600; }
+    .body { font-size: 20px; }
+    .small { font-size: 16px; fill: #6b7280; }
+    .number { font-size: 24px; font-weight: 600; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="540" fill="#ffffff"/>
+  <text class="title" x="54" y="62">同一行分数怎样变成权重</text>
+  <text class="subtitle" x="54" y="96">继续跟踪位置 3 的“它”。它位于最后，所以这一行没有未来位置需要遮挡。</text>
+
+  <path d="M 430 281 H 535" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M 665 281 H 770" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+
+  <rect x="54" y="152" width="376" height="258" rx="12" fill="#fff7ed" stroke="#f97316" stroke-width="2"/>
+  <text class="label" x="242" y="194" text-anchor="middle">缩放后的分数</text>
+  <text class="small" x="242" y="225" text-anchor="middle">数值可正可负，总和没有固定要求</text>
+  <text class="body" x="102" y="283">位置 1：“小明”</text>
+  <text class="number" x="382" y="283" text-anchor="end">0.707</text>
+  <text class="body" x="102" y="329">位置 2：“杯子”</text>
+  <text class="number" x="382" y="329" text-anchor="end">0</text>
+  <text class="body" x="102" y="375">位置 3：“它”</text>
+  <text class="number" x="382" y="375" text-anchor="end">0.354</text>
+
+  <rect x="535" y="224" width="130" height="114" rx="57" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text class="label" x="600" y="276" text-anchor="middle">Softmax</text>
+  <text class="small" x="600" y="305" text-anchor="middle">逐行计算</text>
+
+  <rect x="770" y="152" width="376" height="258" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text class="label" x="958" y="194" text-anchor="middle">用于汇总 V 的权重</text>
+  <text class="small" x="958" y="225" text-anchor="middle">都不小于 0，并且总和为 1</text>
+  <text class="body" x="818" y="283">位置 1：“小明”</text>
+  <text class="number" x="1098" y="283" text-anchor="end">0.456</text>
+  <text class="body" x="818" y="329">位置 2：“杯子”</text>
+  <text class="number" x="1098" y="329" text-anchor="end">0.225</text>
+  <text class="body" x="818" y="375">位置 3：“它”</text>
+  <text class="number" x="1098" y="375" text-anchor="end">0.320</text>
+
+  <rect x="276" y="448" width="648" height="58" rx="10" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
+  <text class="body" x="600" y="484" text-anchor="middle">分数决定相对大小，Softmax 把它们整理成可直接加权的比例。</text>
+</svg>

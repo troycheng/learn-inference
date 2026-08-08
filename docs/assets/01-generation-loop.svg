@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360">
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:18px;font-weight:600}.label{font-size:14px;font-weight:600}.sub{font-size:12px;fill:#6b7280}.mono{font-family:Menlo,Monaco,monospace;font-size:13px}</style>
+  <defs><marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
+  <rect width="960" height="360" fill="#ffffff"/>
+  <text x="40" y="42" class="title">每一轮生成都要把刚选出的 token 加回已知序列</text>
+  <text x="40" y="67" class="sub">下图的“从”“哪”只表示逐轮依赖关系，不是对这条真实请求的预测结果。</text>
+  <rect x="44" y="124" width="230" height="132" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/><text x="66" y="155" class="label">第 1 轮</text><text x="66" y="187" class="mono">末位：assistant 生成起点</text><text x="66" y="218" class="mono">选出：从</text>
+  <path d="M294 190H354" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/><text x="324" y="172" text-anchor="middle" class="sub">追加“从”</text>
+  <rect x="374" y="124" width="230" height="132" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/><text x="396" y="155" class="label">第 2 轮</text><text x="396" y="187" class="mono">已知：… 推理 优化 从</text><text x="396" y="218" class="mono">选出：哪</text>
+  <path d="M624 190H684" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/><text x="654" y="172" text-anchor="middle" class="sub">追加“哪”</text>
+  <rect x="704" y="124" width="212" height="132" rx="8" fill="#faf5ff" stroke="#c4b5fd" stroke-width="1.5"/><text x="726" y="155" class="label">第 3 轮</text><text x="726" y="187" class="mono">已知：… 优化 从 哪</text><text x="726" y="218" class="sub">继续预测或满足停止条件</text>
+  <text x="40" y="311" class="sub">下一轮的输入依赖上一轮实际选出的 token。因此普通自回归生成必须沿着这条链逐轮推进。</text>
+</svg>

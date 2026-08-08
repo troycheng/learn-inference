@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 410" width="960" height="410">
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:18px;font-weight:600}.label{font-size:14px;font-weight:600}.sub{font-size:12px;fill:#6b7280}.num{font-family:Menlo,Monaco,monospace;font-size:13px}</style>
+  <defs><marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
+  <rect width="960" height="410" fill="#ffffff"/>
+  <text x="40" y="42" class="title">LM Head 用最后一个 Hidden State 给候选 token 打分</text>
+  <text x="40" y="67" class="sub">四个候选及分数均为教学数值。真实模型会对整个词表的 248320 个候选计算 Logits。</text>
+  <rect x="48" y="166" width="154" height="82" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/><text x="125" y="195" text-anchor="middle" class="label">最后位置 Hidden State</text><text x="125" y="225" text-anchor="middle" class="num">h = [1, 2]</text>
+  <path d="M222 207H302" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/><text x="262" y="191" text-anchor="middle" class="sub">与每行点积</text>
+  <rect x="324" y="108" width="174" height="198" rx="8" fill="#faf5ff" stroke="#c4b5fd" stroke-width="1.5"/>
+  <text x="411" y="138" text-anchor="middle" class="label">LM Head 的 4 行</text><text x="350" y="170" class="num">可以  [-1, 0]</text><text x="350" y="201" class="num">先    [0, 0]</text><text x="350" y="232" class="num">从    [1, 1]</text><text x="350" y="263" class="num">哪    [1, 0]</text>
+  <path d="M518 207H594" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <text x="618" y="127" class="label">Logits</text>
+  <text x="618" y="160" class="sub">可以  -1</text><rect x="696" y="148" width="32" height="16" rx="3" fill="#dbeafe"/>
+  <text x="618" y="194" class="sub">先     0</text><rect x="696" y="182" width="50" height="16" rx="3" fill="#dbeafe"/>
+  <text x="618" y="228" class="sub">从     3</text><rect x="696" y="216" width="150" height="16" rx="3" fill="#2563eb"/>
+  <text x="618" y="262" class="sub">哪     1</text><rect x="696" y="250" width="82" height="16" rx="3" fill="#dbeafe"/>
+  <text x="771" y="300" text-anchor="middle" class="sub">Argmax</text><text x="771" y="325" text-anchor="middle" class="label">选择“从”</text>
+  <text x="40" y="370" class="sub">贪心选择最大的 Logit。采样则会先把分数处理为概率，再按分布抽取。</text>
+</svg>

@@ -1,49 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 420" width="1120" height="420">
-  <style>
-    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
-    .title { font-size: 22px; font-weight: 600; }
-    .label { font-size: 14px; font-weight: 600; }
-    .sub { font-size: 12px; fill: #6b7280; }
-  </style>
-  <defs>
-    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker>
-    <marker id="purple-arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#9333ea"/></marker>
-  </defs>
-  <rect width="1120" height="420" fill="#ffffff"/>
-  <text x="40" y="42" class="title">模型怎样产生下一个 token</text>
-  <text x="40" y="68" class="sub">每个方框都改变数据的表示形式；模型不会直接对字符串做矩阵计算</text>
-
-  <g transform="translate(35,125)">
-    <rect width="130" height="90" rx="10" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
-    <text x="65" y="36" text-anchor="middle" class="label">对话消息</text><text x="65" y="60" text-anchor="middle" class="sub">role + content</text>
-  </g>
-  <path d="M165 170 H205" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
-  <g transform="translate(215,125)">
-    <rect width="130" height="90" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
-    <text x="65" y="34" text-anchor="middle" class="label">Chat Template</text><text x="65" y="58" text-anchor="middle" class="sub">角色与边界</text>
-  </g>
-  <path d="M345 170 H385" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
-  <g transform="translate(395,125)">
-    <rect width="130" height="90" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
-    <text x="65" y="34" text-anchor="middle" class="label">Tokenizer</text><text x="65" y="58" text-anchor="middle" class="sub">文字 → IDs</text>
-  </g>
-  <path d="M525 170 H565" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
-  <g transform="translate(575,125)">
-    <rect width="130" height="90" rx="10" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
-    <text x="65" y="34" text-anchor="middle" class="label">Embedding</text><text x="65" y="58" text-anchor="middle" class="sub">IDs → 初始向量</text>
-  </g>
-  <path d="M705 170 H745" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
-  <g transform="translate(755,125)">
-    <rect width="130" height="90" rx="10" fill="#faf5ff" stroke="#c084fc" stroke-width="1.5"/>
-    <text x="65" y="34" text-anchor="middle" class="label">Decoder</text><text x="65" y="58" text-anchor="middle" class="sub">结合上下文</text>
-  </g>
-  <path d="M885 170 H925" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow)"/>
-  <g transform="translate(935,125)">
-    <rect width="150" height="90" rx="10" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
-    <text x="75" y="34" text-anchor="middle" class="label">LM Head + 选择</text><text x="75" y="58" text-anchor="middle" class="sub">Logits → 下一个 ID</text>
-  </g>
-
-  <path d="M1010 215 V285 H820 V235" fill="none" stroke="#9333ea" stroke-width="2" stroke-dasharray="6 4" marker-end="url(#purple-arrow)"/>
-  <text x="900" y="309" text-anchor="middle" class="label">把新 ID 加入已知序列，再预测一次</text>
-  <text x="560" y="374" text-anchor="middle" class="sub">Tokenizer Decode 最后把连续生成的 IDs 还原成用户看到的文字</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360">
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:18px;font-weight:600}.label{font-size:14px;font-weight:600}.sub{font-size:12px;fill:#6b7280}.mono{font-family:Menlo,Monaco,monospace;font-size:13px}</style>
+  <defs><marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
+  <rect width="960" height="360" fill="#ffffff"/>
+  <text x="40" y="42" class="title">Chat Template 把对话补成模型输入</text>
+  <text x="40" y="67" class="sub">贯穿案例：用户发来“推理优化”</text>
+  <rect x="48" y="116" width="210" height="132" rx="8" fill="#fff7ed" stroke="#fed7aa" stroke-width="1.5"/>
+  <text x="72" y="149" class="label">接口中的消息</text>
+  <text x="72" y="181" class="mono">role: user</text>
+  <text x="72" y="208" class="mono">content: 推理优化</text>
+  <path d="M278 182H380" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/>
+  <text x="329" y="166" text-anchor="middle" class="sub">应用模板</text>
+  <rect x="400" y="96" width="500" height="180" rx="8" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="426" y="128" class="label">格式化后的提示文本（简化示意）</text>
+  <rect x="422" y="147" width="126" height="28" rx="5" fill="#dbeafe"/>
+  <text x="432" y="166" class="mono">&lt;|im_start|&gt;</text>
+  <text x="558" y="166" class="mono">user</text>
+  <text x="426" y="202" class="mono">推理优化</text>
+  <rect x="510" y="182" width="112" height="28" rx="5" fill="#dbeafe"/>
+  <text x="520" y="201" class="mono">&lt;|im_end|&gt;</text>
+  <rect x="422" y="221" width="126" height="28" rx="5" fill="#dbeafe"/>
+  <text x="432" y="240" class="mono">&lt;|im_start|&gt;</text>
+  <text x="558" y="240" class="mono">assistant</text>
+  <text x="40" y="322" class="sub">蓝色标记是 Chat Template 补入的消息边界和 assistant 生成起点。</text>
 </svg>
