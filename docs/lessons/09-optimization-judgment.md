@@ -12,7 +12,7 @@
 
 如果第一步说不清，后面的“提速百分比”就无法解释，也很难复现。
 
-![常见优化分别改了哪些计算、数据和调度](../assets/09-optimization-map.svg)
+![常见优化分别改了哪些计算、数据和调度](../assets/09-optimization-map.svg?rev=20260808-2)
 
 这一课不预设哪种优化一定有效。下面逐项说明量化、FlashAttention、Prefix Cache、Batching、TP、EP 和推测解码改了什么，以及应该怎样测。
 
