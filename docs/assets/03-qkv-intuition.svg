@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">用一次软检索理解 Q K V</title>
+  <desc id="desc">当前 token 它生成查询 Q，所有可见 token 生成键 K 和值 V。查询与键计算权重，再按权重汇总值。</desc>
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2563EB"/></marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#EA580C"/></marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#16A34A"/></marker>
+    <style>
+      text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #111827; }
+      .title { font-size: 30px; font-weight: 700; }
+      .head { font-size: 21px; font-weight: 650; }
+      .label { font-size: 18px; font-weight: 600; }
+      .note { font-size: 16px; fill: #6B7280; }
+      .token { fill: #FFFFFF; stroke: #D1D5DB; stroke-width: 2; }
+      .query { fill: #EFF6FF; stroke: #2563EB; stroke-width: 2; }
+      .key { fill: #FFF7ED; stroke: #EA580C; stroke-width: 2; }
+      .value { fill: #F0FDF4; stroke: #16A34A; stroke-width: 2; }
+    </style>
+  </defs>
+  <rect width="1200" height="680" fill="#FFFFFF"/>
+  <text x="55" y="58" class="title">以“它”为例：先匹配 K，再汇总 V</text>
+  <text x="55" y="92" class="note">每个 token 都有 Q、K、V。图中只展开“它”的一次查询。</text>
+
+  <text x="65" y="150" class="head">1  当前 token 发出 Q</text>
+  <rect x="65" y="185" width="170" height="86" rx="10" class="token"/>
+  <text x="150" y="220" text-anchor="middle" class="label">位置 7：“它”</text>
+  <text x="150" y="248" text-anchor="middle" class="note">Hidden State x7</text>
+  <path d="M235 228 H290" fill="none" stroke="#2563EB" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <rect x="290" y="175" width="210" height="106" rx="10" class="query"/>
+  <text x="395" y="215" text-anchor="middle" class="head">查询 Q7</text>
+  <text x="395" y="246" text-anchor="middle" class="note">“我需要找什么信息？”</text>
+
+  <text x="565" y="150" class="head">2  所有可见 token 提供 K 和 V</text>
+  <rect x="565" y="175" width="150" height="58" rx="8" class="token"/><text x="640" y="211" text-anchor="middle" class="label">小明</text>
+  <rect x="565" y="247" width="150" height="58" rx="8" class="token"/><text x="640" y="283" text-anchor="middle" class="label">把</text>
+  <rect x="565" y="319" width="150" height="58" rx="8" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/><text x="640" y="355" text-anchor="middle" class="label">杯子</text>
+  <rect x="565" y="391" width="150" height="58" rx="8" class="token"/><text x="640" y="427" text-anchor="middle" class="label">放下</text>
+  <rect x="565" y="463" width="150" height="58" rx="8" class="token"/><text x="640" y="499" text-anchor="middle" class="label">……</text>
+
+  <rect x="755" y="175" width="155" height="58" rx="8" class="key"/><text x="832" y="211" text-anchor="middle" class="label">K1</text>
+  <rect x="755" y="247" width="155" height="58" rx="8" class="key"/><text x="832" y="283" text-anchor="middle" class="label">K2</text>
+  <rect x="755" y="319" width="155" height="58" rx="8" fill="#FED7AA" stroke="#EA580C" stroke-width="3"/><text x="832" y="346" text-anchor="middle" class="label">K3</text><text x="832" y="367" text-anchor="middle" class="note">匹配较强</text>
+  <rect x="755" y="391" width="155" height="58" rx="8" class="key"/><text x="832" y="427" text-anchor="middle" class="label">K4</text>
+  <rect x="755" y="463" width="155" height="58" rx="8" class="key"/><text x="832" y="499" text-anchor="middle" class="label">其他 K</text>
+
+  <rect x="950" y="175" width="155" height="58" rx="8" class="value"/><text x="1027" y="211" text-anchor="middle" class="label">V1</text>
+  <rect x="950" y="247" width="155" height="58" rx="8" class="value"/><text x="1027" y="283" text-anchor="middle" class="label">V2</text>
+  <rect x="950" y="319" width="155" height="58" rx="8" fill="#DCFCE7" stroke="#16A34A" stroke-width="3"/><text x="1027" y="346" text-anchor="middle" class="label">V3</text><text x="1027" y="367" text-anchor="middle" class="note">贡献较多</text>
+  <rect x="950" y="391" width="155" height="58" rx="8" class="value"/><text x="1027" y="427" text-anchor="middle" class="label">V4</text>
+  <rect x="950" y="463" width="155" height="58" rx="8" class="value"/><text x="1027" y="499" text-anchor="middle" class="label">其他 V</text>
+
+  <path d="M500 228 H530 V540 H735 V492" fill="none" stroke="#EA580C" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  <path d="M735 204 V492 M735 204 H755 M735 276 H755 M735 348 H755 M735 420 H755 M735 492 H755" fill="none" stroke="#EA580C" stroke-width="2"/>
+  <text x="545" y="532" class="note">Q7 与每条 K 点积</text>
+  <path d="M910 348 H950" fill="none" stroke="#16A34A" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  <rect x="260" y="570" width="680" height="70" rx="10" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="600" y="599" text-anchor="middle" class="head">3  用 Q/K 得到的权重汇总所有 V</text>
+  <text x="600" y="626" text-anchor="middle" class="note">输出会写回位置 7 的表示；“杯子”权重较高只是示意，不是人工规则</text>
+
+  <line x1="65" y1="660" x2="100" y2="660" stroke="#2563EB" stroke-width="3" marker-end="url(#arrow-blue)"/><text x="112" y="665" class="note">查询</text>
+  <line x1="205" y1="660" x2="240" y2="660" stroke="#EA580C" stroke-width="3" marker-end="url(#arrow-orange)"/><text x="252" y="665" class="note">匹配</text>
+  <line x1="345" y1="660" x2="380" y2="660" stroke="#16A34A" stroke-width="3" marker-end="url(#arrow-green)"/><text x="392" y="665" class="note">信息汇总</text>
+</svg>
