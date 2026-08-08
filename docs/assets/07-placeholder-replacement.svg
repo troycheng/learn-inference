@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 720" width="1400" height="720">
+  <defs><marker id="c" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:18px;font-weight:700;text-anchor:middle}.label{font-size:18px;font-weight:700}.t{font-size:15px;text-anchor:middle}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#c)}</style>
+  <rect width="1400" height="720" fill="#fff"/><text x="55" y="58" class="title">视觉向量替换输入序列中的图片占位位置</text><text x="55" y="92" class="sub">占位符确定位置，视觉编码器的输出提供图片内容。</text>
+  <text x="55" y="165" class="label">Chat Template</text>
+  <rect x="55" y="190" width="250" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="180" y="238" class="h">vision_start</text>
+  <rect x="320" y="190" width="250" height="80" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="445" y="238" class="h">image_pad</text>
+  <rect x="585" y="190" width="250" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="710" y="238" class="h">vision_end</text>
+  <rect x="850" y="190" width="470" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1085" y="238" class="h">“这张图片里有什么？”</text>
+  <path d="M445 270 V350" class="line"/><text x="500" y="316" class="sub">按视觉位置数扩展</text>
+  <text x="55" y="395" class="label">进入 Decoder 前</text>
+  <rect x="55" y="425" width="250" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="180" y="464" class="h">文本向量</text><text x="180" y="495" class="t">vision_start [H]</text>
+  <rect x="320" y="395" width="515" height="160" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="578" y="438" class="h">256 条视觉向量</text><text x="578" y="478" class="t">图片占位位置的文本 Embedding 被替换</text><text x="578" y="518" class="h">[256,H]</text>
+  <rect x="850" y="425" width="220" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="960" y="464" class="h">文本向量</text><text x="960" y="495" class="t">vision_end [H]</text>
+  <rect x="1085" y="425" width="235" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1203" y="464" class="h">用户文字向量</text><text x="1203" y="495" class="t">若干个 [H]</text>
+  <text x="700" y="635" class="h">整条混合序列：[B,T,H]</text><text x="700" y="670" class="sub" text-anchor="middle">Decoder 不需要另一套视觉输入接口，它接收的仍是一组 H 维向量。</text>
+</svg>

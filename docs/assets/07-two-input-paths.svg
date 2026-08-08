@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 700" width="1400" height="700">
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:18px;font-weight:700;text-anchor:middle}.s{font-size:14px;fill:#6b7280;text-anchor:middle}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#a)}</style>
+  <rect width="1400" height="700" fill="#fff"/><text x="55" y="58" class="title">文字和图片从不同入口变成同宽向量</text><text x="55" y="92" class="sub">两条路径在 Decoder 前汇合，最后一维都必须等于语言模型 Hidden Size H。</text>
+  <rect x="55" y="180" width="170" height="90" rx="13" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="140" y="217" class="h">文字</text><text x="140" y="246" class="s">字符串</text><path d="M225 225 H310" class="line"/>
+  <rect x="310" y="180" width="190" height="90" rx="13" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="405" y="217" class="h">Tokenizer</text><text x="405" y="246" class="s">Token IDs</text><path d="M500 225 H585" class="line"/>
+  <rect x="585" y="180" width="220" height="90" rx="13" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="695" y="217" class="h">文本 Embedding</text><text x="695" y="246" class="s">[文本位置数,H]</text>
+  <rect x="55" y="420" width="170" height="90" rx="13" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="140" y="457" class="h">图片</text><text x="140" y="486" class="s">像素数组</text><path d="M225 465 H310" class="line"/>
+  <rect x="310" y="420" width="190" height="90" rx="13" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="405" y="457" class="h">Patch</text><text x="405" y="486" class="s">局部像素块</text><path d="M500 465 H585" class="line"/>
+  <rect x="585" y="420" width="220" height="90" rx="13" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="695" y="457" class="h">视觉编码与 Merger</text><text x="695" y="486" class="s">[视觉位置数,H]</text>
+  <path d="M805 225 H900 V335 H975" class="line"/><path d="M805 465 H900 V355 H975" class="line"/>
+  <rect x="975" y="290" width="200" height="110" rx="15" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="1075" y="333" class="h">混合输入序列</text><text x="1075" y="368" class="s">[B,T,H]</text><path d="M1175 345 H1245" class="line"/>
+  <rect x="1245" y="290" width="120" height="110" rx="15" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1305" y="333" class="h">语言</text><text x="1305" y="362" class="h">Decoder</text>
+  <text x="700" y="625" class="sub" text-anchor="middle">图片没有先变成文字；视觉向量与文本向量直接组成同一条输入序列。</text>
+</svg>
