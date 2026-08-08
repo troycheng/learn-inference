@@ -739,7 +739,7 @@ X → Q/K/V → QK^T/sqrt(D) → Causal Mask → Softmax → 权重×V → 多�
 Qwen3.5-9B：16 个 Q 头；4 个 K/V 头；每 4 个 Q 头共享一组 K/V；每头 256 维
 ```
 
-还要能解释每一步为什么存在，而不只是背出名称。下一课会把这张静态结构图放到真实生成过程中，看 Prefill、Decode 和 KV Cache 怎样配合。
+还要能解释每一步为什么存在，而不只是背出名称。[第 4 课](04-prefill-decode-kv-cache.md)会把这张静态结构图放到真实生成过程中，看 Prefill、Decode 和 KV Cache 怎样配合。
 
 ## 资料来源
 

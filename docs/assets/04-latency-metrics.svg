@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="560" viewBox="0 0 1200 560" role="img" aria-labelledby="title desc">
+  <title id="title">TTFT、TPOT 和 ITL 的时间范围</title>
+  <desc id="desc">TTFT 从请求发出到首 token 到达。ITL 是相邻输出 token 的间隔。TPOT 是排除首 token 后的平均输出时间。</desc>
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2563EB"/></marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#EA580C"/></marker>
+    <style>
+      text { font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill: #111827; }
+      .title { font-size: 31px; font-weight: 700; }
+      .head { font-size: 20px; font-weight: 700; }
+      .label { font-size: 17px; font-weight: 600; }
+      .note { font-size: 15px; fill: #6B7280; }
+      .axis { stroke: #94A3B8; stroke-width: 3; }
+      .tick { stroke: #64748B; stroke-width: 2; }
+      .ttft { fill: none; stroke: #2563EB; stroke-width: 3; marker-end: url(#arrow-blue); }
+      .itl { fill: none; stroke: #EA580C; stroke-width: 2.5; marker-end: url(#arrow-orange); }
+    </style>
+  </defs>
+  <rect width="1200" height="560" fill="#FFFFFF"/>
+  <text x="55" y="58" class="title">同一条时间线，三个指标看不同区间</text>
+  <text x="55" y="94" class="note">以下是客户端视角。服务端内部指标是否包含网络和排队，要看具体采集口径。</text>
+
+  <line x1="95" y1="280" x2="1110" y2="280" class="axis"/>
+  <line x1="110" y1="260" x2="110" y2="300" class="tick"/>
+  <circle cx="110" cy="280" r="9" fill="#64748B"/>
+  <text x="110" y="332" text-anchor="middle" class="label">请求发出</text>
+
+  <rect x="230" y="215" width="300" height="52" rx="10" fill="#F3F4F6" stroke="#D1D5DB"/>
+  <text x="380" y="247" text-anchor="middle" class="label">输入处理、排队、Prefill、采样</text>
+
+  <line x1="610" y1="260" x2="610" y2="300" class="tick"/>
+  <circle cx="610" cy="280" r="13" fill="#2563EB"/>
+  <text x="610" y="332" text-anchor="middle" class="label">y1 到达</text>
+  <text x="610" y="356" text-anchor="middle" class="note">首 token</text>
+
+  <line x1="765" y1="260" x2="765" y2="300" class="tick"/>
+  <circle cx="765" cy="280" r="11" fill="#EA580C"/>
+  <text x="765" y="332" text-anchor="middle" class="label">y2</text>
+
+  <line x1="925" y1="260" x2="925" y2="300" class="tick"/>
+  <circle cx="925" cy="280" r="11" fill="#EA580C"/>
+  <text x="925" y="332" text-anchor="middle" class="label">y3</text>
+
+  <line x1="1080" y1="260" x2="1080" y2="300" class="tick"/>
+  <circle cx="1080" cy="280" r="11" fill="#EA580C"/>
+  <text x="1080" y="332" text-anchor="middle" class="label">y4</text>
+
+  <path d="M110 177V145H610V177" fill="none" stroke="#2563EB" stroke-width="3"/>
+  <text x="360" y="132" text-anchor="middle" class="head" fill="#2563EB">TTFT：请求发出到 y1 到达</text>
+
+  <path d="M610 405V382H765V405" class="itl"/>
+  <text x="687" y="436" text-anchor="middle" class="label" fill="#EA580C">ITL 1</text>
+  <path d="M765 405V382H925V405" class="itl"/>
+  <text x="845" y="436" text-anchor="middle" class="label" fill="#EA580C">ITL 2</text>
+  <path d="M925 405V382H1080V405" class="itl"/>
+  <text x="1002" y="436" text-anchor="middle" class="label" fill="#EA580C">ITL 3</text>
+
+  <rect x="515" y="476" width="630" height="56" rx="10" fill="#FFF7ED" stroke="#FED7AA"/>
+  <text x="830" y="510" text-anchor="middle" class="label">TPOT = (y4 到达时间 - y1 到达时间) / 3</text>
+  <text x="85" y="510" class="note">E2E 是从请求发出到完整响应结束</text>
+</svg>

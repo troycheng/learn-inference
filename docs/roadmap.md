@@ -142,6 +142,8 @@ Hidden State
 
 ## 第 4 课：读完 Prompt 之后，模型怎样逐个生成 token
 
+正文：[第 4 课：读完 Prompt 之后，模型怎样逐个生成 token](lessons/04-prefill-decode-kv-cache.md)
+
 第 3 课看到的是一张静态 Attention 图。第 4 课沿着一次真实请求往前走，把每一步发生的时间和保存的状态接起来。
 
 开头只看一个请求。假设 Prompt 有 4 个 token，模型要继续生成 3 个 token：
@@ -154,7 +156,7 @@ Hidden State
 生成第 3 步：         y1 y2 y3
 ```
 
-Prompt 的 4 个 token 都已经由用户给出，所以可以在一次前向计算中同时处理。`y2` 却依赖 `y1` 实际选中了什么；在 `y1` 确定前，`y2` 的输入并不存在。这是 Prefill 可以并行处理多个位置，而普通 Decode 仍要逐步进行的根本原因。
+Prompt 的 4 个 token 都已经给出，可以作为一段已知输入送进模型。`y2` 却依赖 `y1` 实际选中了什么；在 `y1` 确定前，`y2` 的输入并不存在。这是 Prefill 能处理多个已知位置，而普通 Decode 仍要逐步进行的根本原因。
 
 ### Prefill 实际留下了什么
 

@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+  <title id="title">不同请求的已知 token 可以组成同一轮执行</title>
+  <desc id="desc">请求 A 和 B 各贡献一个 Decode token，请求 C 贡献四个 Prefill token。调度器把六个已知 token 打包，但保留各自的序列边界、位置和缓存地址。</desc>
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2563EB"/></marker>
+    <style>
+      text { font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill: #111827; }
+      .title { font-size: 31px; font-weight: 700; }
+      .head { font-size: 22px; font-weight: 700; }
+      .label { font-size: 17px; font-weight: 600; }
+      .note { font-size: 15px; fill: #6B7280; }
+      .panel { fill: #FFFFFF; stroke: #D1D5DB; stroke-width: 2; }
+      .a { fill: #DBEAFE; stroke: #93C5FD; stroke-width: 1.5; }
+      .b { fill: #DCFCE7; stroke: #86EFAC; stroke-width: 1.5; }
+      .c { fill: #FED7AA; stroke: #FDBA74; stroke-width: 1.5; }
+      .flow { fill: none; stroke: #2563EB; stroke-width: 3; marker-end: url(#arrow-blue); }
+    </style>
+  </defs>
+  <rect width="1200" height="650" fill="#FFFFFF"/>
+  <text x="55" y="58" class="title">同一请求逐步生成，不妨碍不同请求一起执行</text>
+  <text x="55" y="94" class="note">本轮只打包已经确定的输入。未来 token 仍要等各自上一轮完成。</text>
+
+  <rect x="45" y="130" width="320" height="430" rx="18" class="panel"/>
+  <text x="205" y="169" text-anchor="middle" class="head">等待调度的工作</text>
+  <rect x="78" y="212" width="254" height="76" rx="12" fill="#EFF6FF" stroke="#BFDBFE"/>
+  <text x="100" y="241" class="label">请求 A</text><text x="100" y="269" class="note">Decode：输入 a5，共 1 token</text>
+  <rect x="78" y="313" width="254" height="76" rx="12" fill="#F0FDF4" stroke="#BBF7D0"/>
+  <text x="100" y="342" class="label">请求 B</text><text x="100" y="370" class="note">Decode：输入 b2，共 1 token</text>
+  <rect x="78" y="414" width="254" height="96" rx="12" fill="#FFF7ED" stroke="#FED7AA"/>
+  <text x="100" y="443" class="label">请求 C</text><text x="100" y="471" class="note">Prefill Chunk：c1 到 c4</text><text x="100" y="495" class="note">共 4 token</text>
+
+  <rect x="430" y="218" width="300" height="255" rx="18" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
+  <text x="580" y="259" text-anchor="middle" class="head">调度器</text>
+  <text x="580" y="296" text-anchor="middle" class="note">按本轮 token 预算选择工作</text>
+  <rect x="482" y="330" width="196" height="76" rx="11" fill="#FFFFFF" stroke="#D1D5DB"/>
+  <text x="580" y="359" text-anchor="middle" class="label">保留每个 token 的</text>
+  <text x="580" y="387" text-anchor="middle" class="note">请求、位置、因果边界、Cache 地址</text>
+  <path d="M365 345H425" class="flow"/>
+
+  <rect x="795" y="130" width="360" height="430" rx="18" class="panel"/>
+  <text x="975" y="169" text-anchor="middle" class="head">本轮 Batched Tokens = 6</text>
+  <g transform="translate(830 218)">
+    <rect x="0" y="0" width="70" height="64" rx="9" class="a"/><text x="35" y="38" text-anchor="middle" class="label">a5</text>
+    <rect x="82" y="0" width="70" height="64" rx="9" class="b"/><text x="117" y="38" text-anchor="middle" class="label">b2</text>
+    <rect x="164" y="0" width="70" height="64" rx="9" class="c"/><text x="199" y="38" text-anchor="middle" class="label">c1</text>
+    <rect x="246" y="0" width="70" height="64" rx="9" class="c"/><text x="281" y="38" text-anchor="middle" class="label">c2</text>
+    <rect x="164" y="78" width="70" height="64" rx="9" class="c"/><text x="199" y="116" text-anchor="middle" class="label">c3</text>
+    <rect x="246" y="78" width="70" height="64" rx="9" class="c"/><text x="281" y="116" text-anchor="middle" class="label">c4</text>
+  </g>
+  <rect x="843" y="402" width="264" height="98" rx="11" fill="#F8FAFC" stroke="#E5E7EB"/>
+  <text x="975" y="432" text-anchor="middle" class="label">Linear / FFN 可批量计算</text>
+  <text x="975" y="462" text-anchor="middle" class="note">Token Mixer 仍按三条序列隔离</text>
+  <text x="975" y="485" text-anchor="middle" class="note">A、B、C 不会互相读取状态</text>
+  <path d="M730 345H790" class="flow"/>
+
+  <g transform="translate(72 600)">
+    <rect x="0" y="-17" width="24" height="24" rx="5" class="a"/><text x="34" y="2" class="note">A 的 Decode token</text>
+    <rect x="225" y="-17" width="24" height="24" rx="5" class="b"/><text x="259" y="2" class="note">B 的 Decode token</text>
+    <rect x="450" y="-17" width="24" height="24" rx="5" class="c"/><text x="484" y="2" class="note">C 的 Prefill token</text>
+  </g>
+</svg>
