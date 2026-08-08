@@ -1,0 +1,5 @@
+2026-08-08 17:59:25 CST
+
+This research uses arXiv materials. Please review the arXiv API Terms of Use at
+https://info.arxiv.org/help/api/index.html and check each paper's license before
+redistributing retrieved material.

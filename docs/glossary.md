@@ -135,6 +135,20 @@
 | 输出门控 | Output Gate / `z` | 在状态读出并归一化后，逐元素调节本层输出 |
 | 分块递归计算 | Chunk Gated Delta Rule | 把已知序列的递归更新改写为分块矩阵计算，并在块间传递状态 |
 
+## 多模态输入
+
+| 正文用词 | 英文或代码名 | 简短含义 |
+| --- | --- | --- |
+| 图像块 | Patch | 从图片或视频帧中切出的固定大小局部像素块 |
+| 图像块嵌入 | Patch Embedding | 用可学习投影把局部像素块变成视觉特征向量 |
+| 视觉编码器 | Vision Encoder | 在 Patch 位置之间交换信息并加工视觉特征的网络 |
+| 视觉位置 | Visual Token / Visual Position | 视觉编码器和 Merger 产生、最终送入语言 Decoder 的向量位置 |
+| 视觉特征合并器 | Patch Merger / Merger | 拼接相邻视觉特征，并投影到语言模型 Hidden Size |
+| 图片占位符 | Image Placeholder / `image_pad` | 在统一输入序列中标记视觉向量应放入的位置 |
+| 多模态旋转位置编码 | Multimodal RoPE / MRoPE | 为同一输入位置提供时间、高度和宽度坐标的 RoPE 变体 |
+| 交错式多模态旋转位置编码 | Interleaved MRoPE | 把不同 RoPE 频率交错分配给时间、高度和宽度三个轴 |
+| 时间图像块 | Temporal Patch | 由相邻若干视频帧组成的视觉时间单元 |
+
 ## 书写约定
 
 - `token` 在正文中通常小写；正式组件名 `Tokenizer`、`Token ID` 保留大写。

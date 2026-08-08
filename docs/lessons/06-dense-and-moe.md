@@ -410,7 +410,7 @@ Hidden States [B,T,H]
 
 还要能解释为什么 Sparse Activation 主要减少每个 token 使用的 Expert 参数，却没有让未激活的权重从模型存储中消失。
 
-第 7 课会把图片和视频接入目前只处理文字的链路，解释视觉输入怎样变成语言 Decoder 可以接收的向量。
+[第 7 课](07-multimodal-input.md)会把图片和视频接入目前只处理文字的链路，解释视觉输入怎样变成语言 Decoder 可以接收的向量。
 
 ## 资料来源
 
