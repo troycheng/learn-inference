@@ -47,7 +47,7 @@ flowchart LR
 2. [第 1 课：模型如何生成下一个 token](docs/lessons/01-text-to-next-token.md)
 3. [第 2 课：Decoder Layer 内部的数据流](docs/lessons/02-inside-a-decoder-layer.md)
 4. [第 3 课：图解 Attention 的完整计算过程](docs/lessons/03-attention.md)
-5. [第 4 课设计：读完 Prompt 之后，模型怎样逐个生成 token](docs/roadmap.md#第-4-课读完-prompt-之后模型怎样逐个生成-token)
+5. [第 4 课：读完 Prompt 之后，模型怎样逐个生成 token](docs/lessons/04-prefill-decode-kv-cache.md)
 6. [完整课程路线](docs/roadmap.md)
 7. [课程术语与符号表](docs/glossary.md)
 8. [课程讲解原则](docs/teaching-method.md)
@@ -60,7 +60,7 @@ flowchart LR
 - 课程讲解规范：已完成；
 - 第 0～2 课正文：已完成第一轮学习和修改，仍会根据阅读反馈继续打磨；
 - 第 3 课正文：已重写 Attention 和 RoPE 的讲解，等待学习反馈；
-- 第 4 课：已完成内容设计，正文待编写；
+- 第 4 课正文：已完成本轮编写，等待学习反馈；
 - 第 5～9 课正文：待逐课学习、问答和整理；
 - 旧版第 1 课和第 2 课：已归档。
 

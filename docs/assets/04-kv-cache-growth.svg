@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="670" viewBox="0 0 1200 670" role="img" aria-labelledby="title desc">
+  <title id="title">一步 Decode 怎样读写 KV Cache</title>
+  <desc id="desc">新 token 产生一条 Q、K、V。新 Q 读取历史 K 与当前 K，Attention 权重汇总历史 V 与当前 V，新 K/V 则追加到缓存。</desc>
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2563EB"/></marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#16A34A"/></marker>
+    <style>
+      text { font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill: #111827; }
+      .title { font-size: 31px; font-weight: 700; }
+      .head { font-size: 22px; font-weight: 700; }
+      .label { font-size: 17px; font-weight: 600; }
+      .note { font-size: 15px; fill: #6B7280; }
+      .panel { fill: #FFFFFF; stroke: #D1D5DB; stroke-width: 2; }
+      .old { fill: #DCFCE7; stroke: #86EFAC; stroke-width: 1.5; }
+      .new { fill: #FED7AA; stroke: #FDBA74; stroke-width: 1.5; }
+      .query { fill: #DBEAFE; stroke: #93C5FD; stroke-width: 1.5; }
+      .blue-flow { fill: none; stroke: #2563EB; stroke-width: 2.5; marker-end: url(#arrow-blue); }
+      .green-flow { fill: none; stroke: #16A34A; stroke-width: 2.5; marker-end: url(#arrow-green); }
+    </style>
+  </defs>
+  <rect width="1200" height="670" fill="#FFFFFF"/>
+  <text x="55" y="58" class="title">一步 Decode：新 Q 读取全部历史，新 K/V 追加到缓存</text>
+  <text x="55" y="94" class="note">示意图只画一个 Full Attention 层。真实模型的每个 Full Attention 层都有自己的缓存。</text>
+
+  <rect x="45" y="130" width="340" height="450" rx="18" class="panel"/>
+  <text x="215" y="169" text-anchor="middle" class="head">Decode 前</text>
+  <text x="70" y="211" class="label">K Cache [B,Nkv,4,D]</text>
+  <g transform="translate(70 230)">
+    <rect x="0" y="0" width="65" height="54" rx="8" class="old"/><text x="32" y="34" text-anchor="middle" class="label">K p1</text>
+    <rect x="72" y="0" width="65" height="54" rx="8" class="old"/><text x="104" y="34" text-anchor="middle" class="label">K p2</text>
+    <rect x="144" y="0" width="65" height="54" rx="8" class="old"/><text x="176" y="34" text-anchor="middle" class="label">K p3</text>
+    <rect x="216" y="0" width="65" height="54" rx="8" class="old"/><text x="248" y="34" text-anchor="middle" class="label">K p4</text>
+  </g>
+  <text x="70" y="333" class="label">V Cache [B,Nkv,4,D]</text>
+  <g transform="translate(70 352)">
+    <rect x="0" y="0" width="65" height="54" rx="8" class="old"/><text x="32" y="34" text-anchor="middle" class="label">V p1</text>
+    <rect x="72" y="0" width="65" height="54" rx="8" class="old"/><text x="104" y="34" text-anchor="middle" class="label">V p2</text>
+    <rect x="144" y="0" width="65" height="54" rx="8" class="old"/><text x="176" y="34" text-anchor="middle" class="label">V p3</text>
+    <rect x="216" y="0" width="65" height="54" rx="8" class="old"/><text x="248" y="34" text-anchor="middle" class="label">V p4</text>
+  </g>
+  <rect x="70" y="458" width="281" height="79" rx="10" fill="#F8FAFC" stroke="#E5E7EB"/>
+  <text x="210" y="488" text-anchor="middle" class="label">历史位置不再重算</text>
+  <text x="210" y="518" text-anchor="middle" class="note">它们以后仍可接受新 Q 的查询</text>
+
+  <rect x="430" y="130" width="340" height="450" rx="18" class="panel"/>
+  <text x="600" y="169" text-anchor="middle" class="head">处理新 token y1</text>
+  <rect x="478" y="218" width="105" height="58" rx="9" class="query"/><text x="530" y="254" text-anchor="middle" class="label">q_new</text>
+  <rect x="617" y="218" width="105" height="58" rx="9" class="new"/><text x="669" y="254" text-anchor="middle" class="label">k_new</text>
+  <rect x="617" y="310" width="105" height="58" rx="9" class="new"/><text x="669" y="346" text-anchor="middle" class="label">v_new</text>
+  <rect x="478" y="310" width="105" height="58" rx="9" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5"/>
+  <text x="530" y="336" text-anchor="middle" class="label">Attention</text>
+  <text x="530" y="357" text-anchor="middle" class="note">1 × 5</text>
+  <path d="M530 276V305" class="blue-flow"/>
+  <path d="M617 247H592V326H588" class="blue-flow"/>
+  <path d="M617 339H592V352H588" class="blue-flow"/>
+  <rect x="495" y="425" width="210" height="63" rx="10" fill="#DBEAFE" stroke="#93C5FD"/>
+  <text x="600" y="452" text-anchor="middle" class="label">当前位置输出</text>
+  <text x="600" y="475" text-anchor="middle" class="note">再进入 o_proj 和残差</text>
+  <path d="M530 368V405H600V420" class="blue-flow"/>
+
+  <rect x="815" y="130" width="340" height="450" rx="18" class="panel"/>
+  <text x="985" y="169" text-anchor="middle" class="head">Decode 后</text>
+  <text x="840" y="211" class="label">K Cache [B,Nkv,5,D]</text>
+  <g transform="translate(840 230)">
+    <rect x="0" y="0" width="52" height="54" rx="8" class="old"/><text x="26" y="34" text-anchor="middle" class="label">p1</text>
+    <rect x="58" y="0" width="52" height="54" rx="8" class="old"/><text x="84" y="34" text-anchor="middle" class="label">p2</text>
+    <rect x="116" y="0" width="52" height="54" rx="8" class="old"/><text x="142" y="34" text-anchor="middle" class="label">p3</text>
+    <rect x="174" y="0" width="52" height="54" rx="8" class="old"/><text x="200" y="34" text-anchor="middle" class="label">p4</text>
+    <rect x="232" y="0" width="65" height="54" rx="8" class="new"/><text x="264" y="34" text-anchor="middle" class="label">y1</text>
+  </g>
+  <text x="840" y="333" class="label">V Cache [B,Nkv,5,D]</text>
+  <g transform="translate(840 352)">
+    <rect x="0" y="0" width="52" height="54" rx="8" class="old"/><text x="26" y="34" text-anchor="middle" class="label">p1</text>
+    <rect x="58" y="0" width="52" height="54" rx="8" class="old"/><text x="84" y="34" text-anchor="middle" class="label">p2</text>
+    <rect x="116" y="0" width="52" height="54" rx="8" class="old"/><text x="142" y="34" text-anchor="middle" class="label">p3</text>
+    <rect x="174" y="0" width="52" height="54" rx="8" class="old"/><text x="200" y="34" text-anchor="middle" class="label">p4</text>
+    <rect x="232" y="0" width="65" height="54" rx="8" class="new"/><text x="264" y="34" text-anchor="middle" class="label">y1</text>
+  </g>
+  <rect x="840" y="458" width="290" height="79" rx="10" fill="#F0FDF4" stroke="#BBF7D0"/>
+  <text x="985" y="488" text-anchor="middle" class="label">长度从 4 变成 5</text>
+  <text x="985" y="518" text-anchor="middle" class="note">下一轮继续读取并追加</text>
+
+  <path d="M351 257H413V326H473" class="blue-flow"/>
+  <path d="M351 379H407V352H473" class="blue-flow"/>
+  <path d="M722 247H790V257H835" class="green-flow"/>
+  <path d="M722 339H790V379H835" class="green-flow"/>
+  <g transform="translate(55 620)">
+    <line x1="0" y1="0" x2="32" y2="0" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/><text x="43" y="6" class="note">读取并计算</text>
+    <line x1="190" y1="0" x2="222" y2="0" stroke="#16A34A" stroke-width="2.5" marker-end="url(#arrow-green)"/><text x="233" y="6" class="note">追加到缓存</text>
+    <rect x="410" y="-18" width="24" height="24" rx="5" class="old"/><text x="444" y="2" class="note">历史 K/V</text>
+    <rect x="580" y="-18" width="24" height="24" rx="5" class="new"/><text x="614" y="2" class="note">当前 token 的 K/V</text>
+  </g>
+</svg>

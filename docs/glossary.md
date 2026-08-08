@@ -93,6 +93,21 @@
 | 旋转位置编码 | Rotary Position Embedding / RoPE | 按各自位置旋转 Q/K，使点积中的位置影响通过两个 token 的相对距离进入 |
 | 输出投影 | Output Projection / `o_proj` | 重新混合各头结果并回到 H 维的 Linear |
 
+## 生成过程与请求状态
+
+| 正文用词 | 英文或代码名 | 简短含义 |
+| --- | --- | --- |
+| 提示词处理 | Prefill | 处理已经给出的 Prompt，建立请求状态并产生预测首个输出 token 的 Logits |
+| 逐 token 生成 | Decode | 把已经选出的最新 token 送入模型，更新请求状态并预测下一个 token |
+| 键值缓存 | KV Cache | Full Attention 各层保存的历史 K/V，供后续 token 的新 Q 读取 |
+| 递归状态 | Recurrent State | 把历史信息持续更新进固定 shape 状态的运行时数据 |
+| 前缀缓存 | Prefix Cache | 让具有相同前缀的请求复用已经计算好的前缀状态 |
+| 连续批处理 | Continuous Batching | 在模型执行轮次之间移除、保留或加入请求，重新组织 Batch |
+| 分块提示词处理 | Chunked Prefill | 把已经给出的长 Prompt 分段计算，并在各段之间延续请求状态 |
+| 首 token 延迟 | Time to First Token / TTFT | 从约定的请求起点到首个输出 token 的时间；使用前要确认计时边界 |
+| Token 间延迟 | Inter-token Latency / ITL | 相邻两个输出 token 到达时间之差 |
+| 每输出 token 时间 | Time per Output Token / TPOT | 通常指排除首 token 后，后续输出 token 的平均间隔 |
+
 ## 书写约定
 
 - `token` 在正文中通常小写；正式组件名 `Tokenizer`、`Token ID` 保留大写。
