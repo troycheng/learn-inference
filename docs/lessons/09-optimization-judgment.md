@@ -1,35 +1,48 @@
 # 第 9 课：一种优化到底有没有用
 
-推理优化的名词很多，但判断方法可以固定下来。遇到任何方案，先回答五个问题：
+推理优化的名字很多。判断一种方案有没有用，可以先把问题拆成五步：
 
 ```text
-1. 它直接改变了链路中的哪个对象？
-2. 理论上少算、少存或少搬了什么？
-3. 新增了什么成本？
-4. 哪种 workload 才能兑现收益？
-5. 用什么端到端指标裁决？
+1. 它改了哪段计算、哪份数据或哪条调度规则？
+2. 因此少做了多少计算，少占了多少显存，或少传了多少数据？
+3. 它又增加了哪些计算、通信、缓存或排队时间？
+4. 哪种输入长度、输出长度、并发和硬件配置下可能更快？
+5. 最后用哪些端到端指标比较？
 ```
 
-如果第一问都说不清，后面的“提速百分比”通常没有可靠基础。
+如果第一步说不清，后面的“提速百分比”就无法解释，也很难复现。
 
-![常见优化分别改了推理链路中的什么](../assets/09-optimization-map.svg)
+![常见优化分别改了哪些计算、数据和调度](../assets/09-optimization-map.svg)
 
-这一课不会给每种优化下一个永远成立的结论，而是把量化、FlashAttention、Prefix Cache、Batching、TP、EP 和推测解码放回前八课建立的成本模型中。
+这一课不预设哪种优化一定有效。下面逐项说明量化、FlashAttention、Prefix Cache、Batching、TP、EP 和推测解码改了什么，以及应该怎样测。
 
-## 1. 先建立统一判断表
+## 1. 每种优化具体改了什么
 
-| 优化 | 直接改变的对象 | 首先可能改善 | 最常见的代价 |
+| 优化 | 直接改动 | 可能先改善什么 | 需要同时计入什么 |
 | --- | --- | --- | --- |
-| 权重量化 | 权重编码与 Linear Kernel | 权重容量、Decode 权重读取 | 质量、反量化、Kernel 不匹配 |
-| KV 量化 | Full Attention 请求状态 | 长上下文容量、KV 读取 | 质量、Scale、只覆盖 KV |
-| FlashAttention | Full Attention 中间数据流 | 长序列 Prefill、临时显存 | 只优化 Attention 子图 |
-| Prefix Cache | 跨请求的前缀状态复用 | 重复前缀 TTFT | 命中率、驱逐、状态兼容 |
-| Batching | 一次执行包含的 token | GPU 利用率、吞吐 | 排队和尾延迟 |
-| TP | 同一层矩阵的设备分片 | 单卡容量、单请求计算 | 层间集合通信 |
-| EP | Routed Expert 的设备分布 | MoE 容量与吞吐 | Dispatch、负载倾斜 |
-| 推测解码 / MTP | 每次目标模型验证的位置数 | 低并发 TPOT | 草稿成本、拒绝浪费、Cache 占用 |
+| 权重量化 | 用低比特格式保存 Linear 权重，并换用相应 Kernel | 权重显存、Decode 读取权重的字节数 | 质量、Scale、反量化、Kernel 回退 |
+| KV 量化 | 用低比特格式保存 Full Attention 的 K/V | 长上下文容量、读取历史 K/V 的字节数 | 质量、Scale、量化与反量化开销 |
+| FlashAttention | 分块计算 Attention，不把完整中间矩阵写入 HBM | 长序列 Prefill、临时显存 | 只影响 Full Attention |
+| Prefix Cache | 让后续请求复用完全相同的前缀状态 | 重复前缀请求的 TTFT | 命中率、驱逐、状态兼容性 |
+| Batching | 改变每轮放入多少 token，以及哪些请求一起执行 | GPU 利用率、吞吐 | 排队、尾延迟、调度开销 |
+| TP | 把同一层的矩阵切到多张 GPU 上，再合并部分结果 | 单卡容量、单请求计算时间 | 集合通信、同步、小矩阵效率 |
+| EP | 按 Expert ID 分布权重，并在设备间分发 token | MoE 容量、Expert 计算吞吐 | Dispatch、Combine、负载倾斜 |
+| 推测解码 / MTP | 先提出候选，再让目标模型一次验证多个位置 | 低并发 TPOT | Drafter、候选状态、被拒绝候选的计算 |
 
-先定位对象，是为了避免把局部收益误认为端到端收益。例如 FlashAttention 只改变 Full Attention 的执行方式，不会直接加速 FFN 和 Gated DeltaNet。
+一项改动通常只影响部分耗时。例如 FlashAttention 减少 Full Attention 的中间读写，但 FFN 和 Gated DeltaNet 仍照常计算。因此，算子时间下降多少，不能直接当成整个请求的加速比例。
+
+### 先统一吞吐统计口径
+
+同一个 `token/s` 可能统计不同内容。比较前要把分子和时间窗口写清楚。本课使用以下口径：
+
+```text
+input token/s  = 测量窗口内完成请求的 Prompt token 总数 / 窗口秒数
+output token/s = 测量窗口内完成请求的输出 token 总数 / 窗口秒数
+goodput        = 窗口内满足预先指定 SLO 的完成请求数 / 窗口秒数
+engine token/s = runtime 实际安排进入模型执行的 token 位置数 / 窗口秒数
+```
+
+`input token/s` 和 `output token/s` 是用户可见工作量。`goodput` 必须同时写出用于逐请求判定的 TTFT、TPOT 等 SLO 阈值；P99 等分位数另行报告。如果工具把 goodput 定义成 token/s 而不是 request/s，也要明确标注。`engine token/s` 是引擎内部工作量，不等于用户收到的 token 数。使用推测解码、Padding 或重算时，还要说明 runtime 的计数器是否包含候选位置、填充位置和重复执行的位置。
 
 ## 2. 权重量化：先问省下的字节能不能被 Kernel 用起来
 
@@ -75,7 +88,7 @@ MoE 每个 Expert 的 GEMM 太小
 执行：量化层是否使用预期 Kernel，有无 fallback
 ```
 
-只看模型文件大小，不能判断量化是否成功兑现性能收益。
+只看模型文件大小，不能判断量化是否真的降低了服务延迟或提高了同 SLO 吞吐。
 
 ## 3. KV 量化：省的是历史状态，不是模型权重
 
@@ -117,7 +130,7 @@ FlashAttention 把 Q/K/V 分块搬到片上 SRAM，在块内维护 Softmax 所�
 
 ![普通 Attention 与 FlashAttention 的数据流](../assets/09-flashattention.svg)
 
-### 它减少什么
+### 减少的 HBM 读写
 
 ```text
 减少：Attention 中间矩阵的 HBM 读写和临时显存
@@ -126,7 +139,7 @@ FlashAttention 把 Q/K/V 分块搬到片上 SRAM，在块内维护 Softmax 所�
 
 FlashAttention 是精确 Attention 算法，不是稀疏 Attention，也不是近似检索。
 
-### Qwen3.5 的边界
+### FlashAttention 不会加速哪些部分
 
 Qwen3.5 只有四分之一语言层是 Full Attention。其余层是 Gated DeltaNet，FlashAttention 不会直接加速它们；Dense 或 MoE FFN 也不在这个子图内。
 
@@ -160,14 +173,14 @@ $$
 收益\propto命中率\times可复用token数\times每token\ Prefill成本
 $$
 
-### 它不是什么
+### Prefix Cache 不能复用什么
 
 - 不是同一请求 Decode 使用的普通 KV Cache。
 - 不是语义缓存。两句话意思接近但 Token ID 不同，不能直接复用内部状态。
 - 不会减少未命中后缀的 Prefill。
 - 不会加速之后每个新 token 的正常 Decode。
 
-Qwen3.5 还是混合模型。可复用前缀不仅包含 Full Attention K/V，还要在正确边界恢复 Gated DeltaNet 的卷积和递归状态。vLLM 固定版本的 Qwen3.5 配方仍把相关 `align` 模式标为 experimental，因此不能只看“Prefix Cache 开关已打开”就假定行为与纯 Attention 模型完全一致。
+Qwen3.5 还是混合模型。可复用前缀不仅包含 Full Attention K/V，还要在正确的 token 位置恢复 Gated DeltaNet 的卷积和递归状态。vLLM 固定版本的 Qwen3.5 配方仍把相关 `align` 模式标为 experimental，因此不能只看“Prefix Cache 开关已打开”就假定行为与纯 Attention 模型完全一致。
 
 ### 怎样验证
 
@@ -182,7 +195,7 @@ Cache 占用
 
 如果请求在很靠前的位置就不同，或者缓存频繁被驱逐，Prefix Cache 可能几乎没有收益。
 
-## 6. Batching：把同一份权重服务给更多 token
+## 6. Batching：一轮处理更多 token
 
 单 token Linear 输入是 `[1,H]`。若一次处理 `M` 个 token，输入变成 `[M,H]`。同一张权重矩阵在一轮中服务更多输入，矩阵规模和权重读取复用通常更好。
 
@@ -194,13 +207,13 @@ Batching 不改变模型公式，改变的是每次执行装入多少工作。
 
 ### Continuous Batching
 
-系统在生成迭代边界重新组织 Batch：完成的请求退出，等待请求进入。不同输出长度造成的空转因此减少。
+系统在每轮生成结束时重新组织 Batch：完成的请求退出，等待请求进入。不同输出长度造成的空转因此减少。
 
 ![Static Batching 与 Continuous Batching](../assets/09-batching.svg)
 
 Continuous Batching 只说明 Batch 成员能动态变化，不自动表示 Prefill chunk 和 Decode token 一定能进入同一次模型执行。混批还需要调度器、执行器和 Kernel 支持。
 
-### 它在交换什么
+### Batch 大小怎样影响吞吐和等待
 
 ```text
 更大 Batch：权重复用和吞吐往往更好，但请求可能排队更久
@@ -211,7 +224,7 @@ Continuous Batching 只说明 Batch 成员能动态变化，不自动表示 Pref
 
 因此，服务优化目标不应只写“最大化离线 token/s”，而应写成：
 
-> 在给定 TTFT、TPOT 和 P99 SLO 下，最大化可持续吞吐。
+> 先满足给定的 TTFT、TPOT 和 P99 SLO，再比较可持续的 request/s、input token/s 和 output token/s。
 
 ## 7. TP：切同一层的矩阵，用通信合并部分结果
 
@@ -229,6 +242,8 @@ down：   按输入特征切分，各卡产生一部分输出
 - 大矩阵计算由多卡分担。
 - Attention 头和部分 KV 状态可以按头分布。
 
+第 8 课已经详讲固定版本 vLLM 在 `Nkv<TP` 时复制 K/V 头的规则。这里仅提醒一点：计算每卡 KV Cache 时，不能只把全局 K/V 头数除以 TP；应按 runtime 实际分配或复制后的本地 K/V 头数计算。
+
 ### 新增成本
 
 - 集合通信进入每层关键路径。
@@ -236,7 +251,7 @@ down：   按输入特征切分，各卡产生一部分输出
 - 小 Batch Decode 的本地计算很少，通信延迟更容易占主导。
 - PCIe、NVLink 和跨节点网络的延迟与带宽差异很大。
 
-判断 TP 是否值得，比较的是：
+判断 TP 是否值得，要比较：
 
 ```text
 每卡少掉的权重读取和计算时间
@@ -246,7 +261,7 @@ vs
 
 更多 GPU 首先解决模型容量和单请求计算分担，不保证吞吐按卡数线性增长。
 
-## 8. EP：切不同 Expert，用 Dispatch 和 Combine 交换 token
+## 8. EP：按 Expert 分配权重并传送 token
 
 Expert Parallelism 把 Routed Expert 分布到不同设备。Router 选完 Top-K 后，token 特征被送到持有相应 Expert 的设备；Expert 算完，再把结果送回原 token 位置。
 
@@ -270,7 +285,7 @@ Batch token 足够多，能形成较大的 Grouped GEMM
 
 Qwen3.5-35B-A3B 的 EP 主要分布 256 个 Routed Experts。Attention、Gated DeltaNet、Router 与 Shared Expert 仍要由其他并行或复制策略处理。
 
-第 6 课已经强调：EP 的稳定边界是 Dispatch 和 Combine，具体使用 All-to-All、All-Reduce 或其他 Dispatcher 取决于 runtime。课程不能把 EP 与某一个 Collective 永久画等号。
+第 6 课已经说明，EP 必须把 token 发给对应 Expert，再把结果送回原 token 位置。具体使用 All-to-All、All-Reduce 还是其他 Dispatcher 取决于 runtime，不能把 EP 固定等同于某一种 Collective。
 
 ## 9. 推测解码：用一次目标模型前向验证多个候选
 
@@ -324,7 +339,7 @@ mtp_num_hidden_layers = 1
 
 启用时，MTP 提出候选，主语言模型仍负责验证。候选接受率、一次提出几个、是否重复使用同一 MTP 层，都由实际模型行为和 runtime 配置决定。
 
-Qwen3.5 的 vLLM 配方把 MTP-1 更偏向低并发、延迟敏感场景，并提醒它可能降低高并发文本吞吐。正确做法是分别测试：
+Qwen3.5 的 vLLM 配方建议优先在低并发、延迟敏感场景尝试 MTP-1，并提醒它可能降低高并发文本吞吐。因此要分别测试：
 
 ```text
 低并发 TPOT
@@ -335,9 +350,9 @@ Lookahead Cache 占用
 MTP 开关前后的质量一致性
 ```
 
-## 11. 把判断过程做成一张检查表
+## 11. 按五步完成一次优化测试
 
-### 第一步：指出被改变的对象
+### 第一步：说清改了哪段执行
 
 ```text
 权重编码？
@@ -349,7 +364,7 @@ Expert 放置？
 自回归目标模型调用次数？
 ```
 
-### 第二步：写出理论上少掉的量
+### 第二步：算出理论上减少的工作
 
 ```text
 INT4：每参数理想从 2 Byte 变成 0.5 Byte
@@ -359,11 +374,11 @@ TP=2：主要矩阵每卡约保存和计算一部分
 推测解码：每次 Target forward 平均确认不止 1 个 token
 ```
 
-### 第三步：列出新增成本
+### 第三步：列出新增开销
 
-反量化、Scale、通信、Hash、Cache 占用、排队、草稿模型、拒绝浪费和质量误差都必须进入判断。
+把新增工作逐项列出，包括 Scale 计算、反量化、Hash、通信、缓存占用、排队和 Drafter。被拒绝候选的计算及质量变化也要单独记录。
 
-### 第四步：固定 workload
+### 第四步：固定请求和运行条件
 
 至少记录：
 
@@ -378,24 +393,27 @@ SLO
 模型 dtype、runtime 版本和关键开关
 ```
 
-### 第五步：用端到端指标裁决
+吞吐测试还要固定统计窗口，并明确报告的是 request/s、input token/s、output token/s、engine token/s 还是 goodput。不同分子得到的数字不能直接横向比较。
+
+### 第五步：比较端到端结果
 
 ```text
 TTFT、TPOT、ITL、P50、P99
-同一 SLO 下 request/s 与 token/s
+同一 SLO 下的 request/s 和 goodput
+input token/s、output token/s 与 engine token/s
 权重、请求状态与临时显存
-跨卡通信时间和真实链路带宽
+跨卡通信时间和实际互联带宽
 目标任务质量
 ```
 
-Kernel 时间用来解释原因，端到端指标决定方案是否值得上线。
+先看端到端延迟、同 SLO 吞吐、显存和质量是否达到目标，再用 Kernel 与通信时间解释收益或回退来自哪里。
 
 ## 12. 三个完整判断例子
 
 ### 例 1：把 Qwen3.5-35B-A3B 从 BF16 改为 INT4
 
 ```text
-改变对象：全部或部分 Linear 权重编码
+直接改动：全部或部分 Linear 权重编码
 理论收益：权重有效载荷显著下降，Decode 权重读取减少
 新增成本：Scale、反量化、未量化层、低比特 Kernel
 收益 workload：小 Batch Decode、显存紧张、硬件有成熟 INT4 Kernel
@@ -407,7 +425,7 @@ Kernel 时间用来解释原因，端到端指标决定方案是否值得上线�
 ### 例 2：为共享 20K 系统 Prompt 开启 Prefix Cache
 
 ```text
-改变对象：跨请求复用完整前缀状态
+直接改动：跨请求复用完整前缀状态
 理论收益：命中请求少做 20K token Prefill
 新增成本：Cache 空间、Hash、块粒度、驱逐和混合状态恢复
 收益 workload：大量请求拥有完全相同的长前缀
@@ -419,11 +437,11 @@ Kernel 时间用来解释原因，端到端指标决定方案是否值得上线�
 ### 例 3：把 TP 从 4 提高到 8
 
 ```text
-改变对象：每层矩阵切得更细
+直接改动：每层矩阵切得更细
 理论收益：每卡权重和本地计算减少，单卡容量压力下降
 新增成本：更频繁或更大范围的集合通信，每卡 GEMM 变小
 收益 workload：模型放不下，或大 Batch 计算足以覆盖通信
-验证：逐层 GEMM、Collective 时间、链路、TTFT/TPOT、同 SLO 吞吐
+验证：逐层 GEMM、Collective 时间、互联、TTFT/TPOT、同 SLO 吞吐
 ```
 
 如果跨节点 TP 使用较慢网络，小 Batch Decode 可能因为通信占比上升而变慢。
@@ -443,7 +461,7 @@ Kernel 时间用来解释原因，端到端指标决定方案是否值得上线�
 
 ## 14. 练习
 
-1. 判断一个优化的第一问是什么？
+1. 测试一个优化时，第一步要说清什么？
 2. INT4 权重理想容量缩小四倍，为什么延迟不一定缩小四倍？
 3. KV 量化会缩小 Gated DeltaNet recurrent state 吗？
 4. FlashAttention 减少的主要是什么？它是否改变 Attention 输出含义？
@@ -460,7 +478,7 @@ Kernel 时间用来解释原因，端到端指标决定方案是否值得上线�
 
 ## 15. 参考答案
 
-1. 它直接改变了推理链路中的哪个对象。
+1. 它改了哪段计算、哪份数据或哪条调度规则。
 2. 还受反量化、Kernel、硬件、Batch 和原始瓶颈影响。
 3. 不会。它只改变 Full Attention KV，除非 runtime 另有状态量化方案。
 4. Attention 中间矩阵的 HBM 读写和临时显存；它仍是精确 Attention。
@@ -475,7 +493,7 @@ Kernel 时间用来解释原因，端到端指标决定方案是否值得上线�
 13. 输入输出长度、并发或到达率、采样参数、Batch、硬件拓扑、SLO、dtype 和 runtime 版本。
 14. 不能。要根据业务 SLO 和整体目标权衡，至少不能仅凭 TPOT 下结论。
 
-## 16. 学完以后，怎样用这套方法
+## 16. 遇到新方案时怎样开始
 
 现在可以从用户输入一路解释到优化判断：
 
@@ -491,7 +509,7 @@ Chat Template 与 Tokenizer
 → 根据 workload 和 SLO 选择优化
 ```
 
-这套课最终要留下的是推理链路中的对象、shape、依赖和成本。遇到一种新方案，先指出它改了哪里、少了什么、多了什么，再判断是否值得测试。
+遇到一种新方案，先说清它改了哪段计算或调度，再算减少的工作和新增的开销。最后固定请求分布、硬件、runtime 和 SLO，用同一套端到端口径比较。
 
 ## 资料来源
 

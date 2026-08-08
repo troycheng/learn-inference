@@ -21,13 +21,13 @@
 
 看一个语言模型结构时，可以从三个问题入手：
 
-| 问题 | 要识别的对象 | 对工程判断的意义 |
+| 问题 | 重点看什么 | 对工程判断的意义 |
 | --- | --- | --- |
 | 当前数据表示什么？ | Token ID、Embedding、Hidden State、Logit、概率 | 避免把不同阶段的张量混为一谈 |
 | 信息怎样被混合？ | Token Mixer 跨 token；FFN 在单 token 内加工特征 | 找到模型能力和主要计算的来源 |
 | 哪些历史结果需要保留？ | KV Cache、Gated DeltaNet recurrent state | 理解 Prefill、Decode、显存和并发限制 |
 
-后面遇到算子、公式和优化方法，都可以先用这三个问题定位。
+后面遇到新的算子、公式或优化方法，也可以先回答这三个问题，避免只记住名称。
 
 ## 两种尺度的例子
 
@@ -45,9 +45,12 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 
 ### 真实模型
 
-- Qwen3.5-9B-Base：讲 Dense FFN、混合层结构和视觉输入；
+- Qwen3.5-9B-Base：核对 Dense FFN、混合层结构和各层 shape；
+- Qwen3.5-9B：讲 Chat Template、Tokenizer、多模态输入和生成行为；
 - Qwen3.5-35B-A3B：讲 MoE、总参数与激活参数；
-- 官方 `config.json` 和 Transformers 实现：核对真实字段、shape 和数据流。
+- 固定 revision 的官方配置和 Transformers 实现：核对真实字段、shape 和数据流。
+
+Qwen3.5-9B-Base 与 post-trained Qwen3.5-9B 当前使用相同的主要模型结构，但它们不是同一个检查点。涉及对话模板、停止 token 和生成行为时，课程以 post-trained Qwen3.5-9B 为准；只讨论层结构和 shape 时会明确引用 Base 检查点。
 
 每个重要概念先用小数字算一遍，再写成通用 shape，最后用真实配置确认规模。
 
@@ -269,7 +272,7 @@ MoE：Router 为每个 token 选择少量路由专家，并使用共享专家
 
 正文：[第 9 课：一种优化到底有没有用](lessons/09-optimization-judgment.md)
 
-GPU 执行和服务调度不再各自成为孤立章节。每种优化都回到前面已经理解的模型对象：
+这一课逐项说明每种优化具体改了哪部分计算：
 
 | 优化 | 直接改变什么 | 首先检查什么 |
 | --- | --- | --- |
@@ -285,7 +288,7 @@ GPU 执行和服务调度不再各自成为孤立章节。每种优化都回到�
 评估一个优化方案时，依次问：
 
 ```text
-它改变链路中的哪个对象？
+它具体改了权重、缓存、算子、Batch 还是多卡分工？
 → 少算、少存或少搬了什么？
 → 新增了什么计算、状态、通信或误差？
 → 哪种 workload 下收益才会出现？
@@ -314,14 +317,15 @@ GPU 执行和服务调度不再各自成为孤立章节。每种优化都回到�
 4. 解释 Prefill、Decode、KV Cache 和 recurrent state；
 5. 对比 Dense 与 MoE，并区分总参数和激活参数；
 6. 从 Qwen3.5 配置恢复层数、层类型、头数和专家数；
-7. 面对一种优化，先指出它改变哪个模型对象，再判断收益条件和代价。
+7. 面对一种优化，先说清它具体改了什么，再判断收益条件和代价。
 
 ## 原始资料
 
-- [Qwen3.5-9B-Base 官方模型说明](https://huggingface.co/Qwen/Qwen3.5-9B-Base)
-- [Qwen3.5-9B-Base 官方配置](https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/main/config.json)
-- [Qwen3.5-35B-A3B 官方模型说明](https://huggingface.co/Qwen/Qwen3.5-35B-A3B)
-- [Qwen3.5-35B-A3B 官方配置](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/main/config.json)
+- [Qwen3.5-9B-Base 模型说明，revision 68c46c4](https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/68c46c4b3498877f3ef123c856ecfde50c39f404/README.md)
+- [Qwen3.5-9B-Base 配置，revision 68c46c4](https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/68c46c4b3498877f3ef123c856ecfde50c39f404/config.json)
+- [Qwen3.5-9B 配置，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/config.json)
+- [Qwen3.5-35B-A3B 模型说明，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/README.md)
+- [Qwen3.5-35B-A3B 配置，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/config.json)
 - [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
 - [Root Mean Square Layer Normalization](https://arxiv.org/abs/1910.07467)
 - [GLU Variants Improve Transformer](https://arxiv.org/abs/2002.05202)

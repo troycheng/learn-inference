@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760" role="img" aria-labelledby="title desc">
+  <title id="title">图片怎样变成视觉位置</title>
+  <desc id="desc">图片按 16 乘 16 像素切成 Patch，经视觉编码器处理后，再由 2 乘 2 Merger 合并为送入语言模型的视觉向量。</desc>
   <defs><marker id="b" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker><pattern id="grid" width="9" height="9" patternUnits="userSpaceOnUse"><path d="M9 0H0V9" fill="none" stroke="#93c5fd" stroke-width="0.7"/></pattern></defs>
   <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:19px;font-weight:700;text-anchor:middle}.t{font-size:15px;text-anchor:middle}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#b)}</style>
   <rect width="1400" height="760" fill="#fff"/><text x="55" y="58" class="title">512×512 图片最终变成 256 条视觉向量</text><text x="55" y="92" class="sub">Patch 化先产生 1024 个位置，视觉编码后再由 2×2 Merger 合并。</text>

@@ -14,6 +14,7 @@
 | `Nq` | 查询头数 | Number of Query Heads | Attention 中查询头的数量 |
 | `Nkv` | 键值头数 | Number of Key/Value Heads | Attention 中键头和值头的数量 |
 | `D` | 头维度 | Head Dimension | 每个 Attention 头包含的特征数 |
+| `N` | 状态头数 | Number of State Heads | Gated DeltaNet 中并行维护的状态头数量；正文第一次使用时会重新说明 |
 
 ## 数学与张量
 
@@ -117,6 +118,7 @@
 | 前缀缓存 | Prefix Cache | 让具有相同前缀的请求复用已经计算好的前缀状态 |
 | 连续批处理 | Continuous Batching | 在模型执行轮次之间移除、保留或加入请求，重新组织 Batch |
 | 分块提示词处理 | Chunked Prefill | 把已经给出的长 Prompt 分段计算，并在各段之间延续请求状态 |
+| 分页注意力 | PagedAttention | 把 KV Cache 分成固定大小的逻辑块，通过块表映射到不连续的物理显存块 |
 | 首 token 延迟 | Time to First Token / TTFT | 从约定的请求起点到首个输出 token 的时间；使用前要确认计时边界 |
 | Token 间延迟 | Inter-token Latency / ITL | 相邻两个输出 token 到达时间之差 |
 | 每输出 token 时间 | Time per Output Token / TPOT | 通常指排除首 token 后，后续输出 token 的平均间隔 |
@@ -160,6 +162,8 @@
 | 临时激活 | Temporary Activations | 算子执行期间产生、随后可以释放或复用的中间张量 |
 | 权重字节 | Weight Bytes | 参数量乘每参数编码字节数得到的理想权重容量 |
 | 有效载荷 | Payload | 不含页表、对齐、块尾空余和运行时预留的逻辑数据量 |
+| 算术强度 | Arithmetic Intensity | 完成的浮点运算次数除以搬运字节数，单位通常是 FLOP/Byte |
+| 硬件计算带宽比 | Machine Balance | 硬件峰值计算吞吐除以峰值内存带宽，用来和算术强度比较 |
 
 ## 优化判断
 
@@ -178,6 +182,10 @@
 | 接受长度 | Acceptance Length | 一轮推测解码中被目标模型连续接受的候选 token 数 |
 | 服务等级目标 | Service Level Objective / SLO | 对延迟、吞吐或可用性等指标设定的目标边界 |
 | 回退路径 | Fallback | 预期优化 Kernel 不可用时转而执行的通用或较慢实现 |
+| 输入 token 吞吐 | Input Token Throughput | 测量窗口内完成请求的 Prompt token 总数除以窗口时间 |
+| 输出 token 吞吐 | Output Token Throughput | 测量窗口内完成请求的输出 token 总数除以窗口时间 |
+| 有效请求吞吐 | Goodput | 测量窗口内满足预先指定 SLO 的完成请求数除以窗口时间；若工具采用其他口径必须注明 |
+| 引擎 token 吞吐 | Engine Token Throughput | runtime 实际安排进入模型执行的 token 位置数除以窗口时间，不一定等于用户可见 token 数 |
 
 ## 书写约定
 

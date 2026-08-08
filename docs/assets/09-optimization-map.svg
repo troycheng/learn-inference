@@ -1,10 +1,56 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 860" width="1500" height="860">
-  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:18px;font-weight:700;text-anchor:middle}.t{font-size:14px;text-anchor:middle}.inverse{font-size:17px;fill:#fff;text-anchor:middle}</style>
-  <rect width="1500" height="860" fill="#fff"/><text x="55" y="58" class="title">先把优化放回它真正改变的对象</text><text x="55" y="92" class="sub">局部方法只直接改变链路中的一部分，端到端收益还取决于其他部分占了多少时间。</text>
-  <rect x="55" y="155" width="1390" height="90" rx="15" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><text x="750" y="192" class="h">模型权重与 Linear</text><text x="750" y="222" class="t">权重量化　|　TP 切分矩阵　|　MoE Expert 权重</text>
-  <rect x="55" y="275" width="1390" height="90" rx="15" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="750" y="312" class="h">Full Attention 计算与请求状态</text><text x="750" y="342" class="t">FlashAttention　|　KV 量化　|　Prefix Cache 命中前缀</text>
-  <rect x="55" y="395" width="1390" height="90" rx="15" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="750" y="432" class="h">MoE Expert 执行与通信</text><text x="750" y="462" class="t">EP　|　Token Dispatch / Combine　|　Grouped GEMM</text>
-  <rect x="55" y="515" width="1390" height="90" rx="15" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="750" y="552" class="h">服务调度与 Batch 组成</text><text x="750" y="582" class="t">Continuous Batching　|　Chunked Prefill　|　Prefill / Decode 优先级</text>
-  <rect x="55" y="635" width="1390" height="90" rx="15" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="750" y="672" class="h">目标模型的串行调用次数</text><text x="750" y="702" class="t">推测解码　|　MTP Drafter　|　一次验证多个候选位置</text>
-  <rect x="280" y="775" width="940" height="50" rx="10" fill="#111827"/><text x="750" y="807" class="inverse">先定位对象，再讨论少算、少存、少搬和新增成本。</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 880" width="1200" height="880" role="img" aria-labelledby="optimization-map-title optimization-map-desc">
+  <title id="optimization-map-title">常见优化分别改了什么</title>
+  <desc id="optimization-map-desc">按权重、全注意力、专家计算、服务调度和目标模型验证五类，列出常见优化直接减少的工作以及新增开销。</desc>
+  <style>
+    text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei','Microsoft JhengHei','SimHei',sans-serif;fill:#111827}
+    .title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.row-title{font-size:19px;font-weight:700}.method{font-size:16px;font-weight:700}.detail{font-size:14px;fill:#4b5563}.footer{font-size:17px;font-weight:600;fill:#fff;text-anchor:middle}
+  </style>
+  <rect width="1200" height="880" fill="#fff" data-graph-role="canvas"/>
+  <g data-graph-role="title-block">
+    <text x="48" y="58" class="title">常见优化分别改了什么</text>
+    <text x="48" y="90" class="sub">先写清直接改动，再计算整个请求能快多少。</text>
+  </g>
+
+  <g data-graph-role="node" aria-label="权重与 Linear">
+    <rect x="48" y="130" width="1104" height="112" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="78" y="167" class="row-title">权重与 Linear</text>
+    <text x="78" y="203" class="method">权重量化</text><text x="205" y="203" class="detail">减少权重字节</text>
+    <text x="520" y="203" class="method">TP</text><text x="565" y="203" class="detail">切分同一层矩阵，增加集合通信</text>
+  </g>
+
+  <g data-graph-role="node" aria-label="Full Attention">
+    <rect x="48" y="262" width="1104" height="112" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+    <text x="78" y="299" class="row-title">Full Attention</text>
+    <text x="78" y="335" class="method">FlashAttention</text><text x="225" y="335" class="detail">少写中间矩阵</text>
+    <text x="445" y="335" class="method">KV 量化</text><text x="535" y="335" class="detail">减少 Cache 字节</text>
+    <text x="755" y="335" class="method">Prefix Cache</text><text x="890" y="335" class="detail">跳过命中前缀的 Prefill</text>
+  </g>
+
+  <g data-graph-role="node" aria-label="MoE Expert">
+    <rect x="48" y="394" width="1104" height="112" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+    <text x="78" y="431" class="row-title">MoE Expert</text>
+    <text x="78" y="467" class="method">EP</text><text x="120" y="467" class="detail">按 Expert ID 分布权重</text>
+    <text x="430" y="467" class="method">Dispatch / Combine</text><text x="610" y="467" class="detail">分发 token，再收回结果</text>
+    <text x="880" y="467" class="method">Grouped GEMM</text><text x="1015" y="467" class="detail">组织多组 Expert 计算</text>
+  </g>
+
+  <g data-graph-role="node" aria-label="服务调度">
+    <rect x="48" y="526" width="1104" height="112" rx="14" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+    <text x="78" y="563" class="row-title">服务调度</text>
+    <text x="78" y="599" class="method">Continuous Batching</text><text x="275" y="599" class="detail">空位补入等待请求</text>
+    <text x="535" y="599" class="method">Chunked Prefill</text><text x="685" y="599" class="detail">长 Prompt 分段执行</text>
+    <text x="890" y="599" class="method">优先级</text><text x="960" y="599" class="detail">调节 TTFT 与 TPOT</text>
+  </g>
+
+  <g data-graph-role="node" aria-label="目标模型验证">
+    <rect x="48" y="658" width="1104" height="112" rx="14" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+    <text x="78" y="695" class="row-title">目标模型验证</text>
+    <text x="78" y="731" class="method">推测解码 / MTP</text><text x="245" y="731" class="detail">先提出候选，再由目标模型一次验证多个位置</text>
+    <text x="785" y="731" class="detail">新增 Drafter、候选状态和被拒绝候选的计算</text>
+  </g>
+
+  <g data-graph-role="annotation">
+    <rect x="250" y="808" width="700" height="48" rx="10" fill="#111827"/>
+    <text x="600" y="839" class="footer">先量这部分原来占多少时间，再测端到端收益。</text>
+  </g>
 </svg>

@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 460" width="760" height="460">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 460" width="760" height="460" role="img" aria-labelledby="title desc">
+  <title id="title">SiLU 激活函数曲线</title>
+  <desc id="desc">SiLU 平滑压低负输入，正输入较大时逐渐接近输入本身。</desc>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
     .title { font-size: 22px; font-weight: 600; }

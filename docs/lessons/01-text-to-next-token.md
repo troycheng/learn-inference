@@ -441,23 +441,26 @@ $$
 采样：按照概率随机选择
 ```
 
-实际生成常在 Softmax 前先处理 Logits：
+实际生成会先处理 Logits，再按处理后的分布采样：
 
 - **Temperature**：缩放 Logit 差距；较低温度使分布更集中，较高温度使分布更平缓；
 - **Top-K**：只保留分数最高的 K 个候选；
-- **Top-P**：按概率从高到低累加，只保留累计概率达到阈值所需的最小候选集合；
 - **其他约束**：屏蔽非法 token、重复惩罚或任务特定约束。
+
+Top-P 依赖概率，不能只看原始 Logit 决定保留哪些候选。它先对当前分数做 Softmax，再按概率从高到低累加，只保留累计概率达到阈值所需的最小候选集合。许多框架把 Top-P 包装成一个 Logits Processor：处理器内部计算一次概率来确定屏蔽范围，再把被屏蔽的 Logits 交给最后的归一化和采样。
 
 可以把常见采样流程概括为：
 
 ```text
 原始 Logits
-→ Temperature、Top-K、Top-P 等处理
-→ Softmax
+→ Temperature、Top-K 和其他约束
+→ 对当前分数做 Softmax，计算 Top-P 累计概率
+→ 屏蔽 Top-P 集合外的候选
+→ 对剩余候选重新归一化
 → 按概率抽取 Token ID
 ```
 
-不同框架可能组合不同处理器。需要区分的是：贪心可以直接 `argmax`，概率采样才需要归一化后的分布。
+不同框架可能组合或调整处理器顺序。需要区分的是：贪心可以直接 `argmax`，Top-P 和最终概率采样都依赖归一化后的分布。
 
 ## 8. 一段完整回答为什么只能逐个 token 生成
 
@@ -571,7 +574,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 | 不变量 | 不改变模型词表中 ID 的含义 |
 | 长期数据 | 无模型权重 |
 
-## 12. 遇到工程问题，先定位到链路
+## 12. 从生成步骤排查工程问题
 
 有了这条链路，已经可以避免几类常见误判：
 
@@ -585,7 +588,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 | 模型重复输出 | 既可能来自模型分数，也可能来自采样和重复惩罚配置 |
 | 使用错误 Tokenizer | ID 仍可能是合法整数，但指向了错误的 token 语义 |
 
-以后遇到优化方法，可以先定位它改变了链路中的哪个对象，再去看对应的框架参数。
+以后再看到一种优化，可以先问清它改的是 Tokenizer、Linear、Cache、采样还是调度，再去核对相应的框架参数和指标。
 
 ## 13. 这些概念别混在一起
 
@@ -687,13 +690,14 @@ Hidden State → 全词表分数：LM Head
 
 ## 原始资料
 
-以下事实于 2026-08-05 按官方配置与实现复核：
+以下事实于 2026-08-08 按官方配置与实现复核：
 
-- [Qwen3.5-9B 官方模型说明](https://huggingface.co/Qwen/Qwen3.5-9B)
-- [Qwen3.5-9B `config.json`](https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/config.json)
-- [Qwen3.5-9B `tokenizer_config.json`](https://huggingface.co/Qwen/Qwen3.5-9B/blob/main/tokenizer_config.json)
-- [Transformers：Qwen2 Byte-level BPE Tokenizer 实现](https://github.com/huggingface/transformers/blob/main/src/transformers/models/qwen2/tokenization_qwen2.py)
-- [Transformers：Qwen3.5 模型实现](https://github.com/huggingface/transformers/blob/main/src/transformers/models/qwen3_5/modeling_qwen3_5.py)
-- [Transformers：生成实现](https://github.com/huggingface/transformers/blob/main/src/transformers/generation/utils.py)
+- [Qwen3.5-9B 官方模型说明，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/README.md)
+- [Qwen3.5-9B `config.json`，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/config.json)
+- [Qwen3.5-9B `tokenizer_config.json`，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/tokenizer_config.json)
+- [Transformers：Qwen2 Byte-level BPE Tokenizer 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen2/tokenization_qwen2.py)
+- [Transformers：Qwen3.5 模型实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py)
+- [Transformers：生成实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/generation/utils.py)
+- [Transformers：Top-P Logits Processor，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/generation/logits_process.py#L473-L539)
 - [Hugging Face：Causal Language Modeling](https://huggingface.co/docs/transformers/tasks/language_modeling)
 - [PyTorch：Softmax](https://docs.pytorch.org/docs/stable/generated/torch.nn.Softmax.html)

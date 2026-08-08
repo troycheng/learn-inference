@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760" role="img" aria-labelledby="title desc">
+  <title id="title">KV Cache 和 Gated DeltaNet 状态的增长方式</title>
+  <desc id="desc">Full Attention 的 KV Cache 随历史长度增加，Gated DeltaNet 的卷积状态和递归状态 shape 固定，但每个并发请求都各有一份。</desc>
   <defs><marker id="x" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#64748b"/></marker></defs>
   <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:18px;font-weight:700}.t{font-size:15px}.axis{stroke:#64748b;stroke-width:2;marker-end:url(#x)}</style>
   <rect width="1400" height="760" fill="#fff"/><text x="55" y="58" class="title">两类请求状态的增长方向不同</text><text x="55" y="92" class="sub">图示比较单个请求；两类状态都会随并发请求数成倍增加。</text>

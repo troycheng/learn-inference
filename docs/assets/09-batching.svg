@@ -1,8 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760">
-  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.panel{font-size:24px;font-weight:700;text-anchor:middle}.h{font-size:16px;font-weight:700;text-anchor:middle}.t{font-size:14px;fill:#6b7280}</style>
-  <rect width="1400" height="760" fill="#fff"/><text x="55" y="58" class="title">Continuous Batching 在迭代边界补入新请求</text><text x="55" y="92" class="sub">每一列是一轮生成；彩色方块表示该请求在这一轮占用一个执行位置。</text>
-  <rect x="55" y="135" width="610" height="540" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><rect x="735" y="135" width="610" height="540" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><text x="360" y="182" class="panel">Static Batching</text><text x="1040" y="182" class="panel">Continuous Batching</text>
-  <g transform="translate(105 235)"><text x="-15" y="28" class="h" text-anchor="end">A</text><text x="-15" y="88" class="h" text-anchor="end">B</text><text x="-15" y="148" class="h" text-anchor="end">C</text><g fill="#60a5fa"><rect x="0" y="0" width="65" height="45"/><rect x="70" y="0" width="65" height="45"/><rect x="140" y="0" width="65" height="45"/><rect x="210" y="0" width="65" height="45"/><rect x="280" y="0" width="65" height="45"/></g><g fill="#34d399"><rect x="0" y="60" width="65" height="45"/><rect x="70" y="60" width="65" height="45"/></g><g fill="#fb923c"><rect x="0" y="120" width="65" height="45"/><rect x="70" y="120" width="65" height="45"/><rect x="140" y="120" width="65" height="45"/></g><g fill="#e5e7eb"><rect x="140" y="60" width="205" height="45"/><rect x="210" y="120" width="135" height="45"/></g><text x="243" y="88" class="t">空位不能补请求</text><text x="243" y="148" class="t">空位</text></g>
-  <g transform="translate(785 235)"><text x="-15" y="28" class="h" text-anchor="end">A</text><text x="-15" y="88" class="h" text-anchor="end">B/D</text><text x="-15" y="148" class="h" text-anchor="end">C/E</text><g fill="#60a5fa"><rect x="0" y="0" width="65" height="45"/><rect x="70" y="0" width="65" height="45"/><rect x="140" y="0" width="65" height="45"/><rect x="210" y="0" width="65" height="45"/><rect x="280" y="0" width="65" height="45"/></g><g fill="#34d399"><rect x="0" y="60" width="65" height="45"/><rect x="70" y="60" width="65" height="45"/></g><g fill="#a78bfa"><rect x="140" y="60" width="65" height="45"/><rect x="210" y="60" width="65" height="45"/><rect x="280" y="60" width="65" height="45"/></g><g fill="#fb923c"><rect x="0" y="120" width="65" height="45"/><rect x="70" y="120" width="65" height="45"/><rect x="140" y="120" width="65" height="45"/></g><g fill="#f472b6"><rect x="210" y="120" width="65" height="45"/><rect x="280" y="120" width="65" height="45"/></g></g>
-  <text x="360" y="475" class="h">B、C 完成后仍等 A</text><text x="1040" y="475" class="h">B、C 的空位由 D、E 补入</text><rect x="105" y="535" width="510" height="85" rx="13" fill="#fee2e2" stroke="#f87171" stroke-width="2"/><text x="360" y="570" class="h">不同输出长度造成空转</text><text x="360" y="600" class="t" text-anchor="middle">整批结束后才能接收新请求</text><rect x="785" y="535" width="510" height="85" rx="13" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1040" y="570" class="h">提高执行位置利用率</text><text x="1040" y="600" class="t" text-anchor="middle">但新请求仍可能排队，混批还需额外支持</text><text x="700" y="720" class="sub" text-anchor="middle">Batching 用等待和调度换 GPU 利用率，最终要在 SLO 下比较吞吐。</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" role="img" aria-labelledby="batching-title batching-desc">
+  <title id="batching-title">请求完成后，Continuous Batching 可以立即补位</title>
+  <desc id="batching-desc">左侧静态批处理等待最长请求 A 完成，右侧连续批处理在 B 和 C 完成后加入 D 和 E。每一列表示一轮生成。</desc>
+  <style>
+    text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei','Microsoft JhengHei','SimHei',sans-serif;fill:#111827}
+    .title{font-size:30px;font-weight:700}.sub{font-size:16px;fill:#6b7280}.panel{font-size:22px;font-weight:700;text-anchor:middle}.label{font-size:16px;font-weight:700}.note{font-size:15px;fill:#4b5563;text-anchor:middle}.summary{font-size:16px;font-weight:600;text-anchor:middle}
+  </style>
+  <rect width="1200" height="720" fill="#fff" data-graph-role="canvas"/>
+  <g data-graph-role="title-block">
+    <text x="48" y="56" class="title">请求完成后，Continuous Batching 可以立即补位</text>
+    <text x="48" y="88" class="sub">每一列是一轮生成，彩色方块表示一个请求占用的执行位置。</text>
+  </g>
+
+  <g data-graph-role="container" aria-label="Static Batching">
+    <rect x="48" y="126" width="520" height="502" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="308" y="170" class="panel">Static Batching</text>
+    <g transform="translate(118 222)">
+      <text x="-18" y="31" class="label" text-anchor="end">A</text>
+      <text x="-18" y="91" class="label" text-anchor="end">B</text>
+      <text x="-18" y="151" class="label" text-anchor="end">C</text>
+      <g fill="#60a5fa"><rect x="0" y="0" width="62" height="44"/><rect x="68" y="0" width="62" height="44"/><rect x="136" y="0" width="62" height="44"/><rect x="204" y="0" width="62" height="44"/><rect x="272" y="0" width="62" height="44"/></g>
+      <g fill="#34d399"><rect x="0" y="60" width="62" height="44"/><rect x="68" y="60" width="62" height="44"/></g>
+      <g fill="#fb923c"><rect x="0" y="120" width="62" height="44"/><rect x="68" y="120" width="62" height="44"/><rect x="136" y="120" width="62" height="44"/></g>
+      <g fill="#e5e7eb"><rect x="136" y="60" width="198" height="44"/><rect x="204" y="120" width="130" height="44"/></g>
+      <text x="235" y="88" class="note">不能补位</text><text x="269" y="148" class="note">空位</text>
+    </g>
+    <rect x="96" y="454" width="424" height="112" rx="12" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
+    <text x="308" y="493" class="summary">B、C 完成后仍要等 A</text>
+    <text x="308" y="529" class="note">整批结束后才接收新请求</text>
+  </g>
+
+  <g data-graph-role="container" aria-label="Continuous Batching">
+    <rect x="632" y="126" width="520" height="502" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="892" y="170" class="panel">Continuous Batching</text>
+    <g transform="translate(702 222)">
+      <text x="-18" y="31" class="label" text-anchor="end">A</text>
+      <text x="-18" y="91" class="label" text-anchor="end">B / D</text>
+      <text x="-18" y="151" class="label" text-anchor="end">C / E</text>
+      <g fill="#60a5fa"><rect x="0" y="0" width="62" height="44"/><rect x="68" y="0" width="62" height="44"/><rect x="136" y="0" width="62" height="44"/><rect x="204" y="0" width="62" height="44"/><rect x="272" y="0" width="62" height="44"/></g>
+      <g fill="#34d399"><rect x="0" y="60" width="62" height="44"/><rect x="68" y="60" width="62" height="44"/></g>
+      <g fill="#a78bfa"><rect x="136" y="60" width="62" height="44"/><rect x="204" y="60" width="62" height="44"/><rect x="272" y="60" width="62" height="44"/></g>
+      <g fill="#fb923c"><rect x="0" y="120" width="62" height="44"/><rect x="68" y="120" width="62" height="44"/><rect x="136" y="120" width="62" height="44"/></g>
+      <g fill="#f472b6"><rect x="204" y="120" width="62" height="44"/><rect x="272" y="120" width="62" height="44"/></g>
+    </g>
+    <rect x="680" y="454" width="424" height="112" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+    <text x="892" y="493" class="summary">B、C 的空位立即加入 D、E</text>
+    <text x="892" y="529" class="note">新请求仍可能排队，混批也需额外支持</text>
+  </g>
+
+  <text x="600" y="682" class="sub" text-anchor="middle" data-graph-role="annotation">Batch 变大通常能提高利用率，也可能增加排队时间。应在满足 SLO 时比较吞吐。</text>
 </svg>

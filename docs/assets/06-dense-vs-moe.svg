@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760" role="img" aria-labelledby="title desc">
+  <title id="title">Dense 和 MoE 替换的是 FFN 子层</title>
+  <desc id="desc">两种模型保留相同的 Decoder Layer 主架构，Dense 使用一套固定 FFN，MoE 用 Router 选择少数 Expert。</desc>
   <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
   <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.panel{font-size:24px;font-weight:700;text-anchor:middle}.h{font-size:19px;font-weight:700;text-anchor:middle}.t{font-size:16px;text-anchor:middle}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#arrow)}</style>
   <rect width="1400" height="760" fill="#fff"/>

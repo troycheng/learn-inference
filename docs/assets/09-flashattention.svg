@@ -1,9 +1,53 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760">
-  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
-  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.panel{font-size:24px;font-weight:700;text-anchor:middle}.h{font-size:18px;font-weight:700;text-anchor:middle}.t{font-size:15px;text-anchor:middle}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#a)}</style>
-  <rect width="1400" height="760" fill="#fff"/><text x="55" y="58" class="title">FlashAttention 减少 HBM 中间读写</text><text x="55" y="92" class="sub">两边计算相同的精确 Attention；区别在于是否把完整分数和概率矩阵写回 HBM。</text>
-  <rect x="55" y="135" width="610" height="540" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><rect x="735" y="135" width="610" height="540" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><text x="360" y="182" class="panel">普通分步实现</text><text x="1040" y="182" class="panel">FlashAttention</text>
-  <rect x="105" y="235" width="180" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="195" y="283" class="h">Q / K / V</text><path d="M285 275 H345" class="line"/><rect x="345" y="220" width="250" height="110" rx="13" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="470" y="260" class="h">QKᵀ 与 Softmax</text><text x="470" y="296" class="t">产生 T×T 中间矩阵</text><path d="M470 330 V390" class="line"/><rect x="235" y="390" width="250" height="110" rx="13" fill="#fee2e2" stroke="#f87171" stroke-width="2"/><text x="360" y="430" class="h">HBM 写入再读取</text><text x="360" y="466" class="t">分数矩阵与概率矩阵</text><path d="M360 500 V555" class="line"/><rect x="235" y="555" width="250" height="75" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="360" y="601" class="h">Attention 输出</text>
-  <rect x="785" y="235" width="180" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="875" y="283" class="h">Q / K / V 分块</text><path d="M965 275 H1025" class="line"/><rect x="1025" y="215" width="270" height="250" rx="15" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1160" y="260" class="h">片上 SRAM</text><text x="1160" y="305" class="t">块内 QKᵀ</text><text x="1160" y="340" class="t">维护 Softmax 统计量</text><text x="1160" y="375" class="t">直接累计 AV 输出</text><text x="1160" y="420" class="t">不物化完整 T×T</text><path d="M1160 465 V555" class="line"/><rect x="1035" y="555" width="250" height="75" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1160" y="601" class="h">相同 Attention 输出</text>
-  <text x="700" y="720" class="sub" text-anchor="middle">它优化 Full Attention 的 IO 路径，不会直接加速 FFN 或 Gated DeltaNet。</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" role="img" aria-labelledby="flash-title flash-desc">
+  <title id="flash-title">FlashAttention 减少中间矩阵的 HBM 读写</title>
+  <desc id="flash-desc">普通分步实现把分数矩阵和概率矩阵写入 HBM 后再读取。FlashAttention 在片上 SRAM 分块计算，不把完整的 T 乘 T 中间矩阵写入 HBM。两者得到相同的精确 Attention 输出。</desc>
+  <defs>
+    <marker id="flash-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
+  </defs>
+  <style>
+    text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei','Microsoft JhengHei','SimHei',sans-serif;fill:#111827}
+    .title{font-size:30px;font-weight:700}.sub{font-size:16px;fill:#6b7280}.panel{font-size:22px;font-weight:700;text-anchor:middle}.heading{font-size:17px;font-weight:700;text-anchor:middle}.note{font-size:14px;fill:#4b5563;text-anchor:middle}.edge{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#flash-arrow)}
+  </style>
+  <rect width="1200" height="720" fill="#fff" data-graph-role="canvas"/>
+  <g data-graph-role="title-block">
+    <text x="48" y="56" class="title">FlashAttention 减少中间矩阵的 HBM 读写</text>
+    <text x="48" y="88" class="sub">两种实现都计算精确 Attention，区别在于中间结果放在哪里。</text>
+  </g>
+
+  <g data-graph-role="container" aria-label="普通分步实现">
+    <rect x="48" y="126" width="520" height="520" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" data-graph-role="decoration"/>
+    <text x="308" y="170" class="panel">普通分步实现</text>
+    <path d="M308 252 V292" class="edge" data-graph-role="edge"/>
+    <path d="M308 392 V432" class="edge" data-graph-role="edge"/>
+    <path d="M308 532 V572" class="edge" data-graph-role="edge"/>
+    <rect x="198" y="202" width="220" height="50" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+    <text x="308" y="233" class="heading">Q / K / V</text>
+    <rect x="158" y="292" width="300" height="100" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+    <text x="308" y="331" class="heading">QKᵀ、Softmax、AV</text>
+    <text x="308" y="365" class="note">产生完整 T×T 中间矩阵</text>
+    <rect x="158" y="432" width="300" height="100" rx="12" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
+    <text x="308" y="471" class="heading">写入 HBM，再读回来</text>
+    <text x="308" y="505" class="note">分数矩阵和概率矩阵</text>
+    <rect x="198" y="572" width="220" height="50" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+    <text x="308" y="603" class="heading">Attention 输出</text>
+  </g>
+
+  <g data-graph-role="container" aria-label="FlashAttention">
+    <rect x="632" y="126" width="520" height="520" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" data-graph-role="decoration"/>
+    <text x="892" y="170" class="panel">FlashAttention</text>
+    <path d="M892 252 V302" class="edge" data-graph-role="edge"/>
+    <path d="M892 520 V572" class="edge" data-graph-role="edge"/>
+    <rect x="782" y="202" width="220" height="50" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+    <text x="892" y="233" class="heading">分块读取 Q / K / V</text>
+    <rect x="742" y="302" width="300" height="218" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+    <text x="892" y="342" class="heading">片上 SRAM</text>
+    <text x="892" y="386" class="note">块内计算 QKᵀ</text>
+    <text x="892" y="424" class="note">维护 Softmax 统计量</text>
+    <text x="892" y="462" class="note">直接累计 AV 输出</text>
+    <text x="892" y="498" class="note">完整 T×T 矩阵不写入 HBM</text>
+    <rect x="782" y="572" width="220" height="50" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+    <text x="892" y="603" class="heading">相同 Attention 输出</text>
+  </g>
+
+  <text x="600" y="688" class="sub" text-anchor="middle" data-graph-role="annotation">它只减少 Full Attention 的中间读写，不会减少 FFN 或 Gated DeltaNet 的计算。</text>
 </svg>

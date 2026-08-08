@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" width="960" height="380">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" width="960" height="380" role="img" aria-labelledby="title desc">
+  <title id="title">Token ID 怎样查 Embedding 表</title>
+  <desc id="desc">Token ID 作为行号从 Embedding 参数表中取出对应向量，不是把整数直接送入 Decoder。</desc>
   <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:18px;font-weight:600}.label{font-size:14px;font-weight:600}.sub{font-size:12px;fill:#6b7280}.num{font-family:Menlo,Monaco,monospace;font-size:13px}</style>
   <defs><marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
   <rect width="960" height="380" fill="#ffffff"/>

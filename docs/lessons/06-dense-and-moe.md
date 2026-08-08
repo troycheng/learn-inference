@@ -296,16 +296,16 @@ $$
 
 所以 A3B 不表示只需要加载 3B 权重，也不表示推理速度必然是同等 Dense 模型的若干倍。一批 token 合起来可能访问很多甚至全部 Expert，实际成本还受权重读取、Dispatch、Grouped GEMM 大小和通信影响。
 
-## 10. EP 与 TP 切分的对象不同
+## 10. EP 切 Expert，TP 切 Expert 内部的矩阵
 
-![Expert Parallel 与 Tensor Parallel 的切分边界](../assets/06-ep-vs-tp.svg)
+![Expert Parallel 与 Tensor Parallel 分别怎样切分](../assets/06-ep-vs-tp.svg)
 
 | 并行方式 | 切分什么 | token 怎样参与 | 主要通信位置 |
 | --- | --- | --- | --- |
 | Expert Parallel，EP | 不同 Expert ID | 根据 Top-K 去持有对应 Expert 的设备 | Router 后 Dispatch，Expert 后 Combine |
 | Tensor Parallel，TP | 一个 Linear 或 Expert 内部的矩阵 | 同一 token 在多个矩阵分片上算部分结果 | Linear 内部或输出合并处 |
 
-EP 的稳定含义是把 Expert 权重分布在不同设备，并让 token assignment 到达持有对应 Expert 的设备。具体通信不只有一种：有的引擎使用两次 All-to-All，有的实现通过本地 Expert 计算后 All-Reduce 合并，还有 All-Gather 或专用 Dispatcher。
+EP 把 Expert 权重分布在不同设备，并把 token 送到持有相应 Expert 的设备。具体通信不只有一种：有的引擎使用两次 All-to-All，有的实现通过本地 Expert 计算后 All-Reduce 合并，还有 All-Gather 或专用 Dispatcher。
 
 因此，看到“EP=8”只能知道 Expert 被分到 8 个并行 Rank，不能直接推出网络中一定出现哪一种 Collective。还要结合 runtime 的 Token Dispatcher、Expert 映射和并行组合方式。
 
@@ -357,7 +357,7 @@ Router 和 Expert 权重都由训练形成。可以分析某些路由模式，�
 
 ### EP 不等于某一种固定 Collective
 
-Dispatch 和 Combine 是稳定的通信边界，All-to-All、All-Reduce 或其他实现取决于框架。
+无论框架选择 All-to-All、All-Reduce 还是其他实现，都必须把 token 送到相应 Expert，再把 Expert 输出送回原 token。
 
 ## 13. 练习
 

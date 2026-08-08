@@ -355,7 +355,7 @@ $$
 
 这里的 `⊙` 表示逐元素相乘，不是矩阵乘法。
 
-这里的 `y_norm` 是经过 RMSNorm 的单个 token 向量，不是残差分支中未经归一化的 `y`。下图与下一节都用同一个 `y_norm=[1,2]`，所以每个中间向量都可以对照手算。
+这里的 `y_norm` 是经过 RMSNorm 的单个 token 向量，不是残差分支中未经归一化的 `y`。下图和第 8 节单独取 `y_norm=[1,2]` 手算 FFN，不继续使用开头示意图中的位置 `t` 或残差值 `y`。
 
 下面的数据流把公式中的连接关系展开了：
 
@@ -373,7 +373,7 @@ $$
 
 每个系数分别改变对应中间特征的大小和符号。系数接近 0 时，对应特征被压低；绝对值较大时，影响更强；负数还可能翻转符号。
 
-门控投影和扩展投影都读取同一个输入 `x`，但使用不同权重，因此会产生两组不同的 `I` 维结果。
+门控投影和扩展投影都读取同一个归一化输入 `y_norm`，但使用不同权重，因此会产生两组不同的 `I` 维结果。
 
 ### 7.2 SiLU 做什么
 
@@ -390,6 +390,8 @@ $$
 `SiLU` 中最后一个字母是大写 `U`，不是数字或笔误。
 
 ## 8. 用一个小例子走完 SwiGLU
+
+下面单独取一个 FFN 输入来手算。`y_norm=[1,2]` 表示送进 FFN 的归一化单 token 向量；它不承接前面 `X` 的具体数值，也不与开头残差图中的数字逐项对应。
 
 令：
 
@@ -634,7 +636,7 @@ Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的�
 6. 不必须。RMSNorm 约束整条向量的均方根，不限制每个元素。
 7. `x`。
 8. 门控投影 `H→I` 产生调节系数；扩展投影 `H→I` 产生候选中间特征；回收投影 `I→H` 混合中间特征并回到层接口宽度。
-9. `gate_proj(x)` 先经过 SiLU，再与 `up_proj(x)` 的结果逐元素相乘，随后交给 `down_proj`。
+9. `gate_proj(y_norm)` 先经过 SiLU，再与 `up_proj(y_norm)` 的结果逐元素相乘，随后交给 `down_proj`。
 10. FFN 输出需要与 `[B,T,H]` 的残差输入逐元素相加，并作为下一层的 `[B,T,H]` 输入。
 11. 中间只有线性变换时，可以利用矩阵乘法结合律把权重预先组合；不是交换律。
 12. 分别为 `[2,8,12288]`、`[2,8,12288]`、`[2,8,4096]`。
@@ -662,11 +664,11 @@ y → RMSNorm → SwiGLU FFN  → 加回 y → z
 
 ## 原始资料
 
-以下 Qwen3.5 结构与配置于 2026-08-05 按官方模型说明、配置和 Transformers 实现复核：
+以下 Qwen3.5 结构与配置于 2026-08-08 按固定 revision 复核：
 
-- [Qwen3.5-9B-Base 官方模型说明](https://huggingface.co/Qwen/Qwen3.5-9B-Base)
-- [Qwen3.5-9B-Base `config.json`](https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/main/config.json)
-- [Transformers：Qwen3.5 模型实现](https://github.com/huggingface/transformers/blob/main/src/transformers/models/qwen3_5/modeling_qwen3_5.py)
+- [Qwen3.5-9B-Base 模型卡，revision 68c46c4](https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/68c46c4b3498877f3ef123c856ecfde50c39f404/README.md)
+- [Qwen3.5-9B-Base `config.json`，revision 68c46c4](https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/68c46c4b3498877f3ef123c856ecfde50c39f404/config.json)
+- [Transformers：Qwen3.5 模型实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py)
 - [Root Mean Square Layer Normalization](https://arxiv.org/abs/1910.07467)
 - [GLU Variants Improve Transformer](https://arxiv.org/abs/2002.05202)
 - [PyTorch：`torch.nn.RMSNorm`](https://docs.pytorch.org/docs/stable/generated/torch.nn.RMSNorm.html)

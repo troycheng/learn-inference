@@ -29,7 +29,7 @@ Gated DeltaNet 不保留这条逐 token 列表。每个头只有一张状态矩�
 S：[B,N,Dk,Dv]
 ```
 
-`Dk` 是 Key 和 Query 的宽度，`Dv` 是 Value 的宽度。序列继续变长时，`S` 的 shape 不变，数值会不断更新。
+`N` 是并行维护状态的头数；在 Qwen3.5-9B 中，Q/K 复制后与 32 个 Value 头对齐，所以 `N=32`。`Dk` 是 Key 和 Query 的宽度，`Dv` 是 Value 的宽度。序列继续变长时，`S` 的 shape 不变，数值会不断更新。
 
 可以先把 `S` 看成一张由模型自己维护的关联表：
 
@@ -131,13 +131,10 @@ $$
 这里先忽略实现中的 Query 缩放，只看状态怎样按方向读取。操作是：
 
 $$
-o=qS
-=[1,0]
-\begin{bmatrix}
+o=qS=[1,0]\begin{bmatrix}
 3 & 4\\
 1 & 2
-\end{bmatrix}
-=[3,4]
+\end{bmatrix}=[3,4]
 $$
 
 `q=[1,0]` 只选择了状态的第一行。若 `q=[0,1]`，得到第二行 `[1,2]`。实际 Query 通常不是 one-hot 向量，而是一组连续数值，所以输出是多行信息的加权组合。
@@ -186,9 +183,7 @@ $$
 第三步，把修正写回与 `k` 对应的方向：
 
 $$
-S_1=S_0+k^T\Delta
-=
-\begin{bmatrix}
+S_1=S_0+k^T\Delta=\begin{bmatrix}
 3 & 4\\
 0 & 0
 \end{bmatrix}
@@ -329,9 +324,7 @@ linear_conv_kernel_dim  = 4
 为什么混合 Q/K/V 是 8192 维：
 
 $$
-16\times128+16\times128+32\times128
-=2048+2048+4096
-=8192
+16\times128+16\times128+32\times128=2048+2048+4096=8192
 $$
 
 为什么 recurrent state 有 32 个头：Q/K 在状态更新前各复制一次，让 16 个 Key 头扩展到 32 个，与 Value 头一一对应。这里的复制发生在计算视图中，不表示模型额外训练了两套相同参数。

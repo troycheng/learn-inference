@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
   <title id="title">RoPE 为什么使用旋转</title>
-  <desc id="desc">RoPE 让查询和键按各自 token 位置旋转。两个 token 一起移动时，共同旋转会在点积中抵消，保留下来的位置影响只与相对距离有关。</desc>
+  <desc id="desc">RoPE 让较后当前位置的查询和较前历史位置的键按各自 token 位置旋转。两个 token 一起移动时，共同旋转会在点积中抵消，保留下来的位置影响只与相对距离有关。</desc>
   <defs>
     <marker id="blue-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M0 0L10 5L0 10z" fill="#2563EB"/>
@@ -44,11 +44,11 @@
     <circle cx="0" cy="0" r="112" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
     <line x1="-132" y1="0" x2="132" y2="0" class="axis"/>
     <line x1="0" y1="132" x2="0" y2="-132" class="axis"/>
-    <line x1="0" y1="0" x2="54" y2="-94" class="q"/>
-    <line x1="0" y1="0" x2="-54" y2="-94" class="k"/>
+    <line x1="0" y1="0" x2="-54" y2="-94" class="q"/>
+    <line x1="0" y1="0" x2="54" y2="-94" class="k"/>
     <path d="M45 -78 A90 90 0 0 0 -45 -78" class="arc"/>
-    <text x="74" y="-100" class="label" fill="#2563EB">Q：位置 2</text>
-    <text x="-129" y="-100" class="label" fill="#EA580C">K：位置 4</text>
+    <text x="-129" y="-100" class="label" fill="#2563EB">Q：位置 4</text>
+    <text x="74" y="-100" class="label" fill="#EA580C">K：位置 2</text>
     <text x="0" y="-57" text-anchor="middle" class="label">相差 2 步</text>
   </g>
   <text x="600" y="500" text-anchor="middle" class="note">假设每前进 1 个位置多转 θ</text>
@@ -63,8 +63,8 @@
     <line x1="0" y1="0" x2="108" y2="0" class="q"/>
     <line x1="0" y1="0" x2="54" y2="-94" class="k"/>
     <path d="M82 0 A82 82 0 0 0 41 -71" class="arc"/>
-    <text x="54" y="34" class="label" fill="#2563EB">Q：位置 12</text>
-    <text x="56" y="-100" class="label" fill="#EA580C">K：位置 14</text>
+    <text x="54" y="34" class="label" fill="#2563EB">Q：位置 14</text>
+    <text x="56" y="-100" class="label" fill="#EA580C">K：位置 12</text>
     <text x="56" y="-40" class="label">仍相差 2 步</text>
   </g>
   <text x="985" y="500" text-anchor="middle" class="note">绝对角度都变了</text>
