@@ -1,4 +1,4 @@
-# 第 6 课：MoE 怎样为每个 token 选择几套 FFN
+# 第 6 课：Dense 和 MoE 有什么区别
 
 第 2 课已经拆开过 Dense SwiGLU FFN：每个 token 都经过 `gate_proj`、`up_proj`、SiLU、逐元素乘法和 `down_proj`。Qwen3.5-9B 的 32 个 Decoder Layer 都使用这套 Dense FFN。
 
@@ -333,7 +333,7 @@ Total Parameters 决定所有 Expert 权重必须存在哪里。即使单 token 
 
 Shared Expert 可能复制、做 TP，或与 Routed Expert 计算重叠。模型公式只规定它对所有 token 执行，具体优化方式属于 runtime。
 
-## 12. 容易混淆的边界
+## 12. MoE 里最容易说错的几件事
 
 ### MoE 不替换 Token Mixer
 
@@ -393,7 +393,7 @@ Dispatch 和 Combine 是稳定的通信边界，All-to-All、All-Reduce 或其�
 13. EP 按 Expert ID 分布权重和工作；TP 切一个 Linear 或 Expert 内部的矩阵维度。
 14. 不同 runtime 的 Dispatch/Combine 可以采用不同 Collective。EP 的语义不能唯一确定通信实现。
 
-## 15. 进入第 7 课前
+## 15. 试着画出一层 MoE
 
 应当能够画出一层 MoE 的这条数据流：
 

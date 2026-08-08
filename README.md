@@ -1,10 +1,12 @@
-# Learn Inference
+# 看懂大模型推理
 
-这套课写给已经在做推理系统、但模型理论基础还不完整的工程师。它不要求读者先系统学完线性代数，也不打算罗列所有模型名词。课程沿着一次真实生成向里走：一段文字怎样变成 token，token 怎样经过 Decoder，模型怎样找到相关上下文，又为什么只能逐个生成后续 token。Prefill、Decode、KV Cache、Dense、MoE 和常见优化都会放回这条链路中解释。
+这是一套写给推理系统工程师的模型原理入门课。你可能已经部署过模型，处理过延迟、吞吐和显存问题，却没有系统学过模型内部的计算。
+
+课程从一次真实生成讲起：文字怎样变成 token，token 怎样经过 Decoder，模型怎样找到相关上下文，为什么回答只能逐个 token 生成。Prefill、Decode、KV Cache、Dense、MoE 和常见优化，也都放回这条链路中理解。
 
 ## 这套课要解决什么问题
 
-读完核心课程，应当能够：
+学完这 10 课，你应该能：
 
 - 从 Tokenizer 开始，完整解释一个新 token 是怎样产生的；
 - 说明 Embedding、RMSNorm、Attention、FFN、Residual、LM Head 分别解决什么问题；
@@ -43,34 +45,26 @@ flowchart LR
 
 ## 从这里开始
 
-1. [第 0 课：模型推理中的张量计算](docs/lessons/00-math-and-tensors.md)
-2. [第 1 课：模型如何生成下一个 token](docs/lessons/01-text-to-next-token.md)
-3. [第 2 课：Decoder Layer 内部的数据流](docs/lessons/02-inside-a-decoder-layer.md)
-4. [第 3 课：图解 Attention 的完整计算过程](docs/lessons/03-attention.md)
-5. [第 4 课：读完 Prompt 之后，模型怎样逐个生成 token](docs/lessons/04-prefill-decode-kv-cache.md)
-6. [第 5 课：Gated DeltaNet 怎样用固定状态记录前文](docs/lessons/05-gated-deltanet.md)
-7. [第 6 课：MoE 怎样为每个 token 选择几套 FFN](docs/lessons/06-dense-and-moe.md)
-8. [第 7 课：图片怎样变成语言模型能读的向量](docs/lessons/07-multimodal-input.md)
-9. [第 8 课：怎样从 config.json 看懂模型结构和开销](docs/lessons/08-config-and-sizing.md)
-10. [第 9 课：怎样判断一种推理优化有没有用](docs/lessons/09-optimization-judgment.md)
+1. [第 0 课：看懂模型里的数字和 shape](docs/lessons/00-math-and-tensors.md)
+2. [第 1 课：模型怎样生成下一个 token](docs/lessons/01-text-to-next-token.md)
+3. [第 2 课：一个 Decoder Layer 里发生了什么](docs/lessons/02-inside-a-decoder-layer.md)
+4. [第 3 课：Attention 怎样找到相关的上下文](docs/lessons/03-attention.md)
+5. [第 4 课：模型读完 Prompt 后怎样逐个生成 token](docs/lessons/04-prefill-decode-kv-cache.md)
+6. [第 5 课：Gated DeltaNet 怎样记住前文](docs/lessons/05-gated-deltanet.md)
+7. [第 6 课：Dense 和 MoE 有什么区别](docs/lessons/06-dense-and-moe.md)
+8. [第 7 课：图片怎样送进语言模型](docs/lessons/07-multimodal-input.md)
+9. [第 8 课：从 config.json 看懂模型](docs/lessons/08-config-and-sizing.md)
+10. [第 9 课：一种优化到底有没有用](docs/lessons/09-optimization-judgment.md)
 11. [完整课程路线](docs/roadmap.md)
 12. [课程术语与符号表](docs/glossary.md)
 13. [课程讲解原则](docs/teaching-method.md)
 
-正文按当前路线逐课编写。旧内容保存在 [`docs/archive`](docs/archive) 中，只用于记录学习过程，不再作为主课材料。
+旧内容保存在 [`docs/archive`](docs/archive) 中，只用于记录学习过程，不再作为主课材料。
 
 ## 当前状态
 
-- 核心路线：已按理论依赖重新组织；
-- 课程讲解规范：已完成；
-- 第 0～2 课正文：已完成第一轮学习和修改，仍会根据阅读反馈继续打磨；
-- 第 3 课正文：已重写 Attention 和 RoPE 的讲解，等待学习反馈；
-- 第 4 课正文：已完成本轮编写，等待学习反馈；
-- 第 5 课正文：已完成本轮编写，等待学习反馈；
-- 第 6 课正文：已完成本轮编写，等待学习反馈；
-- 第 7 课正文：已完成本轮编写，等待学习反馈；
-- 第 8 课正文：已完成本轮编写，等待学习反馈；
-- 第 9 课正文：已完成本轮编写，等待学习反馈；
-- 旧版第 1 课和第 2 课：已归档。
+- 第 0～9 课已经完成第一轮编写，后续会根据阅读和练习反馈继续修改；
+- Attention 和 RoPE 已根据第一轮反馈重写；
+- 旧版第 1 课和第 2 课已经归档。
 
-这个仓库目前首先用于个人学习和校验。每课经过提问、修正和复核后，会继续整理成其他工程师也能阅读的入门笔记。
+这个仓库先记录个人学习和校验过程。每课经过提问、修正和复核后，再整理成其他工程师也能读懂的入门笔记。

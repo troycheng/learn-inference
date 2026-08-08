@@ -1,4 +1,4 @@
-# 第 2 课：Decoder Layer 内部的数据流
+# 第 2 课：一个 Decoder Layer 里发生了什么
 
 第 1 课把 Decoder 暂时画成了一个黑盒：
 
@@ -8,7 +8,7 @@ Embedding 输出
 → Hidden States
 ```
 
-现在打开其中一层，看一组 token 向量怎样经过 Token Mixer 和 FFN，又怎样通过两条残差路径保留原来的表示。
+这一课打开其中一层，看一组 token 向量怎样经过 Token Mixer 和 FFN，又怎样通过两条残差路径保留原来的表示。
 
 Attention 和 Gated DeltaNet 的内部计算留到后续课程。这里暂时把它们统称为 **Token Mixer**，只保留两者共有的作用：让不同 token 位置的信息发生联系。
 
@@ -84,7 +84,7 @@ $$
 
 ![Hidden State 的行与列](../assets/02-hidden-state.svg)
 
-## 3. 一层里有两类信息处理
+## 3. Token Mixer 联系上下文，FFN 加工每个 token
 
 理解 Decoder Layer，关键是分清两种不同的信息处理方式。
 
@@ -572,7 +572,7 @@ Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 �
 
 但不能只看 FFN 就断言整个 Decoder Layer 可以随意拼接。Token Mixer 还必须正确处理每个序列的因果关系、位置和缓存边界。第 4 课再展开这部分。
 
-## 13. 本课出现的算子
+## 13. 这一层用到了哪些算子
 
 | 算子 | 输入 → 输出 | 在本层中的作用 | 是否有模型参数 |
 | --- | --- | --- | --- |
@@ -585,7 +585,7 @@ Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 �
 | 逐元素乘法 | 两个相同 shape → 相同 shape | 实现 SwiGLU 门控 | 否 |
 | 残差加法 | 两个 `[B,T,H] → [B,T,H]` | 保留旧表示并叠加更新 | 否 |
 
-## 14. 几组容易混淆的概念
+## 14. 几个常见误解
 
 ### Hidden State 的一列通常没有固定的人类含义
 
@@ -645,7 +645,7 @@ Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的�
 13. 不直接混合。每个 token 独立使用同一套 FFN；跨 token 混合由 Token Mixer 完成。
 14. 保存输入、RMSNorm、Token Mixer、残差相加；再保存中间结果、RMSNorm、Dense SwiGLU FFN、残差相加。
 
-## 16. 进入 Attention 前
+## 16. 先把一个 Decoder Layer 说清楚
 
 试着不看正文，画出并解释下面两行：
 
