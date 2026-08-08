@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 650" width="1400" height="650">
+  <defs><marker id="next" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill:#111827; }
+    .title { font-size:32px; font-weight:700; }
+    .sub { font-size:17px; fill:#6b7280; }
+    .h { font-size:20px; font-weight:700; text-anchor:middle; }
+    .t { font-size:17px; text-anchor:middle; }
+    .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:20px; text-anchor:middle; }
+  </style>
+  <rect width="1400" height="650" fill="#ffffff"/>
+  <text x="55" y="58" class="title">Delta Rule：先看旧记录，再只写入差值</text>
+  <text x="55" y="92" class="sub">小例子取 k=[1,0]、beta=1，并暂时忽略状态衰减。</text>
+
+  <path d="M335 315 H390" stroke="#2563eb" stroke-width="3" marker-end="url(#next)"/>
+  <path d="M670 315 H725" stroke="#2563eb" stroke-width="3" marker-end="url(#next)"/>
+  <path d="M1005 315 H1060" stroke="#2563eb" stroke-width="3" marker-end="url(#next)"/>
+
+  <rect x="55" y="155" width="280" height="330" rx="16" fill="#f9fafb" stroke="#d1d5db" stroke-width="2"/>
+  <text x="195" y="198" class="h">1. 旧状态</text>
+  <text x="195" y="250" class="m">S = [[3,4],</text><text x="195" y="284" class="m">     [0,0]]</text>
+  <text x="195" y="350" class="t">当前希望写入</text><text x="195" y="390" class="m">v = [5,1]</text>
+
+  <rect x="390" y="155" width="280" height="330" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="530" y="198" class="h">2. 用 Key 读取</text>
+  <text x="530" y="258" class="m">kS = [3,4]</text>
+  <text x="530" y="325" class="t">状态目前记着旧值</text>
+  <rect x="455" y="370" width="150" height="54" rx="10" fill="#dbeafe"/><text x="530" y="405" class="t">不是从零开始写</text>
+
+  <rect x="725" y="155" width="280" height="330" rx="16" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="865" y="198" class="h">3. 计算差值</text>
+  <text x="865" y="250" class="m">Delta = v - kS</text>
+  <text x="865" y="295" class="m">= [5,1]-[3,4]</text>
+  <text x="865" y="340" class="m">= [2,-3]</text>
+  <text x="865" y="405" class="t">只修正不一致的部分</text>
+
+  <rect x="1060" y="155" width="285" height="330" rx="16" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+  <text x="1202" y="198" class="h">4. 写回状态</text>
+  <text x="1202" y="245" class="m">S ← S + kᵀDelta</text>
+  <text x="1202" y="310" class="m">S = [[5,1],</text><text x="1202" y="344" class="m">     [0,0]]</text>
+  <text x="1202" y="405" class="t">同一个 Key 现在读出 [5,1]</text>
+
+  <rect x="235" y="535" width="930" height="66" rx="12" fill="#f9fafb" stroke="#d1d5db"/>
+  <text x="700" y="576" class="h">直接累加会得到 [8,5]；Delta Rule 把旧记录 [3,4] 修正成 [5,1]</text>
+</svg>

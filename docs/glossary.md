@@ -108,6 +108,20 @@
 | Token 间延迟 | Inter-token Latency / ITL | 相邻两个输出 token 到达时间之差 |
 | 每输出 token 时间 | Time per Output Token / TPOT | 通常指排除首 token 后，后续输出 token 的平均间隔 |
 
+## Gated DeltaNet
+
+| 正文用词 | 英文或代码名 | 简短含义 |
+| --- | --- | --- |
+| 因果卷积 | Causal Convolution | 沿 token 轴组合当前位置和左侧局部窗口，不读取未来位置 |
+| 深度卷积 | Depthwise Convolution | 每个通道分别卷积，不在卷积内部混合不同通道 |
+| 卷积状态 | Conv State | Decode 时为下一次因果卷积保留的最近局部窗口 |
+| 递归状态 | Recurrent State | 每个 Gated DeltaNet 层跨 token 更新的固定 shape 状态矩阵 |
+| 状态衰减 | Decay / `alpha` | 在写入当前 token 前缩放旧状态，控制过去保留多少 |
+| 修正幅度 | Update Rate / `beta` | 控制当前 Value 与旧记录的误差写回多少 |
+| 误差修正规则 | Delta Rule | 先读出状态当前记录，再沿 Key 方向写入它与目标 Value 的差值 |
+| 输出门控 | Output Gate / `z` | 在状态读出并归一化后，逐元素调节本层输出 |
+| 分块递归计算 | Chunk Gated Delta Rule | 把已知序列的递归更新改写为分块矩阵计算，并在块间传递状态 |
+
 ## 书写约定
 
 - `token` 在正文中通常小写；正式组件名 `Tokenizer`、`Token ID` 保留大写。
