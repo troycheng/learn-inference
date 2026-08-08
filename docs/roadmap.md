@@ -203,6 +203,8 @@ Qwen3.5 是混合模型。第 4 课先把 Full Attention 的 KV Cache 讲透，�
 
 ## 第 5 课：Qwen3.5 的混合 Token Mixer
 
+正文：[第 5 课：Gated DeltaNet 怎样用固定状态记录前文](lessons/05-gated-deltanet.md)
+
 Qwen3.5-9B 使用 8 组：
 
 ```text

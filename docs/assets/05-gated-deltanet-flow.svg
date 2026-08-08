@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 820" width="1400" height="820">
+  <defs>
+    <marker id="a-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
+    <marker id="a-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#ea580c"/></marker>
+    <marker id="a-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#16a34a"/></marker>
+  </defs>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 32px; font-weight: 700; }
+    .sub { font-size: 17px; fill: #6b7280; }
+    .h { font-size: 20px; font-weight: 700; text-anchor: middle; }
+    .t { font-size: 16px; text-anchor: middle; }
+    .s { font-size: 14px; fill: #6b7280; text-anchor: middle; }
+    .line { fill: none; stroke-width: 3; }
+  </style>
+  <rect width="1400" height="820" fill="#ffffff"/>
+  <text x="55" y="58" class="title">一个 token 怎样读写 Gated DeltaNet 状态</text>
+  <text x="55" y="92" class="sub">蓝色是当前 token 的特征流，绿色是跨 token 保留的状态，橙色是门控信号。</text>
+
+  <path d="M185 197 H260 V525" class="line" stroke="#2563eb"/>
+  <path d="M260 197 H315" class="line" stroke="#2563eb" marker-end="url(#a-blue)"/>
+  <path d="M260 325 H315" class="line" stroke="#2563eb" marker-end="url(#a-blue)"/>
+  <path d="M260 425 H315" class="line" stroke="#2563eb" marker-end="url(#a-blue)"/>
+  <path d="M260 525 H315" class="line" stroke="#2563eb" marker-end="url(#a-blue)"/>
+  <path d="M485 197 H585" class="line" stroke="#2563eb" marker-end="url(#a-blue)"/>
+  <path d="M755 197 H825" class="line" stroke="#2563eb" marker-end="url(#a-blue)"/>
+  <path d="M915 249 V285" class="line" stroke="#2563eb" marker-end="url(#a-blue)"/>
+  <path d="M1040 394 H1135" class="line" stroke="#2563eb" marker-end="url(#a-blue)"/>
+  <path d="M1275 394 H1310" class="line" stroke="#2563eb" marker-end="url(#a-blue)"/>
+
+  <path d="M485 325 H810" class="line" stroke="#ea580c" marker-end="url(#a-orange)"/>
+  <path d="M485 425 H810" class="line" stroke="#ea580c" marker-end="url(#a-orange)"/>
+  <path d="M485 525 H1100 V455 H1135" class="line" stroke="#ea580c" marker-end="url(#a-orange)"/>
+
+  <path d="M530 665 H840 V500" class="line" stroke="#16a34a" marker-end="url(#a-green)"/>
+  <path d="M970 500 V665 H1115" class="line" stroke="#16a34a" marker-end="url(#a-green)"/>
+
+  <rect x="55" y="145" width="130" height="104" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="120" y="187" class="h">输入 X</text><text x="120" y="220" class="s">[B,T,H]</text>
+
+  <rect x="315" y="145" width="170" height="104" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="400" y="183" class="h">Q/K/V 投影</text><text x="400" y="216" class="s">H → 8192</text>
+  <rect x="315" y="285" width="170" height="80" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="400" y="317" class="h">beta</text><text x="400" y="345" class="s">修正幅度</text>
+  <rect x="315" y="385" width="170" height="80" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="400" y="417" class="h">g</text><text x="400" y="445" class="s">旧状态衰减</text>
+  <rect x="315" y="485" width="170" height="80" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="400" y="517" class="h">z</text><text x="400" y="545" class="s">输出门控</text>
+
+  <rect x="585" y="145" width="170" height="104" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="670" y="183" class="h">因果卷积</text><text x="670" y="216" class="s">最近 4 个位置</text>
+  <rect x="825" y="145" width="180" height="104" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="915" y="180" class="h">拆分 Q/K/V</text><text x="915" y="211" class="s">Q/K 做 L2Norm</text><text x="915" y="232" class="s">Q 再除以 sqrt(Dk)</text>
+
+  <rect x="810" y="285" width="230" height="215" rx="16" fill="#f0fdf4" stroke="#22c55e" stroke-width="2.5"/>
+  <text x="925" y="325" class="h">状态读写</text>
+  <text x="925" y="365" class="t">1. 衰减旧状态</text>
+  <text x="925" y="399" class="t">2. K 读出旧记录</text>
+  <text x="925" y="433" class="t">3. Value 误差修正</text>
+  <text x="925" y="467" class="t">4. Q 读取新状态</text>
+
+  <rect x="1135" y="335" width="140" height="120" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="1205" y="375" class="h">RMSNorm</text><text x="1205" y="407" class="t">× SiLU(z)</text><text x="1205" y="435" class="s">输出门控</text>
+  <rect x="1310" y="350" width="80" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="1350" y="385" class="h">输出</text><text x="1350" y="415" class="s">H 维</text>
+
+  <rect x="205" y="620" width="325" height="95" rx="14" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
+  <text x="367" y="657" class="h">上一 token 留下的状态</text><text x="367" y="690" class="s">conv_state + recurrent_state</text>
+  <rect x="1115" y="620" width="230" height="95" rx="14" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
+  <text x="1230" y="657" class="h">更新后的状态</text><text x="1230" y="690" class="s">交给下一 token</text>
+
+  <g transform="translate(55 770)">
+    <line x1="0" y1="0" x2="36" y2="0" stroke="#2563eb" stroke-width="3" marker-end="url(#a-blue)"/><text x="48" y="6" font-size="15" fill="#6b7280">当前 token 数据</text>
+    <line x1="250" y1="0" x2="286" y2="0" stroke="#16a34a" stroke-width="3" marker-end="url(#a-green)"/><text x="298" y="6" font-size="15" fill="#6b7280">跨 token 状态</text>
+    <line x1="475" y1="0" x2="511" y2="0" stroke="#ea580c" stroke-width="3" marker-end="url(#a-orange)"/><text x="523" y="6" font-size="15" fill="#6b7280">门控信号</text>
+  </g>
+</svg>

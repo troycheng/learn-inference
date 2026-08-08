@@ -296,7 +296,7 @@ $$
 
 这里的 `T` 包括 Prompt 和已经追加进缓存的输出 token。若同时保存多个请求或 Beam，容量还要乘以对应序列数。
 
-这只是 Full Attention 的 K/V 数值容量，不等于 runtime 实际申请的显存，也不等于 Qwen3.5 一个请求的全部状态。分块分配会产生预留和碎片；TP 可能把头分到不同设备；KV 量化会改变 `S`。更重要的是，Qwen3.5 的 24 个 Gated DeltaNet 层还保存 recurrent state 和卷积状态，第 5 课会单独计算。
+这只是 Full Attention 的 K/V 数值容量，不等于 runtime 实际申请的显存，也不等于 Qwen3.5 一个请求的全部状态。分块分配会产生预留和碎片；TP 可能把头分到不同设备；KV 量化会改变 `S`。更重要的是，Qwen3.5 的 24 个 Gated DeltaNet 层还保存 recurrent state 和卷积状态，第 5 课会单独解释。
 
 `partial_rotary_factor=0.25` 也不会把 KV Cache 缩小到四分之一。RoPE 只旋转 K 的部分维度，缓存仍然保存完整的 `D=256` 维 K 和 V。
 
@@ -527,7 +527,7 @@ K_past [B,Nkv,T,D]
 V_past [B,Nkv,T,D]
 ```
 
-第 5 课会打开 Qwen3.5 中占多数的 Gated DeltaNet 层。它不会保留随 `T` 增长的 K/V，而是把历史更新进固定 shape 的 recurrent state。理解那套更新前，先把本课的“逐 token K/V 历史”与“固定 shape 状态”分开。
+[第 5 课](05-gated-deltanet.md)会打开 Qwen3.5 中占多数的 Gated DeltaNet 层。它不会保留随 `T` 增长的 K/V，而是把历史更新进固定 shape 的 recurrent state。理解那套更新前，先把本课的“逐 token K/V 历史”与“固定 shape 状态”分开。
 
 ## 资料来源
 

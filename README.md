@@ -48,9 +48,10 @@ flowchart LR
 3. [第 2 课：Decoder Layer 内部的数据流](docs/lessons/02-inside-a-decoder-layer.md)
 4. [第 3 课：图解 Attention 的完整计算过程](docs/lessons/03-attention.md)
 5. [第 4 课：读完 Prompt 之后，模型怎样逐个生成 token](docs/lessons/04-prefill-decode-kv-cache.md)
-6. [完整课程路线](docs/roadmap.md)
-7. [课程术语与符号表](docs/glossary.md)
-8. [课程讲解原则](docs/teaching-method.md)
+6. [第 5 课：Gated DeltaNet 怎样用固定状态记录前文](docs/lessons/05-gated-deltanet.md)
+7. [完整课程路线](docs/roadmap.md)
+8. [课程术语与符号表](docs/glossary.md)
+9. [课程讲解原则](docs/teaching-method.md)
 
 正文按当前路线逐课编写。旧内容保存在 [`docs/archive`](docs/archive) 中，只用于记录学习过程，不再作为主课材料。
 
@@ -61,7 +62,8 @@ flowchart LR
 - 第 0～2 课正文：已完成第一轮学习和修改，仍会根据阅读反馈继续打磨；
 - 第 3 课正文：已重写 Attention 和 RoPE 的讲解，等待学习反馈；
 - 第 4 课正文：已完成本轮编写，等待学习反馈；
-- 第 5～9 课正文：待逐课学习、问答和整理；
+- 第 5 课正文：已完成本轮编写，等待学习反馈；
+- 第 6～9 课正文：待逐课学习、问答和整理；
 - 旧版第 1 课和第 2 课：已归档。
 
 这个仓库目前首先用于个人学习和校验。每课经过提问、修正和复核后，会继续整理成其他工程师也能阅读的入门笔记。
