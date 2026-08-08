@@ -1,6 +1,6 @@
-# 第 4 课：读完 Prompt 之后，模型怎样逐个生成 token
+# 第 4 课：模型读完 Prompt 后怎样逐个生成 token
 
-前几课拆开了一次模型前向：Hidden States 怎样经过 Decoder Layer，Attention 怎样读取前文。真正生成一段回答时，这套计算要反复执行。每轮使用同一套模型权重，但新输入的位置数不同，能够复用的历史状态也不同。
+前几课拆开了一次模型前向：Hidden States 怎样经过 Decoder Layer，Attention 怎样读取前文。生成一段回答时，这套计算会反复执行。每轮使用同一套模型权重，但新输入的位置数不同，能够复用的历史状态也不同。
 
 假设 Chat Template 和 Tokenizer 最终产生 4 个 Prompt token：
 
@@ -14,7 +14,7 @@ p1  p2  p3  p4
 y1  y2  y3
 ```
 
-这段生成不是把 7 个 token 一次送进模型。开始时只有 `p1` 到 `p4` 已知，`y1`、`y2`、`y3` 都还不存在。真正的执行顺序是：
+这段生成不是把 7 个 token 一次送进模型。开始时只有 `p1` 到 `p4` 已知，`y1`、`y2`、`y3` 都还不存在。实际执行顺序是：
 
 ```text
 输入 p1 p2 p3 p4  → 选出 y1
@@ -26,7 +26,7 @@ y1  y2  y3
 
 ![一次请求中的 Prefill 和 Decode](../assets/04-generation-timeline.svg)
 
-接下来沿着这条时间线逐步展开：Prompt 怎样进入 Prefill，生成 token 怎样推进 Decode，KV Cache 怎样增长，服务端又怎样把多个请求放进同一轮计算。
+下面沿着这条时间线来看 Prompt 怎样进入 Prefill，生成 token 怎样推进 Decode，KV Cache 怎样增长，以及服务端怎样把多个请求放进同一轮计算。
 
 ## 1. 同一次生成有两类模型计算
 
@@ -449,7 +449,7 @@ Qwen3.5-9B 的 32 个 Decoder Layer 按下面的顺序重复：
 
 Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Full Attention 层更新 K/V，Gated DeltaNet 层更新卷积状态和 recurrent state。第 5 课会打开 Gated DeltaNet，解释固定 shape 的状态怎样逐步吸收历史。
 
-## 14. 分清几组容易混淆的概念
+## 14. 这几组概念很容易混
 
 ### KV Cache 不是 Token IDs
 
@@ -509,7 +509,7 @@ Token IDs 仍由生成循环保存，用于输出、停止判断或后续处理�
 13. ITL 是每一对相邻输出 token 的实际时间间隔；TPOT 通常是排除首 token 后的平均输出 token 时间。
 14. Prefill 一次处理 `p1` 到 `p4`，建立历史状态，并从 `p4` 的 Logits 选出 `y1`。第一轮 Decode 只输入 `y1`，读取历史状态、追加 `y1` 的状态并选出 `y2`；下一轮只输入 `y2`，追加状态并选出 `y3`。
 
-## 17. 进入第 5 课前
+## 17. 先把生成时间线画出来
 
 不看正文，试着画出下面这条时间线：
 

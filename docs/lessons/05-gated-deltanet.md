@@ -1,4 +1,4 @@
-# 第 5 课：Gated DeltaNet 怎样用固定状态记录前文
+# 第 5 课：Gated DeltaNet 怎样记住前文
 
 第 4 课讲过，Full Attention 会为每个历史 token 保留 K/V。上下文越长，KV Cache 也越长。Qwen3.5-9B 的 32 个 Decoder Layer 中，只有 8 层这样做；另外 24 层使用 Gated DeltaNet，把历史更新进固定 shape 的状态。
 
@@ -14,7 +14,7 @@ Gated DeltaNet → Gated DeltaNet → Gated DeltaNet → Full Attention
 
 理解 Gated DeltaNet，要先看它怎样保存历史。Full Attention 留下一排可以逐位置读取的 K/V；Gated DeltaNet 反复修改一张固定大小的状态矩阵。新 token 到来时，它先读出状态对当前 Key 的旧记录，再根据当前 Value 修正这条记录，最后用 Query 从更新后的状态中取回结果。
 
-## 1. 它要解决什么问题
+## 1. 为什么要用固定大小的状态
 
 Full Attention 能让当前 Query 与每个历史 Key 分别比较，代价是历史 K/V 随 token 数增长。假设一层已经处理了 `T` 个位置，它要保存：
 
@@ -336,7 +336,7 @@ $$
 
 为什么 recurrent state 有 32 个头：Q/K 在状态更新前各复制一次，让 16 个 Key 头扩展到 32 个，与 Value 头一一对应。这里的复制发生在计算视图中，不表示模型额外训练了两套相同参数。
 
-## 10. 它与 Full Attention 保存历史的方式不同
+## 10. Gated DeltaNet 与 Full Attention 怎样保存历史
 
 | 对比项 | Full Attention | Gated DeltaNet |
 | --- | --- | --- |
@@ -373,7 +373,7 @@ Gated DeltaNet 的 `conv_state` 和 `recurrent_state` shape 不随 token 数增�
 
 Gated Delta Rule 的 Chunk Kernel 是算子内部的并行算法。服务端 Chunked Prefill 是调度器把长 Prompt 分成多个执行轮次。两者都使用 Chunk 这个词，但切分层级不同。
 
-## 12. 容易混淆的边界
+## 12. 几个常见误解
 
 ### Gated DeltaNet 不是没有 Cache
 
@@ -429,7 +429,7 @@ Chunk Kernel 用代数变换并行组织已知 token 的计算，最终结果仍
 13. 不是。Chunk Kernel 并行组织计算，数学结果仍包含前后状态依赖。
 14. 完整前缀状态还包括 24 个 Gated DeltaNet 层的 conv state 和 recurrent state。
 
-## 15. 进入第 6 课前
+## 15. 试着说清两类请求状态
 
 合上正文，试着复述一个新 token 进入 Gated DeltaNet 后发生的动作：
 

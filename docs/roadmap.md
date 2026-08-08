@@ -1,8 +1,8 @@
-# 课程路线：先看懂模型，再判断优化
+# 《看懂大模型推理》课程路线
 
 ## 课程目标
 
-这套课程写给已经参与推理系统研发、但模型理论基础还不完整的工程师。它不会覆盖所有论文和框架参数，而是集中讲清能解释大多数推理问题的那组核心概念。
+这套课面向已经参与推理系统研发、但没有系统学过模型原理的工程师。课程只讲后面判断推理问题时经常要用的概念，不追求收齐所有论文、模型变体和框架参数。
 
 整套课沿着下面这条链路展开：
 
@@ -27,7 +27,7 @@
 | 信息怎样被混合？ | Token Mixer 跨 token；FFN 在单 token 内加工特征 | 找到模型能力和主要计算的来源 |
 | 哪些历史结果需要保留？ | KV Cache、Gated DeltaNet recurrent state | 理解 Prefill、Decode、显存和并发限制 |
 
-后面的算子、公式和优化方法，都会回到这三条主线中定位。
+后面遇到算子、公式和优化方法，都可以先用这三个问题定位。
 
 ## 两种尺度的例子
 
@@ -49,7 +49,7 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 - Qwen3.5-35B-A3B：讲 MoE、总参数与激活参数；
 - 官方 `config.json` 和 Transformers 实现：核对真实字段、shape 和数据流。
 
-重要概念通常从小数字计算开始，再推广到通用 shape，最后用真实配置确认规模。
+每个重要概念先用小数字算一遍，再写成通用 shape，最后用真实配置确认规模。
 
 ## 当前课程顺序
 
@@ -68,9 +68,9 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 | 8 | 怎样从配置还原模型和运行时数据？ | 层数、H/I/V、头数、专家数、dtype、权重、KV/状态容量、主要计算量 | 能读配置并完成带假设和单位的数量级估算 |
 | 9 | 怎样用理论判断推理优化？ | 量化、FlashAttention、Prefix Cache、Batching、TP/EP、推测解码/MTP | 能说明优化改了什么、少了什么、新增什么、何时收益成立 |
 
-## 第 0 课：模型推理中的张量计算
+## 第 0 课：看懂模型里的数字和 shape
 
-正文：[第 0 课：模型推理中的张量计算](lessons/00-math-and-tensors.md)
+正文：[第 0 课：看懂模型里的数字和 shape](lessons/00-math-and-tensors.md)
 
 这节课补齐阅读后文所需的数学，不展开完整线性代数。内容限于后面会直接用到的部分：
 
@@ -86,11 +86,11 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 
 学到这里，应该能解释 `X:[B,T,H]` 和 `W:[I,H]` 中的 `B/T/H/I`，并推出 Linear 输出 `[B,T,I]`。
 
-## 第 1 课：模型如何生成下一个 token
+## 第 1 课：模型怎样生成下一个 token
 
-正文：[第 1 课：模型如何生成下一个 token](lessons/01-text-to-next-token.md)
+正文：[第 1 课：模型怎样生成下一个 token](lessons/01-text-to-next-token.md)
 
-这一课先把生成地图接起来：
+先把一次生成从头到尾走一遍：
 
 ```text
 对话消息
@@ -108,9 +108,9 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 
 读完后，应当能解释模型为什么不直接接收或输出文字，并准确区分 Token ID、Embedding、Hidden State、Logit 和概率。
 
-## 第 2 课：Decoder Layer 内部的数据流
+## 第 2 课：一个 Decoder Layer 里发生了什么
 
-正文：[第 2 课：Decoder Layer 内部的数据流](lessons/02-inside-a-decoder-layer.md)
+正文：[第 2 课：一个 Decoder Layer 里发生了什么](lessons/02-inside-a-decoder-layer.md)
 
 一层反复使用同一骨架：
 
@@ -123,11 +123,11 @@ B=1，T=3，H=4，I=6，V=5，Attention Head=2
 
 读完后，应当能把 SwiGLU 展开为 `gate_proj → SiLU`、`up_proj`、逐元素乘法和 `down_proj`，并写出每一步的 shape。
 
-## 第 3 课：图解 Attention 的完整计算过程
+## 第 3 课：Attention 怎样找到相关的上下文
 
-正文：[第 3 课：图解 Attention 的完整计算过程](lessons/03-attention.md)
+正文：[第 3 课：Attention 怎样找到相关的上下文](lessons/03-attention.md)
 
-这一课拆开 Full Attention，看当前 token 怎样给可见位置分配权重，再把相关信息取回来。
+这一课拆开 Full Attention，看当前 token 怎样给可见位置分配权重，再从这些位置取回信息。
 
 ```text
 Hidden State
@@ -140,9 +140,9 @@ Hidden State
 
 在这段计算之后，再解释多头、GQA 和 RoPE。不同头可以学到不同关系，但没有人工指定的固定职责；RoPE 也不是单纯把向量转一下，而是把相对位置带进 Q/K 点积。
 
-## 第 4 课：读完 Prompt 之后，模型怎样逐个生成 token
+## 第 4 课：模型读完 Prompt 后怎样逐个生成 token
 
-正文：[第 4 课：读完 Prompt 之后，模型怎样逐个生成 token](lessons/04-prefill-decode-kv-cache.md)
+正文：[第 4 课：模型读完 Prompt 后怎样逐个生成 token](lessons/04-prefill-decode-kv-cache.md)
 
 第 3 课看到的是一张静态 Attention 图。第 4 课沿着一次真实请求往前走，把每一步发生的时间和保存的状态接起来。
 
@@ -191,7 +191,7 @@ Attention 输出：只更新当前新位置
 
 这三件事分清以后，Continuous Batching 和 Chunked Prefill 就不再只是框架术语，而是对已知计算的重新组织。
 
-### 本课会回答的工程问题
+### 这条链路和哪些工程问题有关
 
 - TTFT 为什么主要覆盖排队、Prefill 和第一次采样，TPOT 为什么主要对应连续 Decode 步骤；
 - KV Cache 保存什么、不保存什么，容量怎样随层数、`Nkv`、`D`、长度和 dtype 增长；
@@ -201,9 +201,9 @@ Attention 输出：只更新当前新位置
 
 Qwen3.5 是混合模型。第 4 课先把 Full Attention 的 KV Cache 讲透，并注明 Gated DeltaNet 层保存的是另一种 recurrent state。第 5 课再打开这种状态的更新过程，避免在同一课里混入两套算法。
 
-## 第 5 课：Qwen3.5 的混合 Token Mixer
+## 第 5 课：Gated DeltaNet 怎样记住前文
 
-正文：[第 5 课：Gated DeltaNet 怎样用固定状态记录前文](lessons/05-gated-deltanet.md)
+正文：[第 5 课：Gated DeltaNet 怎样记住前文](lessons/05-gated-deltanet.md)
 
 Qwen3.5-9B 使用 8 组：
 
@@ -214,9 +214,9 @@ Qwen3.5-9B 使用 8 组：
 
 Full Attention 保留并读取较完整的历史 K/V；Gated DeltaNet 把历史持续更新到固定 shape 的 recurrent state。课程会解释两类状态的语义、shape 与生命周期，不展开训练推导和 Kernel 实现。
 
-## 第 6 课：Dense 与 MoE
+## 第 6 课：Dense 和 MoE 有什么区别
 
-正文：[第 6 课：MoE 怎样为每个 token 选择几套 FFN](lessons/06-dense-and-moe.md)
+正文：[第 6 课：Dense 和 MoE 有什么区别](lessons/06-dense-and-moe.md)
 
 MoE 不替换整个 Decoder Layer，主要替换 FFN 子层：
 
@@ -231,9 +231,9 @@ MoE：Router 为每个 token 选择少量路由专家，并使用共享专家
 - 激活参数只描述本轮选中的参数，不直接等于显存、通信或延迟；
 - 专家是训练形成的参数分工，不是人工指定的“代码专家”或“数学专家”。
 
-## 第 7 课：视觉编码器与多模态输入
+## 第 7 课：图片怎样送进语言模型
 
-正文：[第 7 课：图片怎样变成语言模型能读的向量](lessons/07-multimodal-input.md)
+正文：[第 7 课：图片怎样送进语言模型](lessons/07-multimodal-input.md)
 
 这节课只补充理解多模态推理链路所需的视觉知识：
 
@@ -249,11 +249,11 @@ MoE：Router 为每个 token 选择少量路由专家，并使用共享专家
 
 其中一个重要区别是，视觉特征不是由文本 Token ID 查 Embedding 得到的。图片分辨率、数量和视频帧数会改变视觉位置数，进而影响视觉编码耗时、语言模型 Prefill、缓存和显存。
 
-## 第 8 课：从配置还原结构与数量级
+## 第 8 课：从 config.json 看懂模型
 
-正文：[第 8 课：怎样从 config.json 看懂模型结构和开销](lessons/08-config-and-sizing.md)
+正文：[第 8 课：从 config.json 看懂模型](lessons/08-config-and-sizing.md)
 
-前面先建立语义，这一课再集中估算：
+认识各个模块以后，就可以开始估算：
 
 ```text
 读配置字段
@@ -265,9 +265,9 @@ MoE：Router 为每个 token 选择少量路由专家，并使用共享专家
 
 分别还原 Qwen3.5 Dense 与 MoE 模型的层排列、投影尺寸、头数、专家数、参数容量、KV Cache 和 recurrent state。
 
-## 第 9 课：用理论判断优化方向
+## 第 9 课：一种优化到底有没有用
 
-正文：[第 9 课：怎样判断一种推理优化有没有用](lessons/09-optimization-judgment.md)
+正文：[第 9 课：一种优化到底有没有用](lessons/09-optimization-judgment.md)
 
 GPU 执行和服务调度不再各自成为孤立章节。每种优化都回到前面已经理解的模型对象：
 
@@ -282,7 +282,7 @@ GPU 执行和服务调度不再各自成为孤立章节。每种优化都回到�
 | EP | 把专家放到不同设备 | token 分发、All-to-All 和负载均衡 |
 | 推测解码/MTP | 提出并验证多个未来候选 | 接受率、验证成本和额外模型成本 |
 
-可以用下面的问题检查一个优化方案：
+评估一个优化方案时，依次问：
 
 ```text
 它改变链路中的哪个对象？
@@ -304,7 +304,7 @@ GPU 执行和服务调度不再各自成为孤立章节。每种优化都回到�
 
 这些内容可以后续按工程需要作为专题添加，不打断第一轮主线。
 
-## 总体验收标准
+## 学完后应当做到什么
 
 完成课程后，读者应当能够：
 
