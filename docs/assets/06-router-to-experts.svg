@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 720" width="1400" height="720">
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:19px;font-weight:700;text-anchor:middle}.t{font-size:16px;text-anchor:middle}.s{font-size:14px;fill:#6b7280;text-anchor:middle}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#a)}</style>
+  <rect width="1400" height="720" fill="#fff"/><text x="55" y="58" class="title">一个 token 的 Top-2 路由</text><text x="55" y="92" class="sub">Router 负责选择和分配权重，Expert 负责执行各自的 SwiGLU FFN。</text>
+  <rect x="55" y="285" width="150" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="130" y="326" class="h">输入 x</text><text x="130" y="358" class="s">[H]</text>
+  <path d="M205 335 H280" class="line"/><rect x="280" y="245" width="230" height="180" rx="16" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="395" y="282" class="h">Router</text><text x="395" y="319" class="t">Logits</text><text x="395" y="348" class="t">[0.2, -0.8, 1.4, 0.0]</text><text x="395" y="383" class="t">Top-2：E2、E0</text>
+  <path d="M510 305 H610 V200 H680" class="line"/><path d="M510 365 H610 V485 H680" class="line"/>
+  <rect x="680" y="130" width="240" height="140" rx="16" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="800" y="172" class="h">Expert 2</text><text x="800" y="207" class="t">FFN₂(x) = [2,0]</text><text x="800" y="239" class="s">Routing Weight 0.77</text>
+  <rect x="680" y="415" width="240" height="140" rx="16" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="800" y="457" class="h">Expert 0</text><text x="800" y="492" class="t">FFN₀(x) = [0,3]</text><text x="800" y="524" class="s">Routing Weight 0.23</text>
+  <path d="M920 200 H1030 V300 H1090" class="line"/><path d="M920 485 H1030 V370 H1090" class="line"/>
+  <rect x="1090" y="270" width="255" height="130" rx="16" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="1218" y="310" class="h">加权求和</text><text x="1218" y="346" class="t">0.77×[2,0]</text><text x="1218" y="376" class="t">+ 0.23×[0,3]</text>
+  <text x="1218" y="445" class="h">[1.54, 0.69]</text><text x="700" y="655" class="sub" text-anchor="middle">没有选中的 Expert 1 和 Expert 3 本次不执行，但它们的权重仍属于模型。</text>
+</svg>

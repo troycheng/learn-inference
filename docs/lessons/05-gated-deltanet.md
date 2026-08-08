@@ -447,7 +447,7 @@ Hidden State
 
 还要能解释 Qwen3.5 为什么同时存在两种请求状态：8 个 Full Attention 层保存随长度增长的 K/V；24 个 Gated DeltaNet 层保存固定 shape 的卷积状态和 recurrent state。
 
-第 6 课会转到 Decoder Layer 的另一个子层。Dense 与 MoE 的差异主要发生在 FFN，而不是刚刚讲完的 Token Mixer。
+[第 6 课](06-dense-and-moe.md)会转到 Decoder Layer 的另一个子层。Dense 与 MoE 的差异主要发生在 FFN，而不是刚刚讲完的 Token Mixer。
 
 ## 资料来源
 
