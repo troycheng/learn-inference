@@ -1,8 +1,58 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 780" width="1400" height="780">
-  <defs><marker id="c" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
-  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.panel{font-size:24px;font-weight:700;text-anchor:middle}.h{font-size:17px;font-weight:700;text-anchor:middle}.t{font-size:14px;text-anchor:middle}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#c)}</style>
-  <rect width="1400" height="780" fill="#fff"/><text x="55" y="58" class="title">推测解码减少 Target Model 的串行调用次数</text><text x="55" y="92" class="sub">候选不是最终答案；Target Model 仍从前往后验证，并在第一个拒绝位置修正。</text>
-  <rect x="55" y="135" width="610" height="570" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><rect x="735" y="135" width="610" height="570" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><text x="360" y="182" class="panel">普通 Decode</text><text x="1040" y="182" class="panel">Speculative Decode</text>
-  <text x="105" y="240" font-size="17" font-weight="700">Target forward</text><g transform="translate(105 275)"><rect x="0" y="0" width="85" height="70" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="43" y="42" class="h">y1</text><path d="M85 35 H130" class="line"/><rect x="130" y="0" width="85" height="70" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="173" y="42" class="h">y2</text><path d="M215 35 H260" class="line"/><rect x="260" y="0" width="85" height="70" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="303" y="42" class="h">y3</text><path d="M345 35 H390" class="line"/><rect x="390" y="0" width="85" height="70" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="433" y="42" class="h">y4</text></g><text x="360" y="415" class="h">4 次串行 Target forward</text><text x="360" y="450" class="t">每次确认 1 个 token</text><rect x="105" y="510" width="510" height="105" rx="14" fill="#fee2e2" stroke="#f87171" stroke-width="2"/><text x="360" y="550" class="h">串行步数直接进入 TPOT</text><text x="360" y="585" class="t">未来 token 依赖前一个已确认 token</text>
-  <rect x="785" y="235" width="205" height="115" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="888" y="275" class="h">Drafter</text><text x="888" y="310" class="t">提出 c1、c2、c3</text><path d="M990 292 H1060" class="line"/><rect x="1060" y="215" width="235" height="155" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1178" y="255" class="h">1 次 Target 验证</text><text x="1178" y="292" class="t">c1 ✓　c2 ✓</text><text x="1178" y="327" class="t">c3 ✗，在此修正</text><path d="M1178 370 V440" class="line"/><rect x="900" y="440" width="280" height="100" rx="14" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1040" y="478" class="h">本轮确认多个位置</text><text x="1040" y="513" class="t">收益取决于接受长度和总成本</text><rect x="785" y="585" width="510" height="80" rx="13" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="1040" y="618" class="h">新增 Drafter、候选 Cache 与拒绝浪费</text><text x="1040" y="647" class="t">低并发延迟收益不等于高并发吞吐收益</text><text x="700" y="750" class="sub" text-anchor="middle">Target Model 没有跳过验证，自回归约束仍然成立。</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 740" width="1200" height="740" role="img" aria-labelledby="spec-title spec-desc">
+  <title id="spec-title">推测解码让目标模型一次验证多个候选</title>
+  <desc id="spec-desc">普通解码需要四次串行目标模型前向才能确认四个 token。推测解码先由 Drafter 提出三个候选，再由目标模型一次验证，前两个候选接受，第三个候选拒绝并修正。</desc>
+  <defs>
+    <marker id="spec-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
+  </defs>
+  <style>
+    text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei','Microsoft JhengHei','SimHei',sans-serif;fill:#111827}
+    .title{font-size:30px;font-weight:700}.sub{font-size:16px;fill:#6b7280}.panel{font-size:22px;font-weight:700;text-anchor:middle}.heading{font-size:16px;font-weight:700;text-anchor:middle}.note{font-size:14px;fill:#4b5563;text-anchor:middle}.edge{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#spec-arrow)}
+  </style>
+  <rect width="1200" height="740" fill="#fff" data-graph-role="canvas"/>
+  <g data-graph-role="title-block">
+    <text x="48" y="56" class="title">推测解码让目标模型一次验证多个候选</text>
+    <text x="48" y="88" class="sub">候选不是最终输出。目标模型仍按顺序验证，并在第一个拒绝位置修正。</text>
+  </g>
+
+  <g data-graph-role="container" aria-label="普通 Decode">
+    <rect x="48" y="126" width="520" height="526" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" data-graph-role="decoration"/>
+    <text x="308" y="170" class="panel">普通 Decode</text>
+    <text x="96" y="224" font-size="16" font-weight="700">Target forward</text>
+    <g transform="translate(96 254)">
+      <rect x="0" y="0" width="70" height="64" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="35" y="39" class="heading">y1</text>
+      <path d="M70 32 H110" class="edge" data-graph-role="edge"/>
+      <rect x="110" y="0" width="70" height="64" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="145" y="39" class="heading">y2</text>
+      <path d="M180 32 H220" class="edge" data-graph-role="edge"/>
+      <rect x="220" y="0" width="70" height="64" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="255" y="39" class="heading">y3</text>
+      <path d="M290 32 H330" class="edge" data-graph-role="edge"/>
+      <rect x="330" y="0" width="70" height="64" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="365" y="39" class="heading">y4</text>
+    </g>
+    <text x="308" y="370" class="heading">4 次串行 Target forward</text>
+    <text x="308" y="405" class="note">每次确认 1 个 token</text>
+    <rect x="96" y="472" width="424" height="112" rx="12" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
+    <text x="308" y="511" class="heading">每一步都要等待一次目标模型前向</text>
+    <text x="308" y="547" class="note">未来 token 依赖前一个已确认 token</text>
+  </g>
+
+  <g data-graph-role="container" aria-label="推测解码">
+    <rect x="632" y="126" width="520" height="526" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" data-graph-role="decoration"/>
+    <text x="892" y="170" class="panel">Speculative Decode</text>
+    <rect x="680" y="224" width="178" height="104" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+    <text x="769" y="263" class="heading">Drafter</text>
+    <text x="769" y="298" class="note">提出 c1、c2、c3</text>
+    <path d="M858 276 H914" class="edge" data-graph-role="edge"/>
+    <rect x="914" y="204" width="190" height="144" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+    <text x="1009" y="242" class="heading">1 次 Target 验证</text>
+    <text x="1009" y="282" class="note">c1 ✓　c2 ✓</text>
+    <text x="1009" y="318" class="note">c3 ✗，在此修正</text>
+    <path d="M1009 348 V402" class="edge" data-graph-role="edge"/>
+    <rect x="772" y="402" width="240" height="90" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+    <text x="892" y="438" class="heading">本轮确认多个位置</text>
+    <text x="892" y="468" class="note">是否更快取决于总成本</text>
+    <rect x="680" y="532" width="424" height="82" rx="12" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+    <text x="892" y="565" class="heading">还要运行 Drafter 并保存候选状态</text>
+    <text x="892" y="594" class="note">被拒绝候选的计算会白做</text>
+  </g>
+
+  <text x="600" y="704" class="sub" text-anchor="middle" data-graph-role="annotation">低并发 TPOT 下降，不代表高并发吞吐一定提高。</text>
 </svg>

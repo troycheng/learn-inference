@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" width="960" height="330">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 330" width="960" height="330" role="img" aria-labelledby="title desc">
+  <title id="title">Tokenizer 把文字变成 Token ID</title>
+  <desc id="desc">文本先被切成 token，每个 token 再映射为词表中的整数编号。</desc>
   <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:18px;font-weight:600}.label{font-size:14px;font-weight:600}.sub{font-size:12px;fill:#6b7280}.num{font-family:Menlo,Monaco,monospace;font-size:14px}</style>
   <defs><marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
   <rect width="960" height="330" fill="#ffffff"/>

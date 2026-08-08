@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" width="1200" height="620" role="img" aria-labelledby="title desc">
   <title id="title">位置 3 的查询向量依次和三条键向量打分</title>
   <desc id="desc">查询向量 Q3 分别与 K1、K2、K3 点积，得到三个原始分数，再除以根号 2。</desc>
   <style>

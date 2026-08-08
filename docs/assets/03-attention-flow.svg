@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
-  <title id="title">Attention 的完整计算流程</title>
-  <desc id="desc">同一组隐藏状态分别产生查询、键和值，查询和键计算分数，经过因果遮罩和 Softmax 后得到权重，再用权重汇总值。</desc>
+  <title id="title">Attention 从单头结果到完整子层输出</title>
+  <desc id="desc">同一组隐藏状态分别产生查询、键和值，查询和键计算分数，经过因果遮罩和 Softmax 后得到权重。每头汇总值后得到 [B,T,D]，所有查询头拼接并经过输出投影后才得到完整子层输出 [B,T,H]。</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#64748B"/>
@@ -18,7 +18,7 @@
     </style>
   </defs>
   <rect width="1200" height="650" fill="#FFFFFF"/>
-  <text x="60" y="62" class="title">Attention 做了什么</text>
+  <text x="60" y="62" class="title">Attention：从单头结果到完整子层输出</text>
   <text x="60" y="96" class="small">先判断应该关注哪些位置，再按权重取回这些位置携带的信息</text>
 
   <rect x="55" y="255" width="180" height="90" class="box blue"/>
@@ -52,15 +52,16 @@
 
   <rect x="830" y="365" width="190" height="90" class="box green"/>
   <text x="925" y="403" text-anchor="middle" class="label">加权汇总 V</text>
-  <text x="925" y="433" text-anchor="middle" class="small">得到上下文结果</text>
+  <text x="925" y="433" text-anchor="middle" class="small">单头输出 [B,T,D]</text>
   <path d="M925 306 L925 365" class="line"/>
   <path d="M485 434 C650 434 680 410 830 410" class="line"/>
 
-  <rect x="1055" y="365" width="105" height="90" class="box green"/>
-  <text x="1107" y="403" text-anchor="middle" class="label">输出</text>
-  <text x="1107" y="433" text-anchor="middle" class="small">[B,T,H]</text>
-  <path d="M1020 410 L1055 410" class="line"/>
+  <rect x="1035" y="352" width="125" height="116" class="box green"/>
+  <text x="1097" y="388" text-anchor="middle" class="small">拼接 + o_proj</text>
+  <text x="1097" y="423" text-anchor="middle" class="label">完整输出</text>
+  <text x="1097" y="453" text-anchor="middle" class="small">[B,T,H]</text>
+  <path d="M1020 410 L1035 410" class="line"/>
 
   <rect x="55" y="545" width="1105" height="58" rx="10" fill="#F8FAFC" stroke="#CBD5E1"/>
-  <text x="607" y="581" text-anchor="middle" class="small">Q、K 负责决定“看哪里”；V 负责携带“取回什么”。三者都是从隐藏状态计算出来的向量。</text>
+  <text x="607" y="581" text-anchor="middle" class="small">Q、K 决定“看哪里”；V 汇总后是单头 [B,T,D]；拼接各查询头并经 o_proj 后才回到 [B,T,H]。</text>
 </svg>

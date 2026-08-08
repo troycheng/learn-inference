@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 610" width="1400" height="610">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 610" width="1400" height="610" role="img" aria-labelledby="title desc">
+  <title id="title">Prefill 和 Decode 怎样更新 Gated DeltaNet 状态</title>
+  <desc id="desc">Prefill 处理已知序列并得到末尾状态，Decode 每次接收一个新 token，在上一轮状态上继续更新。</desc>
   <defs>
     <marker id="b" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
     <marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#16a34a"/></marker>

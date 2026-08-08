@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360" role="img" aria-labelledby="title desc">
+  <title id="title">自回归生成循环</title>
+  <desc id="desc">模型每轮选择一个新 Token ID，再把它作为下一轮输入的一部分，继续预测后续 token。</desc>
   <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:18px;font-weight:600}.label{font-size:14px;font-weight:600}.sub{font-size:12px;fill:#6b7280}.mono{font-family:Menlo,Monaco,monospace;font-size:13px}</style>
   <defs><marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
   <rect width="960" height="360" fill="#ffffff"/>

@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" width="960" height="430">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" width="960" height="430" role="img" aria-labelledby="title desc">
+  <title id="title">怎样读 B、T、H 三个轴</title>
+  <desc id="desc">张量 shape 为 B、T、H，分别表示批中的序列数、每条序列的 token 位置数和每个位置的特征数。</desc>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
     .title { font-size: 22px; font-weight: 600; }

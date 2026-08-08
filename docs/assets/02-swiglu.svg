@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" width="1200" height="650">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 650" width="1200" height="650" role="img" aria-labelledby="title desc">
+  <title id="title">SwiGLU 的三条投影怎样连接</title>
+  <desc id="desc">输入同时进入 gate_proj 和 up_proj，门控分支经过 SiLU 后与候选特征逐元素相乘，再由 down_proj 回到隐藏维度。</desc>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
     .title { font-size: 22px; font-weight: 600; }

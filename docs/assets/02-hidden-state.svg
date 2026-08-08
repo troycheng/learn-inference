@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" width="960" height="480">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" width="960" height="480" role="img" aria-labelledby="title desc">
+  <title id="title">Hidden State 的行和列</title>
+  <desc id="desc">每一行对应一个 token 位置的向量，每一列对应模型学习到的一个特征方向。</desc>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
     .title { font-size: 22px; font-weight: 600; }

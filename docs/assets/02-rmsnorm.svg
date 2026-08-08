@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 440" width="1080" height="440">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 440" width="1080" height="440" role="img" aria-labelledby="title desc">
+  <title id="title">RMSNorm 的计算步骤</title>
+  <desc id="desc">一个 token 向量依次平方、求平均、加 epsilon、开平方并相除，最后乘以学习得到的缩放参数。</desc>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
     .title { font-size: 22px; font-weight: 600; }

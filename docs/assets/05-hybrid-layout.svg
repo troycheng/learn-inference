@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 430" width="1400" height="430">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 430" width="1400" height="430" role="img" aria-labelledby="title desc">
+  <title id="title">Qwen3.5 交替使用两种 Token Mixer</title>
+  <desc id="desc">Qwen3.5 的语言层按三层 Gated DeltaNet 加一层 Full Attention 的规律重复排列。</desc>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
     .title { font-size: 32px; font-weight: 700; }

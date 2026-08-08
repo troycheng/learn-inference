@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360" role="img" aria-labelledby="title desc">
+  <title id="title">Embedding 怎样变成 Hidden State</title>
+  <desc id="desc">同一个 token 的初始 Embedding 经过多层 Decoder 后，变成结合上下文的 Hidden State。</desc>
   <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:18px;font-weight:600}.label{font-size:14px;font-weight:600}.sub{font-size:12px;fill:#6b7280}.num{font-family:Menlo,Monaco,monospace;font-size:13px}</style>
   <defs><marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
   <rect width="960" height="360" fill="#ffffff"/>

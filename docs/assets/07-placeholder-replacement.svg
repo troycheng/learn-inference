@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 720" width="1400" height="720">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 720" width="1400" height="720" role="img" aria-labelledby="title desc">
+  <title id="title">图片占位符怎样替换为视觉向量</title>
+  <desc id="desc">Tokenizer 生成的图片占位位置在进入 Decoder 前，被视觉编码器输出的多条向量按顺序替换。</desc>
   <defs><marker id="c" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
   <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:18px;font-weight:700;text-anchor:middle}.label{font-size:18px;font-weight:700}.t{font-size:15px;text-anchor:middle}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#c)}</style>
   <rect width="1400" height="720" fill="#fff"/><text x="55" y="58" class="title">视觉向量替换输入序列中的图片占位位置</text><text x="55" y="92" class="sub">占位符确定位置，视觉编码器的输出提供图片内容。</text>

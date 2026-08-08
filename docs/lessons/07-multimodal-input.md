@@ -20,7 +20,8 @@
 调整尺寸与归一化
 → 切成 16×16 Patch
 → Patch Embedding
-→ 27 层视觉编码器
+→ 加入按当前网格插值的位置 Embedding
+→ 27 层视觉编码器，视觉 Attention 使用 Vision RoPE
 → 每 2×2 个视觉特征合并为一个
 → 投影到语言模型 Hidden Size
 → 替换序列中的图片占位位置
@@ -104,11 +105,12 @@ $$
 x_{patch}=W_{patch}p+b
 $$
 
-输出 `x_patch:[1152]`。对全部 1024 个 Patch：
+输出 `x_patch:[1152]`。概念上，可以把全部 Patch 写成 `[1024,1536]`。官方实现会在 Conv3d 前把它重排为 channel-first 的 `[N,C,T,H,W]`：
 
 ```text
-[1024, 2, 16, 16, 3]
-→ Patch Embedding
+[1024, 1536]
+→ 重排为 [1024, 3, 2, 16, 16]
+→ Conv3d Patch Embedding
 → [1024, 1152]
 ```
 
@@ -120,14 +122,23 @@ $$
 
 刚做完 Patch Embedding 时，每条向量主要描述一个局部小块。只看单个 Patch，模型很难判断它属于眼睛、车轮，还是背景纹理。
 
-Qwen3.5 的视觉塔有 27 个视觉 Transformer Block，内部宽度为 1152。每个 Block 也有两类主要工作：
+视觉塔在进入 Transformer Block 前先补上位置信息。Qwen3.5 使用两种互补的处理：
+
+```text
+可学习的位置 Embedding：按当前视觉网格插值，再加到 Patch 向量上
+Vision RoPE：             由视觉网格位置生成，作用在每个视觉 Attention 的 Q/K 上
+```
+
+前者直接改变每条 Patch 向量，后者改变视觉 Attention 比较位置的方式。它们都发生在视觉塔内部，还没有进入语言 Decoder。
+
+Qwen3.5 的视觉塔有 27 个视觉 Transformer Block，内部宽度为 1152。每个 Block 有两类主要工作：
 
 ```text
 视觉 Attention：让不同 Patch 位置交换信息
 视觉 MLP：      加工每个位置内部的特征
 ```
 
-经过多层后，一个 Patch 位置的向量不再只包含原来的 `16×16` 像素，还混入了整张图中其他相关位置的信息。这里与文本 Decoder 的思想相似，但视觉塔有自己的参数、结构和位置处理，不能把它当成语言 Decoder 的前几层。
+经过多层后，一个 Patch 位置的向量不再只包含原来的 `16×16` 像素，还混入了整张图中其他相关位置的信息。这里与文本 Decoder 的思想相似，但视觉塔使用独立的参数、位置 Embedding 和 Vision RoPE，不能把它当成语言 Decoder 的前几层。
 
 ## 6. Merger：四个相邻特征合成一个
 
@@ -199,7 +210,9 @@ Qwen3.5-35B-A3B 的语言 Hidden Size 是 2048，所以最后一步输出 `[2048
 
 占位 Token ID 负责告诉处理器和模型“视觉向量放在这里”，描述图片内容的是替换进来的视觉向量。
 
-## 8. MRoPE：同一条序列还要保留二维位置
+## 8. 语言侧 MRoPE：同一条序列还要保留二维位置
+
+上一节的位置 Embedding 和 Vision RoPE 只在视觉塔内部工作。Merger 输出替换图片占位位置后，视觉向量进入文本与图片组成的统一序列；语言 Decoder 再用 MRoPE 表示这条序列中的时间、高度和宽度位置。两级位置处理发生在不同模块，不能互相替代。
 
 纯文本位置只有一条先后顺序：0、1、2、3。图片中的 Patch 还需要区分上下和左右。若把 256 个视觉位置只看成一条扁平序列，模型很难知道两个位置原本在二维网格中的关系。
 
@@ -323,7 +336,7 @@ deepstack_visual_indexes = []
 3. `512×512` 图片按 `16×16` 切块，会产生多少个空间 Patch？
 4. 为什么最终视觉位置只有 256 个？
 5. Patch Embedding 与文本 Embedding 的输入分别是什么？
-6. 视觉 Attention 和视觉 MLP 分别混合什么？
+6. 视觉 Attention 和视觉 MLP 分别混合什么？位置 Embedding 和 Vision RoPE 在哪里工作？
 7. Merger 对四条 1152 维特征做了什么？
 8. Qwen3.5-9B 的 Merger 最终输出宽度是多少？为什么？
 9. 图片占位 Token ID 和视觉编码器输出的向量有什么区别？
@@ -340,7 +353,7 @@ deepstack_visual_indexes = []
 3. `(512/16)×(512/16)=1024`。
 4. Merger 每 `2×2` 个相邻特征合成一个，位置数除以 4。
 5. 文本 Embedding 输入是 Token ID；Patch Embedding 输入是局部像素值。
-6. 视觉 Attention 让不同 Patch 位置交换信息；视觉 MLP 加工每个位置内部的特征。
+6. 视觉 Attention 让不同 Patch 位置交换信息；视觉 MLP 加工每个位置内部的特征。位置 Embedding 和 Vision RoPE 都在视觉塔内部、Merger 之前工作。
 7. 先拼成 4608 维，再经 Linear、GELU、Linear 投影。
 8. 4096，因为要与 9B 语言模型的 Hidden Size 对齐。
 9. 占位 Token ID 标记视觉向量应放的位置；描述图片内容的是视觉编码器输出。
@@ -358,14 +371,15 @@ deepstack_visual_indexes = []
 512×512 RGB 图片
 → 32×32 = 1024 个空间 Patch
 → 1024 条 1152 维视觉特征
+→ 加位置 Embedding，视觉 Attention 使用 Vision RoPE
 → 2×2 Merger
 → 256 条 H 维视觉向量
 → 替换 256 个图片占位位置
 → 与文本向量组成 [B,T,H]
-→ 进入语言 Decoder
+→ 使用语言侧 MRoPE 进入 Decoder
 ```
 
-[第 8 课](08-config-and-sizing.md)不再打开新算子，而是把前面学过的结构放回 `config.json`，练习从配置字段还原层数、参数量、缓存大小和一轮计算的大致数量级。
+[第 8 课](08-config-and-sizing.md)不再介绍新算子，而是练习阅读 `config.json`：从配置字段还原层数、参数量、缓存大小和一轮计算的大致数量级。
 
 ## 资料来源
 
@@ -374,7 +388,7 @@ deepstack_visual_indexes = []
 - [Qwen3.5-9B `config.json`，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/config.json)
 - [Qwen3.5-9B 预处理配置，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/preprocessor_config.json)
 - [Qwen3.5-35B-A3B `config.json`，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/config.json)
-- [Transformers：Qwen3.5 模型实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py)
+- [Transformers：Qwen3.5 视觉 Patch、位置 Embedding 与 Vision RoPE 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L839-L1110)
 - [Transformers：Qwen3VL Processor，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_vl/processing_qwen3_vl.py)
 - [Transformers：Qwen2VL 图像处理器，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen2_vl/image_processing_qwen2_vl.py)
 

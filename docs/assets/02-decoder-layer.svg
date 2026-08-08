@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="1200" height="500">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 500" width="1200" height="500" role="img" aria-labelledby="title desc">
+  <title id="title">Decoder Layer 的两次归一化和残差相加</title>
+  <desc id="desc">输入先经过 RMSNorm 和 Token Mixer，再与原输入相加；所得结果再经过 RMSNorm 和 FFN，并完成第二次残差相加。</desc>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', 'Microsoft JhengHei', 'SimHei', sans-serif; fill: #111827; }
     .title { font-size: 22px; font-weight: 600; }

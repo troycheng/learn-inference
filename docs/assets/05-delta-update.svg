@@ -1,4 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 650" width="1400" height="650">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 650" width="1400" height="650" role="img" aria-labelledby="title desc">
+  <title id="title">Delta Rule 怎样修正状态</title>
+  <desc id="desc">状态先按 Key 读出旧值，再计算它和当前 Value 的误差，最后沿同一 Key 方向把误差写回。</desc>
   <defs><marker id="next" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill:#111827; }

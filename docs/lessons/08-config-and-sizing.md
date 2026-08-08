@@ -97,7 +97,7 @@ FLOPs：这次前向做了多少次浮点运算
 ```text
 35B Total Parameters
 3B Active Parameters
-66.97 GiB BF16 权重
+66.97 GiB 当前检查点权重 payload
 单 token 约 5.9 GFLOPs 的主要 Linear
 ```
 
@@ -180,22 +180,35 @@ Q/K/V 卷积通道：2048+2048+4096 = 8192
 
 ### 3.5 与真实检查点对账
 
+MTP 是多 Token 预测（Multi-Token Prediction）辅助模块。检查点会保存它的权重；普通单 token 自回归生成可以不执行它，runtime 只有在启用相应推测路径时才把它作为 Drafter。这里把 MTP 列入总数，是因为它属于检查点，不表示每个 token 都会经过它。
+
 | 部分 | 参数数量 |
 | --- | ---: |
-| 文本模型、输入 Embedding、LM Head | 8,953,803,264 |
+| 文本模型、输入 Embedding、LM Head | 8,953,799,424 |
 | 视觉编码器与 Merger | 456,010,480 |
 | MTP 辅助层 | 243,294,464 |
-| **检查点合计** | **9,653,108,208** |
+| **检查点合计** | **9,653,104,368** |
 
-官方 Safetensors 索引记录的权重有效载荷为 19,306,216,416 Byte。BF16 每个参数 2 Byte：
+![Qwen3.5-9B 检查点由文本模型、视觉编码器和 MTP 辅助层三部分参数组成](../assets/08-9b-parameter-map.svg)
+
+这个检查点以 BF16 为主，但不是所有参数都占 2 Byte。官方仓库按 dtype 统计为：
+
+| dtype | 参数数量 | 有效载荷 |
+| --- | ---: | ---: |
+| BF16 | 9,653,100,528 | 19,306,201,056 Byte |
+| FP32 | 3,840 | 15,360 Byte |
+
+因此，参数数量与权重字节要分别相加：
 
 $$
-19,306,216,416\div2=9,653,108,208
+9,653,100,528+3,840=9,653,104,368
 $$
 
-两种计算得到同一个结果。Qwen3.5-9B 的实际检查点约有 9.653B 参数，不是刚好 9,000,000,000。
+$$
+19,306,201,056+15,360=19,306,216,416\ Byte
+$$
 
-![Qwen3.5-9B 参数从哪里来](../assets/08-9b-parameter-map.svg)
+Qwen3.5-9B 的实际检查点约有 9.653B 参数，不是刚好 9,000,000,000。直接把总字节数除以 2，会把每个 FP32 参数误算成两个 BF16 参数。
 
 ## 4. 35B-A3B：保存全部专家，只计算一部分
 
@@ -227,10 +240,12 @@ $$
 
 | 部分 | 参数数量 |
 | --- | ---: |
-| 文本模型、全部专家、Embedding、LM Head | 34,660,610,688 |
+| 文本模型、全部专家、Embedding、LM Head | 34,660,605,888 |
 | 视觉编码器与 Merger | 446,571,248 |
 | MTP 辅助层 | 844,645,568 |
-| **检查点合计** | **35,951,827,504** |
+| **检查点合计** | **35,951,822,704** |
+
+官方仓库的 dtype 统计是 35,951,817,904 个 BF16 参数和 4,800 个 FP32 参数。两者合计 35,951,822,704 个参数，对应 71,903,655,008 Byte 权重有效载荷。
 
 所以“A3B”不能解释为：
 
@@ -242,13 +257,13 @@ $$
 
 ## 5. 参数数量怎样换算成权重容量
 
-理想权重有效载荷为：
+若所有参数使用同一种 dtype，理想权重有效载荷为：
 
 $$
 Weight\ Bytes=P\times bytes\_per\_parameter
 $$
 
-| 模型 | 参数数 | BF16，2 Byte | INT8 理想下限 | INT4 理想下限 |
+| 模型 | 参数数 | 当前 payload，BF16 加少量 FP32 | 全部 INT8 理想下限 | 全部 INT4 理想下限 |
 | --- | ---: | ---: | ---: | ---: |
 | 9B 检查点 | 9.653B | 17.98 GiB | 8.99 GiB | 4.50 GiB |
 | 35B-A3B 检查点 | 35.952B | 66.97 GiB | 33.48 GiB | 16.74 GiB |
@@ -264,7 +279,7 @@ Zero Point
 Kernel Workspace
 ```
 
-因此，不能把 BF16 文件大小机械除以 2 或 4，就当成最终进程显存。
+因此，不能把当前权重文件大小机械除以 2 或 4，就当成最终进程显存。
 
 还要确认运行时是否加载视觉塔和 MTP 辅助层。检查点总大小、进程加载权重、单 token 激活权重，是三个不同口径。
 
@@ -307,6 +322,29 @@ $$
 35B-A3B 权重更大，但每个位置的 KV 小于 9B，因为它只有 2 个 K/V 头。模型总参数不能替代 KV shape 计算。
 
 这些数字不包括块尾空余、预分配、页表、对齐、跨设备布局和临时 Workspace。
+
+### TP 下不能把逻辑 KV 直接除以设备数
+
+上面的 32 KiB 和 20 KiB 是整个模型的逻辑有效载荷。Tensor Parallelism（TP）还要决定每个 Rank 实际保存几个 K/V 头。vLLM 的固定版本使用：
+
+$$
+N_{kv,rank}=\max\left(1,\left\lfloor\frac{N_{kv}}{TP}\right\rfloor\right)
+$$
+
+当 `Nkv<TP` 时，runtime 会复制 K/V 头，让每个 Rank 至少保存一个头。此时每 Rank、每请求、每新增位置的 BF16 KV 为：
+
+$$
+KV_{rank}=2L_{full}N_{kv,rank}Ds
+$$
+
+以 TP=8 为例：
+
+| 模型 | 模型逻辑 KV | `Nkv,rank` | 每 Rank KV | 8 个 Rank 合计 |
+| --- | ---: | ---: | ---: | ---: |
+| 9B | 32 KiB | 1 | 8 KiB | 64 KiB |
+| 35B-A3B | 20 KiB | 1 | 10 KiB | 80 KiB |
+
+35B-A3B 的每 Rank KV 是 `2×10×1×256×2=10 KiB`，不是 `20 KiB÷8=2.5 KiB`。复制后的跨 Rank 合计可以大于模型逻辑有效载荷。部署时还要核对 runtime 的 Cache 布局、TP 兼容条件和 KV dtype，不能只按设备数平均分配。
 
 ## 7. Gated DeltaNet 状态按请求增长，不按长度增长
 
@@ -407,7 +445,51 @@ $$
 
 Prefill 中，Linear 和 FFN 主要随 `T` 线性增加；标准 Full Attention 的 QK/AV 总运算随 `T²` 增加。FlashAttention 可以减少中间数据读写，不会把 Full Attention 的数学长度依赖改成常数。
 
-## 10. 为什么不能机械套用“2 倍参数量”
+## 10. FLOPs 还要和搬运字节一起看
+
+FLOPs 只描述计算量，不能单独判断延迟。一个算子至少有两个硬件下界：
+
+$$
+t_{compute}\ge\frac{FLOPs}{峰值计算吞吐}
+$$
+
+$$
+t_{memory}\ge\frac{搬运字节}{峰值内存带宽}
+$$
+
+忽略重叠与其他开销时，理论时间至少由两者中更大的一项决定：
+
+$$
+t_{theory}\ge\max(t_{compute},t_{memory})
+$$
+
+两者的比值叫算术强度（Arithmetic Intensity）：
+
+$$
+AI=\frac{FLOPs}{搬运字节}
+$$
+
+硬件的峰值计算吞吐除以峰值内存带宽，得到这台设备的 Machine Balance。若一个算子的算术强度明显低于 Machine Balance，它更容易受带宽限制；明显高于时，计算吞吐更可能成为限制。这只是理论边界，Kernel Launch、缓存命中、通信和实现效率仍会增加实际时间。
+
+以一个 BF16 Linear 为例，Batch 为 1 且主要权重只读取一次时：
+
+```text
+FLOPs：     约 2KN
+权重字节： 约 2KN Byte
+算术强度： 约 1 FLOP/Byte
+```
+
+若同一份权重在一轮中服务 `M` 个 token，FLOPs 增加到约 `2MKN`，权重却有机会被复用，算术强度随 `M` 上升。这解释了为什么小 Batch Decode 常暴露权重带宽，而更大的 Batch 更可能提高计算利用率。
+
+长上下文 Decode 还要单独计算 KV 读取。9B 每个历史位置有 32 KiB 逻辑 KV，所有 Full Attention 层的长度项是 `131,072×T FLOPs`。忽略布局和其他读写时：
+
+$$
+AI_{KV}\approx\frac{131072T}{32768T}=4\ FLOPs/Byte
+$$
+
+这个例子只给出数量级。TP 下应换成每 Rank 的物理 KV 字节；最终判断还要看实际 Kernel 时间、有效带宽和端到端指标。
+
+## 11. 为什么不能机械套用“2 倍参数量”
 
 “单 token 前向约等于两倍参数量 FLOPs”只在大多数活跃 Linear 权重恰好使用一次时，适合作为粗略估算。Qwen3.5 有多个例外：
 
@@ -428,7 +510,7 @@ Prefill 中，Linear 和 FFN 主要随 `T` 线性增加；标准 Full Attention 
 → 再结合 Batch、通信和 Kernel 判断时间
 ```
 
-## 11. 用配置做工程判断
+## 12. 用配置做工程判断
 
 ### 判断能否放入单卡
 
@@ -446,7 +528,7 @@ Prefill 中，Linear 和 FFN 主要随 `T` 线性增加；标准 Full Attention 
 
 Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV 和 KV 读取随上下文长度增长。两者的优化方向不同。
 
-## 12. 练习
+## 13. 练习
 
 1. `H=4096` 表示什么？它是否等于 Attention 头宽度？
 2. 为什么要从 `layer_types` 数 Full Attention 层？
@@ -458,12 +540,14 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 8. INT4 理想容量为什么通常小于或等于实际量化模型占用？
 9. 9B 为什么每缓存一个位置需要 32 KiB KV？
 10. 35B-A3B 权重更大，为什么每位置 KV 反而更小？
-11. Gated DeltaNet 状态怎样随序列长度和并发数变化？
-12. Linear `[M,K]×[K,N]` 的 FLOPs 近似是多少？
-13. 为什么 Attention 长度项不适合用模型参数量估算？
-14. FLOPs 更少是否必然表示延迟按同样比例下降？
+11. 35B-A3B 在 vLLM TP=8 下，为什么每 Rank 的 BF16 KV 是 10 KiB，而不是 20 KiB 除以 8？
+12. Gated DeltaNet 状态怎样随序列长度和并发数变化？
+13. Linear `[M,K]×[K,N]` 的 FLOPs 近似是多少？
+14. 为什么 Attention 长度项不适合用模型参数量估算？
+15. 在本节的简化假设下，Batch=1 的 BF16 Linear 为什么接近 1 FLOP/Byte？Batch 增大会怎样改变它？
+16. FLOPs 更少是否必然表示延迟按同样比例下降？
 
-## 13. 参考答案
+## 14. 参考答案
 
 1. 每个语言位置的 Hidden State 宽度；不等于，Qwen3.5 的头宽度 `D=256`。
 2. 混合模型只有部分层保存 KV；间隔字段不能直接当作层数。
@@ -475,12 +559,14 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 8. 实际还有 Scale、元数据、对齐、未量化层和 Workspace。
 9. `2×8×4×256×2=32768 Byte`。
 10. 它的 `Nkv=2`，而 9B 的 `Nkv=4`。
-11. shape 不随长度增长，但随并发请求数增长。
-12. 约 `2MKN`。
-13. QK/AV 会随历史长度 `T` 增长，但没有新增模型参数。
-14. 不必然。还要看权重和状态读写、Batch、Kernel 效率、通信与硬件利用率。
+11. `Nkv=2<TP=8`，vLLM 会复制 K/V 头，让每 Rank 至少保存一个；所以是 `2×10×1×256×2=10 KiB`。
+12. shape 不随长度增长，但随并发请求数增长。
+13. 约 `2MKN`。
+14. QK/AV 会随历史长度 `T` 增长，但没有新增模型参数。
+15. 一次读入约 `2KN` Byte 权重并完成约 `2KN` FLOPs；Batch 增大后，同一份权重可以服务更多 token，算术强度通常上升。
+16. 不必然。还要看权重和状态读写、Batch、Kernel 效率、通信与硬件利用率。
 
-## 14. 拿到新配置时，先列这张表
+## 15. 拿到新配置时，先列这张表
 
 拿到一个新模型配置，先完成下面这张表：
 
@@ -491,10 +577,12 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 | 权重数量级 | `V×H`、每层 Linear、层数、全部 Expert |
 | 单 token 激活量 | 实际执行的 Dense 或 Top-K 加 Shared Expert |
 | KV 每位置大小 | `Lfull`、`Nkv`、`D`、缓存 dtype |
+| TP 后每 Rank KV | `Nkv,rank`、KV 头复制与 runtime 布局 |
 | 固定请求状态 | Gated DeltaNet 层数及 conv/recurrent state shape |
 | 长上下文计算 | Full Attention 层的 `4LfullNqDT` |
+| 带宽还是计算限制 | FLOPs、搬运字节、算术强度与硬件 Machine Balance |
 
-[第 9 课](09-optimization-judgment.md)会把量化、FlashAttention、Prefix Cache、Batching、TP、EP 和推测解码逐个放回这套成本模型，判断每项优化到底改了什么、在什么条件下有效。
+[第 9 课](09-optimization-judgment.md)会逐项分析量化、FlashAttention、Prefix Cache、Batching、TP、EP 和推测解码：它们减少了哪些计算或数据搬运，又增加了哪些成本，以及应当用什么指标验证。
 
 ## 资料来源
 
@@ -503,9 +591,13 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 - [Qwen3.5-9B 配置，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/config.json)
 - [Qwen3.5-9B 模型卡，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/README.md)
 - [Qwen3.5-9B Safetensors 索引，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/model.safetensors.index.json)
+- [Qwen3.5-9B Safetensors 按 dtype 参数统计，revision c202236](https://huggingface.co/api/models/Qwen/Qwen3.5-9B?revision=c202236235762e1c871ad0ccb60c8ee5ba337b9a)
 - [Qwen3.5-35B-A3B 配置，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/config.json)
 - [Qwen3.5-35B-A3B 模型卡，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/README.md)
 - [Qwen3.5-35B-A3B Safetensors 索引，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/model.safetensors.index.json)
+- [Qwen3.5-35B-A3B Safetensors 按 dtype 参数统计，revision 59d61f3](https://huggingface.co/api/models/Qwen/Qwen3.5-35B-A3B?revision=59d61f3ce65a6d9863b86d2e96597125219dc754)
 - [Transformers：Qwen3.5 Dense 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py)
 - [Transformers：Qwen3.5 MoE 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5_moe/modeling_qwen3_5_moe.py)
 - [Transformers：Cache 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/cache_utils.py)
+- [vLLM：TP 下每 Rank 的 K/V 头数，revision 653ebb5](https://github.com/vllm-project/vllm/blob/653ebb52dffd8b4653b430302473c771117529f1/vllm/config/model.py#L1501-L1516)
+- [Roofline：算术强度与硬件上界](https://dl.acm.org/doi/10.1145/1498765.1498785)
