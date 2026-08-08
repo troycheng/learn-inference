@@ -161,6 +161,24 @@
 | 权重字节 | Weight Bytes | 参数量乘每参数编码字节数得到的理想权重容量 |
 | 有效载荷 | Payload | 不含页表、对齐、块尾空余和运行时预留的逻辑数据量 |
 
+## 优化判断
+
+| 正文用词 | 英文或代码名 | 简短含义 |
+| --- | --- | --- |
+| 权重量化 | Weight Quantization | 用更低位格式保存和计算模型权重 |
+| KV 量化 | KV Cache Quantization | 用更低位格式保存 Full Attention 的历史 K/V |
+| 闪存注意力 | FlashAttention | 分块在片上计算精确 Attention，减少中间矩阵的 HBM 读写 |
+| 语义缓存 | Semantic Cache | 根据输入语义相似性复用最终结果或上层结果，不等同于 Prefix Cache |
+| 静态批处理 | Static Batching | 一组请求固定组成 Batch，通常整批结束后才补入新请求 |
+| 集合通信 | Collective Communication | 多设备共同参与的 All-Reduce、All-to-All 等通信操作 |
+| 推测解码 | Speculative Decoding | 用 Drafter 提出多个候选，再由 Target Model 一次验证多个位置 |
+| 草稿模型 | Drafter | 在推测解码中以较低成本提出候选 token 的模型或辅助模块 |
+| 目标模型 | Target Model | 决定候选是否接受并保持最终输出分布的主模型 |
+| 多 Token 预测 | Multi-Token Prediction / MTP | 训练辅助模块预测更远 token，可作为推测解码 Drafter |
+| 接受长度 | Acceptance Length | 一轮推测解码中被目标模型连续接受的候选 token 数 |
+| 服务等级目标 | Service Level Objective / SLO | 对延迟、吞吐或可用性等指标设定的目标边界 |
+| 回退路径 | Fallback | 预期优化 Kernel 不可用时转而执行的通用或较慢实现 |
+
 ## 书写约定
 
 - `token` 在正文中通常小写；正式组件名 `Tokenizer`、`Token ID` 保留大写。

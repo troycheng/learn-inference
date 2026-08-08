@@ -494,7 +494,7 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 | 固定请求状态 | Gated DeltaNet 层数及 conv/recurrent state shape |
 | 长上下文计算 | Full Attention 层的 `4LfullNqDT` |
 
-第 9 课会把量化、FlashAttention、Prefix Cache、Batching、TP、EP 和推测解码逐个放回这套成本模型，判断每项优化到底改了什么、在什么条件下有效。
+[第 9 课](09-optimization-judgment.md)会把量化、FlashAttention、Prefix Cache、Batching、TP、EP 和推测解码逐个放回这套成本模型，判断每项优化到底改了什么、在什么条件下有效。
 
 ## 资料来源
 

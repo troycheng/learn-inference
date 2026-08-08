@@ -52,9 +52,10 @@ flowchart LR
 7. [第 6 课：MoE 怎样为每个 token 选择几套 FFN](docs/lessons/06-dense-and-moe.md)
 8. [第 7 课：图片怎样变成语言模型能读的向量](docs/lessons/07-multimodal-input.md)
 9. [第 8 课：怎样从 config.json 看懂模型结构和开销](docs/lessons/08-config-and-sizing.md)
-10. [完整课程路线](docs/roadmap.md)
-11. [课程术语与符号表](docs/glossary.md)
-12. [课程讲解原则](docs/teaching-method.md)
+10. [第 9 课：怎样判断一种推理优化有没有用](docs/lessons/09-optimization-judgment.md)
+11. [完整课程路线](docs/roadmap.md)
+12. [课程术语与符号表](docs/glossary.md)
+13. [课程讲解原则](docs/teaching-method.md)
 
 正文按当前路线逐课编写。旧内容保存在 [`docs/archive`](docs/archive) 中，只用于记录学习过程，不再作为主课材料。
 
@@ -69,7 +70,7 @@ flowchart LR
 - 第 6 课正文：已完成本轮编写，等待学习反馈；
 - 第 7 课正文：已完成本轮编写，等待学习反馈；
 - 第 8 课正文：已完成本轮编写，等待学习反馈；
-- 第 9 课正文：待逐课学习、问答和整理；
+- 第 9 课正文：已完成本轮编写，等待学习反馈；
 - 旧版第 1 课和第 2 课：已归档。
 
 这个仓库目前首先用于个人学习和校验。每课经过提问、修正和复核后，会继续整理成其他工程师也能阅读的入门笔记。

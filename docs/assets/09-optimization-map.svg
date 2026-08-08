@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 860" width="1500" height="860">
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:18px;font-weight:700;text-anchor:middle}.t{font-size:14px;text-anchor:middle}.inverse{font-size:17px;fill:#fff;text-anchor:middle}</style>
+  <rect width="1500" height="860" fill="#fff"/><text x="55" y="58" class="title">先把优化放回它真正改变的对象</text><text x="55" y="92" class="sub">局部方法只直接改变链路中的一部分，端到端收益还取决于其他部分占了多少时间。</text>
+  <rect x="55" y="155" width="1390" height="90" rx="15" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><text x="750" y="192" class="h">模型权重与 Linear</text><text x="750" y="222" class="t">权重量化　|　TP 切分矩阵　|　MoE Expert 权重</text>
+  <rect x="55" y="275" width="1390" height="90" rx="15" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="750" y="312" class="h">Full Attention 计算与请求状态</text><text x="750" y="342" class="t">FlashAttention　|　KV 量化　|　Prefix Cache 命中前缀</text>
+  <rect x="55" y="395" width="1390" height="90" rx="15" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="750" y="432" class="h">MoE Expert 执行与通信</text><text x="750" y="462" class="t">EP　|　Token Dispatch / Combine　|　Grouped GEMM</text>
+  <rect x="55" y="515" width="1390" height="90" rx="15" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="750" y="552" class="h">服务调度与 Batch 组成</text><text x="750" y="582" class="t">Continuous Batching　|　Chunked Prefill　|　Prefill / Decode 优先级</text>
+  <rect x="55" y="635" width="1390" height="90" rx="15" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="750" y="672" class="h">目标模型的串行调用次数</text><text x="750" y="702" class="t">推测解码　|　MTP Drafter　|　一次验证多个候选位置</text>
+  <rect x="280" y="775" width="940" height="50" rx="10" fill="#111827"/><text x="750" y="807" class="inverse">先定位对象，再讨论少算、少存、少搬和新增成本。</text>
+</svg>
