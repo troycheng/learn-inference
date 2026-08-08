@@ -251,6 +251,8 @@ MoE：Router 为每个 token 选择少量路由专家，并使用共享专家
 
 ## 第 8 课：从配置还原结构与数量级
 
+正文：[第 8 课：怎样从 config.json 看懂模型结构和开销](lessons/08-config-and-sizing.md)
+
 前面先建立语义，这一课再集中估算：
 
 ```text
