@@ -75,6 +75,19 @@
 | SiLU | Sigmoid Linear Unit / `SiLU` | `z × sigmoid(z)` |
 | SwiGLU | SwiGLU | `SiLU(gate_proj(x))` 与 `up_proj(x)` 逐元素相乘后做 `down_proj` |
 | Dense FFN | Dense FFN | 每个 token 使用同一套完整 FFN 参数 |
+| 混合专家模型 | Mixture of Experts / MoE | 用 Router 为每个 token 选择少数 FFN 专家执行的稀疏结构 |
+| 路由专家 | Routed Expert | 参加 Top-K 选择的一套独立 FFN 参数 |
+| 共享专家 | Shared Expert | 不参加 Top-K、对所有 token 固定执行的 FFN |
+| 路由器 | Router | 根据当前 Hidden State 为全部路由专家计算分数的 Linear |
+| 路由分数 | Router Logit | Router 对每个路由专家给出的原始分数 |
+| 路由权重 | Routing Weight | 选中专家的分数归一化后，用于合并专家输出的权重 |
+| 最高 K 项路由 | Top-K Routing | 每层只选择路由分数最高的 K 个专家执行 |
+| Token 分发 | Token Dispatch | 按 Expert ID 把 token 分组并送到持有相应专家权重的设备或计算组 |
+| 分组矩阵乘 | Grouped GEMM | 把多组大小不同的 Expert 矩阵乘组织在一次计算中 |
+| 总参数 | Total Parameters | 模型需要保存的全部参数，包括当前 token 未选中的专家 |
+| 激活参数 | Active Parameters | 一个 token 本次前向实际使用的参数口径 |
+| 专家并行 | Expert Parallelism / EP | 按 Expert ID 把专家权重和计算分到不同设备 |
+| 张量并行 | Tensor Parallelism / TP | 切分一个 Linear 或 Expert 内部的权重矩阵并行计算 |
 
 ## Attention
 

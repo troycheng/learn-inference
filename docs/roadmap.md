@@ -216,6 +216,8 @@ Full Attention 保留并读取较完整的历史 K/V；Gated DeltaNet 把历史�
 
 ## 第 6 课：Dense 与 MoE
 
+正文：[第 6 课：MoE 怎样为每个 token 选择几套 FFN](lessons/06-dense-and-moe.md)
+
 MoE 不替换整个 Decoder Layer，主要替换 FFN 子层：
 
 ```text

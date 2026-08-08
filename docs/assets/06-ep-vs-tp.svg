@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 800" width="1400" height="800">
+  <defs><marker id="ab" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.panel{font-size:24px;font-weight:700;text-anchor:middle}.h{font-size:18px;font-weight:700;text-anchor:middle}.t{font-size:15px;text-anchor:middle}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#ab)}</style>
+  <rect width="1400" height="800" fill="#fff"/><text x="55" y="58" class="title">EP 与 TP 切分的不是同一个对象</text><text x="55" y="92" class="sub">EP 把不同 Expert 放到不同设备；TP 把同一个 Expert 的矩阵切到多个设备。</text>
+  <rect x="55" y="135" width="620" height="600" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><rect x="725" y="135" width="620" height="600" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="365" y="183" class="panel">Expert Parallel，EP</text><text x="1035" y="183" class="panel">Tensor Parallel，TP</text>
+  <rect x="90" y="245" width="150" height="85" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="165" y="278" class="h">Router</text><text x="165" y="307" class="t">Top-K IDs</text>
+  <path d="M240 287 H310 V240 H365" class="line"/><path d="M240 287 H310 V430 H365" class="line"/>
+  <rect x="365" y="205" width="235" height="120" rx="14" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="483" y="243" class="h">GPU 0</text><text x="483" y="277" class="t">Expert 0～127</text><text x="483" y="305" class="t">只处理命中这些 ID 的 token</text>
+  <rect x="365" y="395" width="235" height="120" rx="14" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="483" y="433" class="h">GPU 1</text><text x="483" y="467" class="t">Expert 128～255</text><text x="483" y="495" class="t">只处理命中这些 ID 的 token</text>
+  <path d="M483 325 V355 H620 V565 H535" class="line"/><path d="M483 515 V565 H535" class="line"/><rect x="285" y="565" width="250" height="95" rx="13" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="410" y="603" class="h">Combine</text><text x="410" y="633" class="t">结果回到原 token</text>
+  <rect x="775" y="240" width="160" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="855" y="277" class="h">同一个 token</text><text x="855" y="307" class="t">进入 Expert e</text><path d="M935 285 H995 V240 H1045" class="line"/><path d="M935 285 H995 V430 H1045" class="line"/>
+  <rect x="1045" y="205" width="245" height="120" rx="14" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1168" y="243" class="h">GPU 0：矩阵分片 A</text><text x="1168" y="278" class="t">计算一部分特征</text>
+  <rect x="1045" y="395" width="245" height="120" rx="14" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1168" y="433" class="h">GPU 1：矩阵分片 B</text><text x="1168" y="468" class="t">计算另一部分特征</text>
+  <path d="M1168 325 V355 H1285 V565 H1215" class="line"/><path d="M1168 515 V565 H1215" class="line"/><rect x="965" y="565" width="250" height="95" rx="13" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="1090" y="603" class="h">合并部分结果</text><text x="1090" y="633" class="t">得到完整 Expert 输出</text>
+  <text x="365" y="705" class="sub" text-anchor="middle">通信边界：Dispatch 与 Combine</text><text x="1035" y="705" class="sub" text-anchor="middle">通信边界：Linear 内部或输出合并</text>
+</svg>
