@@ -149,6 +149,18 @@
 | 交错式多模态旋转位置编码 | Interleaved MRoPE | 把不同 RoPE 频率交错分配给时间、高度和宽度三个轴 |
 | 时间图像块 | Temporal Patch | 由相邻若干视频帧组成的视觉时间单元 |
 
+## 数量与容量
+
+| 正文用词 | 英文或代码名 | 简短含义 |
+| --- | --- | --- |
+| 参数数量 | Parameter Count | 模型中可学习数字的总数，不包含请求运行状态 |
+| 权重有效载荷 | Weight Payload | 参数按指定 dtype 编码后的理想数据字节数 |
+| 浮点运算次数 | Floating-Point Operations / FLOPs | 一次计算执行的浮点加、乘等运算数量 |
+| 每秒浮点运算次数 | FLOPs per Second / FLOPS | 硬件或程序每秒完成浮点运算的速率 |
+| 临时激活 | Temporary Activations | 算子执行期间产生、随后可以释放或复用的中间张量 |
+| 权重字节 | Weight Bytes | 参数量乘每参数编码字节数得到的理想权重容量 |
+| 有效载荷 | Payload | 不含页表、对齐、块尾空余和运行时预留的逻辑数据量 |
+
 ## 书写约定
 
 - `token` 在正文中通常小写；正式组件名 `Tokenizer`、`Token ID` 保留大写。

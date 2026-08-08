@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760">
+  <defs><marker id="x" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#64748b"/></marker></defs>
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:18px;font-weight:700}.t{font-size:15px}.axis{stroke:#64748b;stroke-width:2;marker-end:url(#x)}</style>
+  <rect width="1400" height="760" fill="#fff"/><text x="55" y="58" class="title">两类请求状态的增长方向不同</text><text x="55" y="92" class="sub">图示比较单个请求；两类状态都会随并发请求数成倍增加。</text>
+  <line x1="145" y1="610" x2="1275" y2="610" class="axis"/><line x1="145" y1="610" x2="145" y2="165" class="axis"/><text x="1260" y="650" class="t">缓存长度 T</text><text x="55" y="175" class="t">状态字节</text>
+  <path d="M145 580 L1160 230" fill="none" stroke="#2563eb" stroke-width="6"/><circle cx="450" cy="475" r="7" fill="#2563eb"/><circle cx="800" cy="354" r="7" fill="#2563eb"/><text x="925" y="300" class="h" fill="#2563eb">Full Attention KV Cache</text><text x="925" y="328" class="t">随 T 线性增长</text>
+  <line x1="145" y1="460" x2="1160" y2="460" stroke="#ea580c" stroke-width="6"/><text x="845" y="430" class="h" fill="#ea580c">Gated DeltaNet 状态</text><text x="845" y="488" class="t">每个请求 shape 固定，不随 T 增长</text>
+  <rect x="180" y="185" width="300" height="150" rx="15" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="330" y="225" class="h" text-anchor="middle">KV 每位置</text><text x="330" y="264" class="t" text-anchor="middle">9B：32 KiB</text><text x="330" y="298" class="t" text-anchor="middle">35B-A3B：20 KiB</text>
+  <rect x="940" y="500" width="350" height="95" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="1115" y="538" class="h" text-anchor="middle">固定不等于免费</text><text x="1115" y="570" class="t" text-anchor="middle">每请求约 49.5 MiB 或 61.9 MiB</text>
+  <text x="700" y="710" class="sub" text-anchor="middle">实际分配还受 dtype、页式布局、块尾空余、预分配和 runtime 实现影响。</text>
+</svg>

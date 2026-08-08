@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760">
+  <defs><marker id="a" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:18px;font-weight:700;text-anchor:middle}.t{font-size:15px;text-anchor:middle}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#a)}</style>
+  <rect width="1400" height="760" fill="#fff"/><text x="55" y="58" class="title">config.json 先被翻译成模块和 shape</text><text x="55" y="92" class="sub">同一组配置字段，要分别回答权重、计算、请求状态和并行切分问题。</text>
+  <rect x="55" y="280" width="250" height="150" rx="16" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="180" y="322" class="h">配置字段</text><text x="180" y="360" class="t">H、L、Nq、Nkv、D</text><text x="180" y="392" class="t">I、E、K、dtype</text>
+  <path d="M305 355 H420" class="line"/><rect x="420" y="280" width="260" height="150" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="550" y="322" class="h">模块与 shape</text><text x="550" y="360" class="t">Embedding、Token Mixer</text><text x="550" y="392" class="t">FFN、LM Head、Cache</text>
+  <path d="M680 330 H800 V175 H870" class="line"/><path d="M680 345 H870" class="line"/><path d="M680 365 H800 V535 H870" class="line"/>
+  <rect x="870" y="120" width="440" height="110" rx="15" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1090" y="160" class="h">权重：有多少参数，要保存多少字节</text><text x="1090" y="195" class="t">Total 与 Active 分开</text>
+  <rect x="870" y="290" width="440" height="110" rx="15" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1090" y="330" class="h">计算：本轮执行哪些矩阵与长度项</text><text x="1090" y="365" class="t">Linear、QK/AV、状态更新</text>
+  <rect x="870" y="480" width="440" height="110" rx="15" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1090" y="520" class="h">请求状态：随长度还是随并发增长</text><text x="1090" y="555" class="t">KV、conv_state、recurrent_state</text>
+  <rect x="55" y="650" width="1255" height="55" rx="10" fill="#f8fafc"/><text x="683" y="685" class="sub" text-anchor="middle">先还原结构，再算数量级；模型名称不能代替 shape。</text>
+</svg>

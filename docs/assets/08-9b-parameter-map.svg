@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 720" width="1400" height="720">
+  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:18px;font-weight:700}.t{font-size:15px}.num{font-size:17px;font-weight:700;text-anchor:end}</style>
+  <rect width="1400" height="720" fill="#fff"/><text x="55" y="58" class="title">Qwen3.5-9B 检查点的参数组成</text><text x="55" y="92" class="sub">精确总数为 9.653B；下面按检查点的三个大组成展示。</text>
+  <text x="55" y="170" class="h">文本模型、Embedding、LM Head</text><rect x="55" y="195" width="1160" height="90" rx="10" fill="#2563eb"/><text x="1190" y="250" fill="#fff" font-size="23" font-weight="700" text-anchor="end">8.954B</text>
+  <text x="55" y="350" class="h">视觉编码器与 Merger</text><rect x="55" y="375" width="590" height="70" rx="10" fill="#fb923c"/><text x="625" y="418" fill="#fff" font-size="20" font-weight="700" text-anchor="end">456.0M</text>
+  <text x="55" y="505" class="h">MTP 辅助层</text><rect x="55" y="530" width="400" height="70" rx="10" fill="#8b5cf6"/><text x="435" y="573" fill="#fff" font-size="20" font-weight="700" text-anchor="end">243.3M</text>
+  <rect x="900" y="355" width="370" height="245" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><text x="1085" y="402" class="h" text-anchor="middle">总数对账</text><text x="1085" y="454" class="t" text-anchor="middle">8,953,803,264</text><text x="1085" y="488" class="t" text-anchor="middle">+ 456,010,480</text><text x="1085" y="522" class="t" text-anchor="middle">+ 243,294,464</text><line x1="970" y1="542" x2="1200" y2="542" stroke="#64748b" stroke-width="2"/><text x="1085" y="580" class="h" text-anchor="middle">9,653,108,208</text>
+  <text x="700" y="670" class="sub" text-anchor="middle">“9B”是取整名称。部署纯文本服务时，还要确认视觉塔与 MTP 是否实际加载和执行。</text>
+</svg>
