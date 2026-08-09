@@ -36,7 +36,7 @@ Query 用相似的特征从 S 中读取结果
 
 这只是帮助理解的说法。状态矩阵里没有可读的字符串字段，也没有给某个 token 单独保留一行。多段历史会被压进同一组数值，因此它和 KV Cache 的能力及代价都不同。
 
-`recurrent state` 也不是 token 的 Hidden State。Hidden State 是某个位置在层与层之间传递的 `H` 维向量；recurrent state 是某个 Gated DeltaNet 层跨 token 保留并更新的矩阵。
+递归状态（recurrent state）也不是 token 的隐藏状态。隐藏状态是某个位置在层与层之间传递的 `H` 维向量；递归状态是某个 Gated DeltaNet 层跨 token 保留并更新的矩阵。
 
 ## 2. 状态矩阵的写入与读取
 
@@ -251,17 +251,17 @@ $$
 
 深度卷积（Depthwise Convolution）表示每个通道分别沿 token 轴卷积，不在这一步混合不同通道。前面的 Linear 已经负责重组特征；这次卷积让 Q/K/V 的每个通道先带上很近的局部顺序信息。
 
-Decode 时，`conv_state` 保存卷积窗口需要的最近投影值。新 token 到来后，runtime 把新值推入窗口，移出最旧位置，再计算本轮卷积。它和 Delta Rule 使用的 `recurrent_state` 是两份不同的状态。
+Decode 时，卷积状态 `conv_state` 保存卷积窗口需要的最近投影值。新 token 到来后，runtime 把新值推入窗口，移出最旧位置，再计算本轮卷积。它和 Delta Rule 使用的递归状态 `recurrent_state` 是两份不同的状态。
 
 ## 7. Gated DeltaNet 的完整数据流
 
-把前面的因果卷积、状态更新和三组门控接起来。输入仍是 Decoder Layer 传来的 Hidden States：
+把前面的因果卷积、状态更新和三组门控接起来。输入仍是 Decoder Layer 传来的隐藏状态：
 
 ```text
 X：[B,T,H]
 ```
 
-输入 `X` 会分成几条支路：一条产生 Q、K、V，另外三条产生状态衰减、修正幅度和输出门控。Q/K/V 分支先在因果卷积中读写 `conv_state`，随后用 Delta Rule 读写 `recurrent_state`。Q 读出结果后，输出门和 `out_proj` 再把它送回 Decoder Layer 的残差路径。
+输入 `X` 会分成几条支路：一条产生 Q、K、V，另外三条产生状态衰减、修正幅度和输出门控。Q/K/V 分支先在因果卷积中读写卷积状态，随后用 Delta Rule 读写递归状态。Q 读出结果后，输出门和 `out_proj` 再把它送回 Decoder Layer 的残差路径。
 
 ![Gated DeltaNet 的完整数据流](../assets/05-gated-deltanet-flow.svg?rev=20260809-2)
 
@@ -269,11 +269,11 @@ X：[B,T,H]
 
 | 名称 | 代码来源 | 控制什么 |
 | --- | --- | --- |
-| 状态保留系数 `alpha` | `a → g → alpha=exp(g)` | 旧 recurrent state 保留多少 |
+| 状态保留系数 `alpha` | `a → g → alpha=exp(g)` | 旧递归状态保留多少 |
 | 修正幅度 `beta` | `b → beta=sigmoid(b)` | 当前误差写入多少 |
 | 输出门控 `z` | `in_proj_z` | 状态读出结果有多少进入层输出 |
 
-Q、K、V 以及原始控制量 `a`、`b`、`z` 都来自当前 Hidden State 的 Linear 投影。实现随后由 `a` 算出 `g` 和 `alpha`，由 `b` 算出 `beta`；这些数都不是 runtime 手工设置的参数。
+Q、K、V 以及原始控制量 `a`、`b`、`z` 都来自当前隐藏状态的 Linear 投影。实现随后由 `a` 算出 `g` 和 `alpha`，由 `b` 算出 `beta`；这些数都不是 runtime 手工设置的参数。
 
 ## 8. Prefill 与 Decode 的执行方式
 
@@ -283,8 +283,8 @@ Qwen3.5 的实现使用两条计算路径：
 
 | 场景 | 输入位置数 | 实现方式 | 跨轮保留什么 |
 | --- | ---: | --- | --- |
-| 没有可复用状态，或输入含多个位置 | 通常 `T>1`，也可能为 1 | Chunk Gated Delta Rule | 最后一个 Chunk 的 recurrent state |
-| 已有状态的单 token Decode | `T=1` | Recurrent Gated Delta Rule | 更新后的 recurrent state |
+| 没有可复用状态，或输入含多个位置 | 通常 `T>1`，也可能为 1 | Chunk Gated Delta Rule | 最后一个 Chunk 的递归状态 |
+| 已有状态的单 token Decode | `T=1` | Recurrent Gated Delta Rule | 更新后的递归状态 |
 
 Chunk 算法把已知序列分块，在块内组织并行矩阵计算，在块间传递状态。它改变执行顺序和并行方式，不改变前面的逐 token 数学关系。
 
@@ -322,8 +322,8 @@ linear_conv_kernel_dim  = 4
 | `beta` | `[B,T,32]` | 每个 Value 头一个修正幅度 |
 | `g` | `[B,T,32]` | 每个 Value 头一个衰减值 |
 | `z` | `[B,T,32,128]` | 对每个输出特征做门控 |
-| recurrent state | `[B,32,128,128]` | 每层固定 shape |
-| conv state | `[B,8192,4]` | 每层固定窗口 |
+| 递归状态 `recurrent_state` | `[B,32,128,128]` | 每层固定 shape |
+| 卷积状态 `conv_state` | `[B,8192,4]` | 每层固定窗口 |
 | `out_proj` 后 | `[B,T,4096]` | 回到残差接口宽度 |
 
 为什么混合 Q/K/V 是 8192 维：
@@ -332,7 +332,7 @@ $$
 16\times128+16\times128+32\times128=2048+2048+4096=8192
 $$
 
-为什么 recurrent state 有 32 个头：Q/K 在状态更新前各复制一次，让 16 个 Key 头扩展到 32 个，与 Value 头一一对应。这里的复制发生在计算视图中，不表示模型额外训练了两套相同参数。
+递归状态为什么有 32 个头：Q/K 在状态更新前各复制一次，让 16 个 Key 头扩展到 32 个，与 Value 头一一对应。这里的复制发生在计算视图中，不表示模型额外训练了两套相同参数。
 
 ## 10. Gated DeltaNet 与 Full Attention 的状态对比
 
@@ -342,7 +342,7 @@ $$
 | 状态 shape | 随 `T` 增长 | 与 `T` 无关 |
 | 当前 token 怎样读取 | Q 与所有历史 K 分别打分，再汇总 V | Q 直接读取状态矩阵 |
 | 旧信息怎样变化 | 历史 K/V 保持原值 | 会被衰减、覆盖和混合 |
-| 单层 Decode 的历史读取量 | 随上下文增长 | recurrent state 大小固定 |
+| 单层 Decode 的历史读取量 | 随上下文增长 | 递归状态大小固定 |
 | 位置信息 | Q/K 使用 RoPE | 依靠因果卷积和递归顺序，不使用 Full Attention 的 RoPE |
 
 固定 shape 并不表示能够无损保存无限历史。许多 token 的信息共享同一张状态矩阵，状态会遗忘、覆盖，也会发生关联之间的干扰。Full Attention 保留逐位置 K/V，读取成本更高，但当前 Query 可以直接对不同历史位置分别打分。
@@ -353,11 +353,11 @@ Qwen3.5 把两者混在同一模型中。不能把 24 个 Gated DeltaNet 层当�
 
 ### 11.1 上下文长度与状态容量
 
-Gated DeltaNet 的 `conv_state` 和 `recurrent_state` shape 不随 token 数增长。Full Attention 层的 KV Cache 仍会增长，所以整个 Qwen3.5 请求状态不是常数大小。
+Gated DeltaNet 的卷积状态和递归状态 shape 不随 token 数增长。Full Attention 层的 KV Cache 仍会增长，所以整个 Qwen3.5 请求状态不是常数大小。
 
 ### 11.2 Prefix Cache 的状态完整性
 
-复用相同前缀时，只复用 8 层 K/V 不足以恢复完整模型状态。24 个 Gated DeltaNet 层的卷积状态和 recurrent state 也必须与该前缀对应。
+复用相同前缀时，只复用 8 层 K/V 不足以恢复完整模型状态。24 个 Gated DeltaNet 层的卷积状态和递归状态也必须与该前缀对应。
 
 ### 11.3 Decode Kernel 的计算与状态读写
 
@@ -365,7 +365,7 @@ Gated DeltaNet 的 `conv_state` 和 `recurrent_state` shape 不随 token 数增�
 
 ### 11.4 Batch 内的独立请求状态
 
-不同请求不能共用同一份 recurrent state。请求加入、退出、重排或做 Beam Search 时，runtime 要让状态与正确序列保持对应。
+不同请求不能共用同一份递归状态。请求加入、退出、重排或做 Beam Search 时，runtime 要让状态与正确序列保持对应。
 
 ### 11.5 Chunk Kernel 与 Chunked Prefill
 
@@ -449,8 +449,6 @@ $$
 Gated DeltaNet 状态的 shape 不随长度增长，但模型仍有 8 个 Full Attention 层保存逐位置 K/V。整个请求状态因此仍会随上下文增长。
 
 </details>
-
-[第 6 课](06-dense-and-moe.md)会转到 Decoder Layer 的另一个子层。Dense 与 MoE 的差异发生在 FFN，不在这里讲的 Token Mixer。
 
 ## 参考资料
 

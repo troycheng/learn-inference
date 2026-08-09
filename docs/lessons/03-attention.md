@@ -26,7 +26,7 @@ Full Attention：让每个 token 直接查看所有允许读取的位置
 
 这三个位置标签只用于手算，不是实际 Tokenizer 的切分结果。后文的 Q、K、V、遮罩矩阵和 Attention 输出都沿用这三个编号。
 
-轮到“它”这个位置时，模型手里已经有一条属于“它”的 Hidden State。Attention 会给可见位置分配权重，再按权重取回信息。“杯子”可能得到较高权重，于是“杯子”位置携带的信息会更多地进入“它”的新表示。
+轮到“它”这个位置时，模型已经有一条属于“它”的隐藏状态。Attention 会给可见位置分配权重，再按权重取回信息。“杯子”可能得到较高权重，于是“杯子”位置携带的信息会更多地进入“它”的新表示。
 
 这个例子只展示 Attention 怎样传递信息。模型没有人工编写的指代规则表，实际关系通常由多层、多个头共同形成。
 
@@ -50,7 +50,7 @@ Full Attention：让每个 token 直接查看所有允许读取的位置
 
 ![用查询、键和值理解 QKV](../assets/03-qkv-intuition.svg?rev=20260809-1)
 
-三者不是同一份数据换了名字，而是同一条 Hidden State 经过不同权重变换后得到的三种表示：
+三者不是同一份数据换了名字，而是同一条隐藏状态经过不同权重变换后得到的三种表示：
 
 ```text
 Q：当前位置拿什么特征去寻找相关位置？
@@ -78,7 +78,7 @@ $$
 Q=XW_Q^T,\qquad K=XW_K^T,\qquad V=XW_V^T
 $$
 
-`W_Q`、`W_K`、`W_V` 是训练得到的三组权重。对同一个 token 来说，三次 Linear 都读取它的 Hidden State，但会重新组合其中的特征，所以结果不同。
+`W_Q`、`W_K`、`W_V` 是训练得到的三组权重。对同一个 token 来说，三次 Linear 都读取它的隐藏状态，但会重新组合其中的特征，所以结果不同。
 
 整段序列中的 Q、K、V 都由同一组 `X` 产生，因此这叫自注意力（Self-Attention）。交叉注意力会让 Q 和 K/V 来自不同输入，本课不展开。
 
@@ -217,7 +217,7 @@ $$
 \approx[1.232,0.770]
 $$
 
-权重是标量，会乘到对应 V 的每个元素。Q/K 决定从哪里取，V 决定取回什么。到这里，位置 3 的一次单头 Attention 已经算完：这个玩具例子只输出一个查询位置的向量，shape 是 `[D]=[2]`；真实单头处理整段序列时，输出保留查询位置轴，为 `[B,T,D]`。
+权重是标量，会乘到对应 V 的每个元素。Q/K 决定从哪里取，V 决定取回什么。到这里，位置 3 的一次单头 Attention 已经算完：这个缩小例子只输出一个查询位置的向量，shape 是 `[D]=[2]`；真实单头处理整段序列时，输出保留查询位置轴，为 `[B,T,D]`。
 
 ## 9. Attention 的矩阵形式
 
@@ -483,7 +483,7 @@ V 总宽度： 4 × 256 = 1024
 
 输出投影（Output Projection，`o_proj`）也是 Linear。它负责重新混合各个头产生的特征，并把结果整理回 Decoder Layer 约定的 H 维。只有经过拼接和 `o_proj` 后，才是完整 Attention 子层的 `[B,T,H]` 输出；随后才能和进入 Attention 前保存的残差分支相加。
 
-这个输出仍然是中间 Hidden State，不是下一个 token。它还要经过本层 FFN、后续 Decoder Layer、最终 RMSNorm 和 LM Head，才会形成词表 Logits。
+这个输出仍然是中间隐藏状态，不是下一个 token。它还要经过本层 FFN、后续 Decoder Layer、最终 RMSNorm 和 LM Head，才会形成词表 Logits。
 
 一个 Full Attention 子层的数据流如下：
 
@@ -628,8 +628,6 @@ Attention Score: [1,16,1,101]
 
 </details>
 
-[第 4 课](04-prefill-decode-kv-cache.md)会把这次静态计算放进真实生成过程，继续分析 Prefill、Decode 和 KV Cache。
-
 ## 参考资料
 
 以下 Qwen3.5 配置和实现于 2026-08-08 按固定 revision 复核：
@@ -647,8 +645,6 @@ Attention Score: [1,16,1,101]
 - [3Blue1Brown：Attention in transformers, step-by-step](https://www.3blue1brown.com/lessons/attention/)
 - [The Illustrated Transformer](https://jalammar.github.io/illustrated-transformer/)
 - [Dive into Deep Learning：Queries, Keys, and Values](https://d2l.ai/chapter_attention-mechanisms-and-transformers/queries-keys-values.html)
-
-这里解释的是 Full Attention 的模型语义。FlashAttention 的内核与显存访问、KV Cache 的建立和复用，以及 Gated DeltaNet 的 recurrent state 会在后续课程继续展开。
 
 ---
 

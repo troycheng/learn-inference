@@ -56,9 +56,9 @@ Attention 的头数要和头宽一起读。`num_attention_heads=16`、`head_dim=
 | Attention | `D` | `head_dim` | 每个头的宽度 |
 | Attention | `L_full` | 从 `layer_types` 计数 | Full Attention 层数 |
 | Dense FFN | `I` | `intermediate_size` | Dense FFN 中间宽度 |
-| MoE | `E` | `num_experts` | Routed Expert 总数 |
-| MoE | `K` | `num_experts_per_tok` | 每 token 选择几个 Routed Experts |
-| MoE | `I_moe` | `moe_intermediate_size` | 每个 Expert 的中间宽度 |
+| MoE | `E` | `num_experts` | 路由专家总数 |
+| MoE | `K` | `num_experts_per_tok` | 每 token 选择几个路由专家 |
+| MoE | `I_moe` | `moe_intermediate_size` | 每个专家的中间宽度 |
 
 下面是两个模型的主配置：
 
@@ -102,8 +102,8 @@ FLOPs：这次前向做了多少次浮点运算
 例如：
 
 ```text
-35B Total Parameters
-3B Active Parameters
+35B 总参数
+3B 激活参数
 66.97 GiB 固定 revision 的权重 payload
 单 token 约 5.9 GFLOPs 的主要 Linear
 ```
@@ -178,7 +178,7 @@ tie_word_embeddings = false
 
 ```text
 输入 Embedding：根据 Token ID 取一行，不会乘完整张表
-LM Head：        Hidden State 与完整词表矩阵相乘，得到 V 个 Logits
+LM Head：        隐藏状态与完整词表矩阵相乘，得到 V 个 Logits
 ```
 
 这已经说明“参数数相同”不代表“每 token 计算量相同”。
@@ -265,21 +265,21 @@ Qwen3.5-9B 的实际检查点约有 9.653B 参数，不是刚好 9,000,000,000�
 
 ## 5. Qwen3.5-35B-A3B 的总参数与激活参数
 
-Qwen3.5-35B-A3B 的 `H=2048`，单个 SwiGLU Expert 中间宽度为 512：
+Qwen3.5-35B-A3B 的 `H=2048`，单个 SwiGLU 专家的中间宽度为 512：
 
 $$
 P_{expert}=3\times2048\times512=3,145,728
 $$
 
-一层需要保存 256 个 Routed Experts：
+一层需要保存 256 个路由专家：
 
 $$
 256\times3,145,728=805,306,368
 $$
 
-再加 Shared Expert、Router 和 Shared Gate，一层 MoE 共约 808.98M 参数。40 层约 32.359B，构成 35B 总参数的主体。
+再加共享专家、路由器和共享专家门控，一层 MoE 共约 808.98M 参数。40 层约 32.359B，构成 35B 总参数的主体。
 
-一个 token 只选择 8 个 Routed Experts，并固定执行 1 个 Shared Expert：
+一个 token 只选择 8 个路由专家，并固定执行 1 个共享专家：
 
 $$
 P_{active\ FFN}=3H I_{moe}(8+1)+HE+H
@@ -303,7 +303,7 @@ $$
 所以“A3B”不能解释为：
 
 - 模型只需要加载 3B 权重；
-- 每层有一个 3B 大小的 Expert；
+- 每层有一个 3B 大小的专家；
 - 35B 模型的显存与 3B Dense 模型相同。
 
 它描述的是每 token 激活参数的取整口径。
@@ -449,13 +449,13 @@ Qwen3.5-9B 每层约 0.302 GFLOPs，32 层 FFN 合计约 9.66 GFLOPs/token。
 
 ### 9.2 MoE FFN FLOPs
 
-35B-A3B 每 token 计算 8 个 Routed Experts 加 1 个 Shared Expert：
+35B-A3B 每 token 计算 8 个路由专家和 1 个共享专家：
 
 $$
 FLOPs_{MoE\ FFN}\approx2\times3H I_{moe}(8+1)
 $$
 
-这里跟 9 条实际执行的 Expert 路径相关，不跟 256 个 Expert 总数成正比。权重容量则必须包含全部 256 个 Expert。
+这里跟 9 条实际执行的专家路径相关，不跟 256 个专家总数成正比。权重容量则必须包含全部 256 个专家。
 
 ### 9.3 单 token 的主要 Linear 计算量
 
@@ -560,7 +560,7 @@ $$
 
 1. 输入 Embedding 是查表，不会使用整张矩阵做乘法。
 2. LM Head 使用完整词表矩阵，并且与输入 Embedding 不共享。
-3. MoE 保存 256 个专家，每 token 只计算 8 个加 Shared Expert。
+3. MoE 保存 256 个专家，每 token 只计算 8 个路由专家和 1 个共享专家。
 4. Attention 的 QK/AV 随上下文长度增加，却没有新增模型参数。
 5. Gated DeltaNet 的状态读写不只由参数量决定。
 6. 视觉编码器和 MTP 是否运行，取决于输入和服务配置。
@@ -583,7 +583,7 @@ $$
 | --- | --- | --- |
 | 单卡能否装下权重 | 实际加载模块的参数数与保存 dtype | 请求状态、临时激活、通信 Buffer 和 runtime 预留 |
 | 长上下文能支持多少并发 | `L_full`、`Nkv`、`D`、KV dtype 和最大缓存位置数 | 每请求固定的 Gated DeltaNet 状态、分页与对齐 |
-| Dense 与 MoE 哪个更快 | Active Parameters、Expert 的 `n_e` 分布和通信 | Total Parameters 决定的权重驻留成本 |
+| Dense 与 MoE 哪个更快 | 激活参数、专家的 `n_e` 分布和通信 | 总参数决定的权重驻留成本 |
 | 延迟怎样随上下文增长 | 每 token 的 Linear 固定项与 Attention 长度项 | Batch、Kernel、通信和调度开销 |
 
 配置可以给出资源下限和计算规模，不能代替目标 runtime 上的峰值显存与端到端性能测量。
@@ -647,8 +647,6 @@ $$
 </details>
 
 仓库中的 [`model_sizing_walkthrough.py`](../../examples/model_sizing_walkthrough.py) 可以复算两个示例模型的逻辑 KV、TP 后每 Rank KV、Gated DeltaNet 固定状态和 Attention 长度项。
-
-[第 9 课](09-optimization-judgment.md)会继续分析这些资源分别能被哪些优化改变，以及怎样判断端到端收益。
 
 ## 参考资料
 

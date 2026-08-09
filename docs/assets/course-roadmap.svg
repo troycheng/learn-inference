@@ -53,7 +53,7 @@
     <text x="483" y="266" class="lesson">第 5 课　Gated DeltaNet</text>
     <text x="501" y="290" class="detail">用固定状态记录历史信息</text>
     <text x="483" y="345" class="lesson">第 6 课　Dense FFN 与 MoE</text>
-    <text x="501" y="369" class="detail">Router、Top-K、共享专家与通信</text>
+    <text x="501" y="369" class="detail">路由器、Top-K、共享专家与通信</text>
     <text x="483" y="424" class="lesson">第 7 课　多模态输入</text>
     <text x="501" y="448" class="detail">从图像 Patch 到 Decoder 输入向量</text>
 

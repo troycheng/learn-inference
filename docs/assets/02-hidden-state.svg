@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 480" width="960" height="480" role="img" aria-labelledby="title desc">
-  <title id="title">Hidden State 的行和列</title>
+  <title id="title">隐藏状态的行和列</title>
   <desc id="desc">每一行对应一个 token 位置的向量，每一列对应模型学习到的一个特征方向。</desc>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
@@ -9,7 +9,7 @@
     .num { font-size: 15px; }
   </style>
   <rect width="960" height="480" fill="#ffffff"/>
-  <text x="40" y="42" class="title">Hidden State：行是 token，列是特征坐标</text>
+  <text x="40" y="42" class="title">隐藏状态：行是 token，列是特征坐标</text>
   <text x="40" y="68" class="sub">示例忽略批次轴：T=3，H=4</text>
   <g transform="translate(250,125)">
     <text x="220" y="-35" text-anchor="middle" class="label">H = 4 个特征坐标</text>

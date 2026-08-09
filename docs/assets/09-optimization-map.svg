@@ -28,12 +28,12 @@
     <text x="875" y="335" class="method">Prefix Cache</text><text x="1010" y="335" class="detail">复用完整前缀状态</text>
   </g>
 
-  <g data-graph-role="node" aria-label="MoE Expert">
+  <g data-graph-role="node" aria-label="MoE 专家">
     <rect x="48" y="394" width="1104" height="112" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
-    <text x="78" y="431" class="row-title">MoE Expert</text>
-    <text x="78" y="467" class="method">EP</text><text x="120" y="467" class="detail">按 Expert ID 分布权重</text>
-    <text x="430" y="467" class="method">Dispatch / Combine</text><text x="610" y="467" class="detail">分发 token，再收回结果</text>
-    <text x="820" y="467" class="method">Grouped GEMM</text><text x="955" y="467" class="detail">组织 Expert 计算</text>
+    <text x="78" y="431" class="row-title">MoE 专家</text>
+    <text x="78" y="467" class="method">EP</text><text x="120" y="467" class="detail">按专家编号分布权重</text>
+    <text x="430" y="467" class="method">分发 / 归并</text><text x="610" y="467" class="detail">分发 token，再收回结果</text>
+    <text x="820" y="467" class="method">Grouped GEMM</text><text x="955" y="467" class="detail">组织专家计算</text>
   </g>
 
   <g data-graph-role="node" aria-label="服务调度">

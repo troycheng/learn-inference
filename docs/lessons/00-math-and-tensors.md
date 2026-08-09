@@ -432,9 +432,9 @@ Token ID 只决定取哪一行。ID 的数值大小没有语义强弱关系。
 
 - Token IDs；
 - Embedding 输出；
-- Hidden States；
+- 隐藏状态（Hidden States）；
 - Logits；
-- KV Cache 或 recurrent state。
+- KV Cache 或递归状态。
 
 判断一种优化减少的是模型常驻容量还是请求状态容量，第一步就是分清它改变了哪类数据。
 
@@ -445,7 +445,7 @@ Token ID 只决定取哪一行。ID 的数值大小没有语义强弱关系。
 | 后续对象 | 第 0 课中的基本动作 |
 | --- | --- |
 | Embedding | 根据 Token ID 查表 |
-| LM Head | 一个 Hidden State 与很多权重行分别做点积 |
+| LM Head | 一个隐藏状态与很多权重行分别做点积 |
 | RMSNorm | 平方、沿 `H` 轴求平均、平方根倒数、逐元素缩放 |
 | Residual | 两个相同 shape 的张量逐元素相加 |
 | SwiGLU FFN | 三个 Linear、SiLU 激活、逐元素相乘 |
@@ -483,7 +483,7 @@ next_ids = argmax(logits, axis=-1)
 
 
 1. `X:[2,8,4]`，`H_states:[2,8,4]`，`m:[2,8,1]`，`Z:[2,8,4]`，`h_last:[2,4]`，`logits:[2,100]`，`next_ids:[2]`。
-2. `E[ids]` 是查表；`mean` 和 `argmax` 是归约；`m:[2,8,1]` 与 `gamma:[4]` 都沿最后一维广播；`Z[:,-1,:]` 是切片；`h_last W_lm^T` 是矩阵乘法。矩阵乘法内部，每条 Hidden State 会与 `W_lm` 的每一行做点积。
+2. `E[ids]` 是查表；`mean` 和 `argmax` 是归约；`m:[2,8,1]` 与 `gamma:[4]` 都沿最后一维广播；`Z[:,-1,:]` 是切片；`h_last W_lm^T` 是矩阵乘法。矩阵乘法内部，每条隐藏状态会与 `W_lm` 的每一行做点积。
 3. `Z[:,-1,:]` 只保留每条序列的最后位置，因此去掉了长度为 8 的位置轴。LM Head 使用 `W_lm` 把宽度 4 映射成 100 个词表 Logit。
 4. `E`、`gamma` 和 `W_lm` 是模型参数；`ids`、`H_states` 和 `logits` 是当前请求产生的运行时数据。
 5. Token ID 是词表索引，编号大小没有语义强弱。`next_ids` 中的每个数字都是该序列选出的下一个 Token ID。

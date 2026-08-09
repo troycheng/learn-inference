@@ -31,8 +31,8 @@ LM Head 部分改为跟踪完整 Prompt 的最后一个位置，也就是 Chat T
 | 对话模板（Chat Template） | 对话消息 | 格式化提示文本 | 表达角色、消息边界和生成起点 |
 | 分词器（Tokenizer） | 文字 | Token IDs | 在文字与模型词表编号之间转换 |
 | 嵌入（Embedding） | Token IDs | 初始向量 | 为每个 ID 取出一行可学习向量 |
-| 解码器（Decoder） | 初始或中间向量 | Hidden States | 让每个位置的表示结合上下文 |
-| 语言模型输出层（LM Head） | Hidden State | Logits | 为词表中的每个候选 token 打分 |
+| 解码器（Decoder） | 初始或中间向量 | 隐藏状态 | 让每个位置的表示结合上下文 |
+| 语言模型输出层（LM Head） | 隐藏状态 | Logits | 为词表中的每个候选 token 打分 |
 | 选择策略 | Logits | 下一个 Token ID | 贪心选择或按概率采样 |
 | Tokenizer Decode | Token IDs | 文字 | 把模型生成的编号还原为可见文字 |
 
@@ -255,25 +255,25 @@ Embedding 表中的向量是训练得到的模型参数。Token ID 只负责选�
 苹果发布了新手机
 ```
 
-进入 Decoder 前，“苹果”的 Token ID 相同，取到的初始 Embedding 也相同。经过模型层后，两个位置的 Hidden State 会因为上下文不同而不同。
+进入 Decoder 前，“苹果”的 Token ID 相同，取到的初始 Embedding 也相同。经过模型层后，两个位置的隐藏状态会因为上下文不同而不同。
 
 | 对象 | 来源 | 是否结合当前上下文 | 含义 |
 | --- | --- | --- | --- |
 | Token ID | Tokenizer 的词表和切分规则 | 否 | 词表中的离散编号，不是模型的连续参数 |
 | Embedding | 模型训练得到的参数表 | 否 | token 的初始、静态表示 |
-| Hidden State | 模型在当前请求中计算 | 是 | 当前位置结合上下文后的表示 |
+| 隐藏状态 | 模型在当前请求中计算 | 是 | 当前位置结合上下文后的表示 |
 
-Embedding 和 Hidden State 可以具有相同 shape，但不是同一个概念。
+Embedding 和隐藏状态可以具有相同 shape，但不是同一个概念。
 
 ## 5. Decoder 生成上下文表示
 
 Qwen3.5-9B 的文本模型使用 `H=4096`，共有 32 层。Embedding 输出进入这些层后，模型会反复更新每个 token 的向量。
 
-![Decoder 把最后位置变成结合上下文的 Hidden State](../assets/01-hidden-state.svg)
+![Decoder 为最后位置生成结合上下文的隐藏状态](../assets/01-hidden-state.svg)
 
 这里暂时把 32 层看成一个黑盒，只看它完成了什么：
 
-> 它把每个 token 的初始表示，变成已经结合前文和当前位置的 Hidden State。
+> 它把每个 token 的初始表示，更新为已经结合前文和当前位置的隐藏状态。
 
 第 2 课会分析一个 Decoder Layer 中的 RMSNorm、Residual 和 FFN；第 3 课再完整拆解 Attention 的计算过程。
 
@@ -285,7 +285,7 @@ Qwen3.5-9B 的文本模型使用 `H=4096`，共有 32 层。Embedding 输出进�
 x1, x2, x3
 ```
 
-模型产生三个位置的 Hidden State：
+模型产生三个位置的隐藏状态：
 
 ```text
 h1, h2, h3
@@ -301,7 +301,7 @@ h3 用来预测尚未出现的 x4
 
 因此，生成下一个 token 时，关键输入是最后一个已知位置的 `h3`。
 
-实现可以保留所有位置的 Hidden State，也可以只为需要的位置计算 LM Head 输出。
+实现可以保留所有位置的隐藏状态，也可以只为需要的位置计算 LM Head 输出。
 Qwen3.5 的 Transformers 实现提供 `logits_to_keep`，允许限制需要产生
 Logits 的位置；这改变实现成本，不改变上述语义。
 
@@ -318,7 +318,7 @@ H 个上下文特征
 
 ### 6.1 四候选手算示例
 
-沿用贯穿案例的最后输入位置，也就是 assistant 生成起点。图中把它在 Decoder 后的 Hidden State 缩成两维：
+沿用贯穿案例的最后输入位置，也就是 assistant 生成起点。图中把它在 Decoder 后的隐藏状态缩成两维：
 
 ```text
 h = [1, 2]
@@ -372,7 +372,7 @@ H = 4096
 V = 248320
 ```
 
-因此单个位置的 4096 维 Hidden State 会被映射成 248320 个候选分数。
+因此单个位置的 4096 维隐藏状态会被映射成 248320 个候选分数。
 
 ### 6.3 LM Head 与 Embedding 的映射方向
 
@@ -380,7 +380,7 @@ V = 248320
 
 ```text
 Embedding：Token ID → H 维向量
-LM Head： H 维 Hidden State → V 个候选分数
+LM Head： H 维隐藏状态 → V 个候选分数
 ```
 
 本课使用的 Qwen3.5-9B revision 中，`tie_word_embeddings=false`，输入 Embedding 与输出 LM Head 不共享权重。即使某些模型选择共享权重，Tokenizer Decode 仍负责 ID 到文字的转换；Embedding 不能代替它。
@@ -480,7 +480,7 @@ Top-P 依赖归一化后的概率。候选按概率从高到低排列，只保�
 这里要区分两件事：
 
 - **逻辑依赖**：未来 token 必须依次确定；
-- **计算复用**：KV Cache 或 recurrent state 可以避免重复计算全部历史。
+- **计算复用**：KV Cache 或递归状态可以避免重复计算全部历史。
 
 缓存可以减少重复工作，但不能消除普通自回归模型对上一个生成结果的依赖。Prefill、Decode 和缓存会在第 4 课展开。
 
@@ -593,7 +593,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 | --- | --- | --- |
 | Token IDs | `[B, T]` | 一个词表编号 |
 | Embedding 输出 | `[B, T, 4096]` | token 的初始向量 |
-| Decoder Hidden States | `[B, T, 4096]` | 结合上下文后的向量 |
+| Decoder 隐藏状态 | `[B, T, 4096]` | 结合上下文后的向量 |
 | 全位置 LM Head 输出 | `[B, T, 248320]` | 每个位置对全词表的分数 |
 | 仅最后位置的 Logits | `[B, 248320]` | 下一个 token 的候选分数 |
 | 选择结果 | `[B]` | 每个序列的下一个 Token ID |
@@ -626,14 +626,14 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 请完成两件事：
 
-1. 按执行顺序改写第一段，并标出 Token IDs、Embedding、Hidden States 和 Logits 的主要 shape。
+1. 按执行顺序改写第一段，并标出 Token IDs、Embedding、隐藏状态和 Logits 的主要 shape。
 2. 解释第二段为什么把“训练样本已知”和“生成结果未知”混在了一起，并改正因果约束与交叉熵的说法。
 
 <details>
 <summary>查看参考修改</summary>
 
 
-对话消息先经过 Chat Template，加入角色、消息边界和生成起点。Tokenizer 把格式化后的文本切成 token，并输出 `input_ids:[B,T]`。Embedding 根据这些 ID 查表，得到初始向量 `[B,T,H]`。Decoder 把初始向量更新成包含上下文的 Hidden States，LM Head 再把需要预测的位置映射成词表 Logits；只保留最后位置时，shape 是 `[B,V]`。
+对话消息先经过 Chat Template，加入角色、消息边界和生成起点。Tokenizer 把格式化后的文本切成 token，并输出 `input_ids:[B,T]`。Embedding 根据这些 ID 查表，得到初始向量 `[B,T,H]`。Decoder 把初始向量更新成包含上下文的隐藏状态，LM Head 再把需要预测的位置映射成词表 Logits；只保留最后位置时，shape 是 `[B,V]`。
 
 贪心生成可以直接对 Logits 做 Argmax，选择结果是下一个 Token ID。下一轮把这个 ID 送入模型，由 Embedding 再次查表。Tokenizer Decode 负责把连续生成的 Token IDs 还原成用户看到的文字。
 

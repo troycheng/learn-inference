@@ -24,7 +24,7 @@
   <text x="65" y="150" class="head">1  当前 token 发出 Q</text>
   <rect x="65" y="185" width="170" height="86" rx="10" class="token"/>
   <text x="150" y="220" text-anchor="middle" class="label">位置 3：“它”</text>
-  <text x="150" y="248" text-anchor="middle" class="note">Hidden State x3</text>
+  <text x="150" y="248" text-anchor="middle" class="note">隐藏状态 x3</text>
   <path d="M235 228 H290" fill="none" stroke="#2563EB" stroke-width="3" marker-end="url(#arrow-blue)"/>
   <rect x="290" y="175" width="210" height="106" rx="10" class="query"/>
   <text x="395" y="215" text-anchor="middle" class="head">查询 Q3</text>

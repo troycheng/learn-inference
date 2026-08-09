@@ -71,7 +71,7 @@
   </g>
 
   <g data-graph-role="annotation">
-    <text x="48" y="318" class="section">一个 Decoder Layer 怎样更新 Hidden States</text>
+    <text x="48" y="318" class="section">一个 Decoder Layer 怎样更新隐藏状态</text>
   </g>
   <g data-graph-role="decoration" aria-label="Decoder Layer">
     <rect x="48" y="342" width="1104" height="304" rx="16" fill="#fafafa" stroke="#d1d5db" stroke-width="2"/>
@@ -149,14 +149,14 @@
   <g data-graph-role="node" id="gdn-state" aria-label="Gated DeltaNet 请求状态">
     <rect x="468" y="520" width="304" height="92" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="1.8"/>
     <text x="620" y="549" class="label" text-anchor="middle">Gated DeltaNet：固定 shape 状态</text>
-    <text x="620" y="575" class="mono" text-anchor="middle">conv_state + recurrent_state</text>
+    <text x="620" y="575" class="mono" text-anchor="middle">卷积状态 + 递归状态</text>
     <text x="620" y="598" class="small" text-anchor="middle">序列变长时只更新数值，不扩展 shape</text>
   </g>
   <g data-graph-role="node" aria-label="FFN 权重">
     <rect x="792" y="520" width="294" height="92" rx="10" fill="#fff7ed" stroke="#fb923c" stroke-width="1.8"/>
     <text x="939" y="549" class="label" text-anchor="middle">FFN 保存的是模型权重</text>
     <text x="939" y="575" class="detail" text-anchor="middle">Dense 使用同一套 FFN</text>
-    <text x="939" y="598" class="small" text-anchor="middle">MoE 每个 token 只激活选中的 Expert</text>
+    <text x="939" y="598" class="small" text-anchor="middle">MoE 每个 token 只激活选中的专家</text>
   </g>
 
   <g data-graph-role="annotation">

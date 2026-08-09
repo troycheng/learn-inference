@@ -18,7 +18,7 @@
 - 从 Tokenizer 开始，完整解释一个新 token 是怎样产生的；
 - 说明 Embedding、RMSNorm、Attention、FFN、残差连接（Residual Connection）和 LM Head 分别解决什么问题；
 - 看懂 Qwen3.5 文本模型的一层结构和完整层排列；
-- 解释 Dense 与 MoE 的共同骨架，以及 Router、Top-K、共享专家的作用；
+- 解释 Dense 与 MoE 的共同骨架，以及路由器（Router）、Top-K、共享专家的作用；
 - 解释 Prefill、Decode、KV Cache 和 Gated DeltaNet 状态之间的关系；
 - 解释图片怎样经过视觉编码器变成语言模型可处理的视觉特征；
 - 阅读模型 `config.json`，区分保存与计算 dtype，判断参数规模、状态规模和主要计算来自哪里；
@@ -49,7 +49,7 @@
 | 3 | [第 3 课：Attention 的计算原理](docs/lessons/03-attention.md) | 手算一次 Attention 并解释 RoPE、GQA |
 | 4 | [第 4 课：Prefill、Decode 与 KV Cache](docs/lessons/04-prefill-decode-kv-cache.md) | 解释生成阶段、缓存复用和批处理 |
 | 5 | [第 5 课：Gated DeltaNet 的状态更新机制](docs/lessons/05-gated-deltanet.md) | 区分固定状态与随长度增长的 KV Cache |
-| 6 | [第 6 课：Dense FFN 与 MoE 的结构差异](docs/lessons/06-dense-and-moe.md) | 解释 Router、Top-K、共享专家和激活参数 |
+| 6 | [第 6 课：Dense FFN 与 MoE 的结构差异](docs/lessons/06-dense-and-moe.md) | 解释路由器、Top-K、共享专家和激活参数 |
 | 7 | [第 7 课：多模态输入与视觉编码](docs/lessons/07-multimodal-input.md) | 从像素和 Patch 推导到 Decoder 输入 |
 | 8 | [第 8 课：模型配置与资源估算](docs/lessons/08-config-and-sizing.md) | 估算权重、请求状态和主要计算量 |
 | 9 | [第 9 课：推理优化的分析与评估](docs/lessons/09-optimization-judgment.md) | 判断优化改了什么、何时有效、怎样验证 |

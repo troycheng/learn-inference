@@ -59,7 +59,7 @@
   <rect x="650" y="125" width="700" height="150" rx="18" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
   <text x="680" y="160" class="card-title">Embedding、层间接口和 LM Head</text>
   <text x="680" y="193" class="body">词表有 248320 个候选；每个 token 在语言模型中始终用 4096 个数表示。</text>
-  <text x="680" y="228" class="shape">Embedding [248320,4096]　→　Hidden State [B,T,4096]</text>
+  <text x="680" y="228" class="shape">Embedding [248320,4096]　→　隐藏状态 [B,T,4096]</text>
   <text x="680" y="254" class="shape">LM Head [248320,4096]　→　Logits [B,T,248320]</text>
 
   <rect x="650" y="305" width="700" height="155" rx="18" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360" role="img" aria-labelledby="title desc">
-  <title id="title">Embedding 怎样变成 Hidden State</title>
-  <desc id="desc">同一个 token 的初始 Embedding 经过多层 Decoder 后，变成结合上下文的 Hidden State。</desc>
+  <title id="title">Embedding 怎样变成隐藏状态</title>
+  <desc id="desc">同一个 token 的初始 Embedding 经过多层 Decoder 后，变成结合上下文的隐藏状态。</desc>
   <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:18px;font-weight:600}.label{font-size:14px;font-weight:600}.sub{font-size:12px;fill:#6b7280}.num{font-family:Menlo,Monaco,monospace;font-size:13px}</style>
   <defs><marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
   <rect width="960" height="360" fill="#ffffff"/>
@@ -17,5 +17,5 @@
   <path d="M798 168H826" fill="none" stroke="#2563eb" stroke-width="2" marker-end="url(#arrow-blue)"/>
   <rect x="838" y="122" width="98" height="92" rx="8" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
   <text x="887" y="151" text-anchor="middle" class="label">最后位置 h</text><text x="887" y="183" text-anchor="middle" class="num">[1, 2]</text>
-  <text x="40" y="294" class="sub">“优化”的 Embedding 只来自它自己的 ID。生成时使用完整模板最后位置的 Hidden State，它已经结合此前位置。</text>
+  <text x="40" y="294" class="sub">“优化”的 Embedding 只来自它自己的 ID。生成时使用完整模板最后位置的隐藏状态，它已经结合此前位置。</text>
 </svg>

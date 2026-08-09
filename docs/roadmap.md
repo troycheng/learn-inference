@@ -17,7 +17,7 @@
 
 ## 课程依赖关系
 
-推理系统里的很多概念互相依赖。还没分清 Token ID、Embedding 和 Hidden State，就很难理解 Q、K、V 从哪里来；没算过 Attention，也很难说明 KV Cache 保存了什么；不知道 Dense 和 MoE 的结构差异，就无法判断 TP、EP 或量化改变了哪部分成本。
+推理系统里的很多概念互相依赖。还没分清 Token ID、Embedding 和隐藏状态，就很难理解 Q、K、V 从哪里来；没算过 Attention，也很难说明 KV Cache 保存了什么；不知道 Dense 和 MoE 的结构差异，就无法判断 TP、EP 或量化改变了哪部分成本。
 
 因此，第 0 至第 4 课是一条连续主线：
 
@@ -37,9 +37,9 @@
 
 | 问题 | 需要看什么 | 为什么与推理有关 |
 | --- | --- | --- |
-| 当前数据表示什么？ | Token ID、Embedding、Hidden State、Logit、概率 | 避免把不同阶段的张量和指标混为一谈 |
+| 当前数据表示什么？ | Token ID、Embedding、隐藏状态、Logit、概率 | 避免把不同阶段的张量和指标混为一谈 |
 | 信息怎样混合？ | Token Mixer 跨 token；FFN 在单个 token 内加工特征 | 找到模型计算和能力来自哪里 |
-| 哪些历史结果要保留？ | KV Cache、卷积状态、recurrent state | 判断显存、并发和逐 token 延迟 |
+| 哪些历史结果要保留？ | KV Cache、卷积状态、递归状态 | 判断显存、并发和逐 token 延迟 |
 
 ## 课程目录与学习目标
 
@@ -51,7 +51,7 @@
 | [3](lessons/03-attention.md) | Attention 的计算原理 | 手算 QK 点积、因果遮罩、Softmax 和 V 的加权求和 |
 | [4](lessons/04-prefill-decode-kv-cache.md) | Prefill、Decode 与 KV Cache | 解释生成阶段、缓存复用和服务端批处理 |
 | [5](lessons/05-gated-deltanet.md) | Gated DeltaNet 的状态更新机制 | 区分固定状态、因果卷积和 Full Attention KV |
-| [6](lessons/06-dense-and-moe.md) | Dense FFN 与 MoE 的结构差异 | 解释 Router、Top-K、共享专家、总参数和激活参数 |
+| [6](lessons/06-dense-and-moe.md) | Dense FFN 与 MoE 的结构差异 | 解释路由器、Top-K、共享专家、总参数和激活参数 |
 | [7](lessons/07-multimodal-input.md) | 多模态输入与视觉编码 | 从像素、Patch 和视觉编码器推导到 `[B,T,H]` |
 | [8](lessons/08-config-and-sizing.md) | 模型配置与资源估算 | 区分保存、计算与累加 dtype，估算参数、权重、请求状态和计算量 |
 | [9](lessons/09-optimization-judgment.md) | 推理优化的分析与评估 | 比较常见优化和并行策略，估算端到端上限并设计验证实验 |
@@ -60,7 +60,7 @@
 
 ## 教学示例与真实模型
 
-第一次解释计算时，课程会把向量缩到 2 至 4 维，把 token 或 Expert 缩到几个。缩小的是规模，不是算法。一个小例子会按下面的顺序推进：
+第一次解释计算时，课程会把向量缩到 2 至 4 维，把 token 或专家缩到几个。缩小的是规模，不是算法。一个小例子会按下面的顺序推进：
 
 ```text
 先算一个 token 或一个位置

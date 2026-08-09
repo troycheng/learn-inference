@@ -55,8 +55,8 @@
 | 嵌入 | Embedding | 根据 Token ID 取得的初始向量 |
 | 隐藏状态 | Hidden State | 当前 token 位置经过模型层后的上下文表示 |
 | Decoder-only 语言模型 | Decoder-only Language Model | 语言主干使用因果约束，根据已有 token 预测下一个 token 的模型架构 |
-| 解码器层 | Decoder Layer | 反复更新 Hidden States 的模型层；Prefill 和 Decode 都会执行 |
-| 语言模型输出层 | Language Model Head / LM Head | 把 Hidden State 变成全词表分数 |
+| 解码器层 | Decoder Layer | 反复更新隐藏状态的模型层；Prefill 和 Decode 都会执行 |
+| 语言模型输出层 | Language Model Head / LM Head | 把隐藏状态变成全词表分数 |
 | 未归一化分数 | Logit | LM Head 对一个候选 token 给出的原始分数 |
 | 概率归一化 | Softmax | 把一组 Logits 转成总和为 1 的概率 |
 | 最大值索引 | Argmax | 返回最大元素所在的位置 |
@@ -87,19 +87,19 @@
 | GELU | Gaussian Error Linear Unit / `GELU` | 平滑激活函数；课程中的视觉 Merger 用它连接两层 Linear，shape 不变 |
 | SwiGLU | SwiGLU | `SiLU(gate_proj(x))` 与 `up_proj(x)` 逐元素相乘后做 `down_proj` |
 | Dense FFN | Dense FFN | 每个 token 使用同一套完整 FFN 参数 |
-| 混合专家模型 | Mixture of Experts / MoE | 用 Router 为每个 token 选择少数 FFN 专家执行的稀疏结构 |
+| 混合专家模型 | Mixture of Experts / MoE | 用路由器为每个 token 选择少数 FFN 专家执行的稀疏结构 |
 | 路由专家 | Routed Expert | 参加 Top-K 选择的一套独立 FFN 参数 |
 | 共享专家 | Shared Expert | 不参加 Top-K、对所有 token 固定执行的 FFN |
-| 路由器 | Router | 根据当前 Hidden State 为全部路由专家计算分数的 Linear |
-| 路由分数 | Router Logit | Router 对每个路由专家给出的原始分数 |
+| 路由器 | Router | 根据当前隐藏状态为全部路由专家计算分数的 Linear |
+| 路由分数 | Router Logit | 路由器对每个路由专家给出的原始分数 |
 | 路由权重 | Routing Weight | 选中专家的分数归一化后，用于合并专家输出的权重 |
 | 最高 K 项路由 | Top-K Routing | 每层只选择路由分数最高的 K 个专家执行 |
-| Token 分发 | Token Dispatch | 按 Expert ID 把 token 分组并送到持有相应专家权重的设备或计算组 |
-| 分组矩阵乘 | Grouped GEMM | 把多组大小不同的 Expert 矩阵乘组织在一次计算中 |
+| Token 分发 | Token Dispatch | 按专家编号把 token 分组并送到持有相应专家权重的设备或计算组 |
+| 分组矩阵乘 | Grouped GEMM | 把多组大小不同的专家矩阵乘组织在一次计算中 |
 | 总参数 | Total Parameters | 模型需要保存的全部参数，包括当前 token 未选中的专家 |
 | 激活参数 | Active Parameters | 一个 token 本次前向实际使用的参数口径 |
-| 专家并行 | Expert Parallelism / EP | 按 Expert ID 把专家权重和计算分到不同设备 |
-| 张量并行 | Tensor Parallelism / TP | 切分一个 Linear 或 Expert 内部的权重矩阵并行计算 |
+| 专家并行 | Expert Parallelism / EP | 按专家编号把专家权重和计算分到不同设备 |
+| 张量并行 | Tensor Parallelism / TP | 切分一个 Linear 或专家内部的权重矩阵并行计算 |
 | 数据并行 | Data Parallelism / DP | 在不同设备上复制完整模型，并把独立请求或 Batch 分给不同副本 |
 | 流水线并行 | Pipeline Parallelism / PP | 按模型深度把连续 Decoder Layer 分到不同设备阶段 |
 

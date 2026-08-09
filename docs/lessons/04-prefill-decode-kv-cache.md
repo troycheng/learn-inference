@@ -120,7 +120,7 @@ V Cache：[B,Nkv,T,D] = [1,4,4,256]
 
 具体 runtime 的物理布局可能调整轴顺序或按块存储；只要逻辑上仍能按请求、K/V 头、位置和头内维度访问，模型含义不变。
 
-Prefill 还会产生所有 Prompt 位置的中间 Hidden States 和 Attention 临时结果。这些数据大多只服务于当前前向计算，完成后可以释放。需要跨 Decode 轮次保留的是缓存状态，而不是每层所有中间张量。
+Prefill 还会产生所有 Prompt 位置的中间隐藏状态和 Attention 临时结果。这些数据大多只服务于当前前向计算，完成后可以释放。需要跨 Decode 轮次保留的是缓存状态，而不是每层所有中间张量。
 
 LM Head 也不一定要计算 4 个位置的完整词表 Logits。生成 `y1` 只需要最后一个 Prompt 位置。Qwen3.5 的 Transformers 实现支持通过 `logits_to_keep` 限制计算位置；不同 runtime 可能采用不同实现，但模型语义相同。
 
@@ -292,7 +292,7 @@ $$
 
 这只是 Full Attention 的 K/V 数值容量，不等于 runtime 实际申请的显存，也不等于 Qwen3.5 一个请求的全部状态。分块分配会产生预留和碎片，TP 可能把头分到不同设备，KV 量化则会改变 `s`。
 
-Qwen3.5 的 24 个 Gated DeltaNet 层还保存 recurrent state 和卷积状态。第 5 课会单独计算这部分容量。
+Qwen3.5 的 24 个 Gated DeltaNet 层还保存递归状态和卷积状态。第 5 课会单独计算这部分容量。
 
 `partial_rotary_factor=0.25` 也不会把 KV Cache 缩小到四分之一。RoPE 只旋转 K 的部分维度，缓存仍然保存完整的 `D=256` 维 K 和 V。
 
@@ -405,7 +405,7 @@ Continuous Batching 只保证 Batch 可以在两轮模型执行之间改变。�
 → Chunk 2：p5 p6 p7 p8
 ```
 
-Chunk 2 不是独立的新 Prompt。它必须接着 Chunk 1 已建立的历史状态继续计算：Full Attention 读取前一段 K/V，Gated DeltaNet 读取前一段留下的 recurrent state 和卷积状态。
+Chunk 2 不是独立的新 Prompt。它必须接着 Chunk 1 已建立的历史状态继续计算：Full Attention 读取前一段 K/V，Gated DeltaNet 读取前一段留下的递归状态和卷积状态。
 
 调度器可以先安排 Decode token，再用剩余的 batched-token 预算放入 Prefill Chunk。把两类 token 放进同一轮有两个直接作用：
 
@@ -468,11 +468,11 @@ Qwen3.5-9B 的 32 个 Decoder Layer 按下面的顺序重复：
 | 层类型 | Decode 时保留什么 | 是否随上下文长度线性增长 |
 | --- | --- | --- |
 | 8 个 Full Attention 层 | 历史 K/V | 是 |
-| 24 个 Gated DeltaNet 层 | recurrent state 和卷积状态 | 工作状态 shape 固定 |
+| 24 个 Gated DeltaNet 层 | 递归状态和卷积状态 | 工作状态 shape 固定 |
 
 本课的 KV Cache 公式只适用于 8 个 Full Attention 层。不能把 `L_full` 错写成 32，也不能因为 DeltaNet 没有逐 token K/V，就认为它在 Decode 时不保存状态。
 
-Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Full Attention 层更新 K/V，Gated DeltaNet 层更新卷积状态和 recurrent state。第 5 课会分析固定 shape 的状态怎样逐步吸收历史。
+Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Full Attention 层更新 K/V，Gated DeltaNet 层更新卷积状态和递归状态。第 5 课会分析固定 shape 的状态怎样逐步吸收历史。
 
 ## 14. 练习：补全生成时序并核算 KV Cache
 
@@ -486,7 +486,7 @@ Prompt 有四个 token：`p1 p2 p3 p4`。模型最终生成 `y1 y2 y3`。请补�
 
 完成时间线后，再回答三个问题：
 
-1. 给定 `L_full=2`、`B=1`、`T=3`、`Nkv=2`、`D=4`，KV Cache 使用 BF16，一共需要多少字节？
+1. Decode 第 2 轮结束后，Cache 中共有 6 个位置。给定 `L_full=2`、`B=1`、`Nkv=2`、`D=4`，KV Cache 使用 BF16，一共需要多少字节？
 2. Continuous Batching 能否让同一个请求在一轮中直接确定 `y1`、`y2` 和 `y3`？
 3. 为什么 TTFT 不能直接等同于 GPU 上 Prefill Kernel 的时间？
 
@@ -502,20 +502,18 @@ Prompt 有四个 token：`p1 p2 p3 p4`。模型最终生成 `y1 y2 y3`。请补�
 
 `y1` 被选中时还没有经过下一次模型前向。它的 K/V 会在 Decode 第 1 轮逐层写入，而不是在 Prefill 结束的瞬间自动出现。
 
-这组教学配置的 KV 容量是：
+Decode 第 2 轮结束时，Cache 包含 `p1 p2 p3 p4 y1 y2`，所以 `T=6`。这组教学配置的 KV 容量是：
 
 $$
-2\times1\times2\times2\times3\times4\times2
-=192\ Byte
+2\times1\times2\times2\times6\times4\times2
+=384\ Byte
 $$
 
-这些因子依次表示 K/V 两份、`B=1`、2 个 Full Attention 层、2 个 K/V 头、3 个缓存位置、每头 4 维，以及 BF16 每个元素 2 Byte。
+这些因子依次表示 K/V 两份、`B=1`、2 个 Full Attention 层、2 个 K/V 头、6 个缓存位置、每头 4 维，以及 BF16 每个元素 2 Byte。`y3` 只是在本轮结束时被选出，还没有经过模型，因此不在 Cache 中。
 
 Continuous Batching 只改变不同请求怎样进入每轮执行，不会消除同一请求未来 token 的数据依赖。端到端 TTFT 除了模型 Prefill，还可能包含网络、输入处理、排队、调度、采样和返回时间。
 
 </details>
-
-[第 5 课](05-gated-deltanet.md)会继续分析 Qwen3.5 中占多数的 Gated DeltaNet 层。它用固定 shape 的状态记录历史，与这里逐位置增长的 KV Cache 不同。
 
 ## 参考资料
 

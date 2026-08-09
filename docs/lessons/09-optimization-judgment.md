@@ -24,7 +24,7 @@
 | DP | 复制完整模型，把独立请求分给不同副本 | 集群吞吐、并发容量 | 每份权重占用、负载均衡、Cache 分散 |
 | TP | 把同一层的矩阵切到多张 GPU 上，再合并部分结果 | 单卡容量、单请求计算时间 | 集合通信、同步、小矩阵效率 |
 | PP | 把连续 Decoder Layer 分给不同设备阶段 | 单副本模型容量 | 阶段传输、流水线空泡、阶段不均衡 |
-| EP | 按 Expert ID 分布权重，并在设备间分发 token | MoE 容量、Expert 计算吞吐 | Dispatch、Combine、负载倾斜 |
+| EP | 按专家编号分布权重，并在设备间分发 token | MoE 容量、专家计算吞吐 | Token 分发、归并、负载倾斜 |
 | 推测解码 / MTP | 先提出候选，再让目标模型一次验证多个位置 | 低并发 TPOT | Drafter、候选状态、被拒绝候选的计算 |
 
 一项改动通常只影响部分耗时。例如 FlashAttention 减少 Full Attention 的中间读写，但 FFN 和 Gated DeltaNet 仍照常计算。因此，算子时间下降多少，不能直接当成整个请求的加速比例。
@@ -60,7 +60,7 @@ Weight-only 量化通常仍让激活保持 BF16 或 FP16。低比特 Kernel 读�
 
 ### 2.3 延迟收益的限制条件
 
-低比特格式缺少合适的硬件路径、反量化代价过大或部分层回退到通用 Kernel 时，省下的读取时间会被新增工作抵消。大 Batch GEMM 已经偏计算受限，或者 MoE 单个 Expert 收到的 token 太少时，低比特 Kernel 也未必高效。
+低比特格式缺少合适的硬件路径、反量化代价过大或部分层回退到通用 Kernel 时，省下的读取时间会被新增工作抵消。大 Batch GEMM 已经偏计算受限，或者 MoE 单个专家收到的 token 太少时，低比特 Kernel 也未必高效。
 
 权重从 2 Byte 变成 0.5 Byte，只证明编码数据理论上缩小四倍，不证明端到端时间也缩短四倍。
 
@@ -87,7 +87,7 @@ $$
 
 - 缩小模型权重；
 - 减少 QK 和 AV 的数学运算次数；
-- 自动量化 Gated DeltaNet 的 `conv_state` 和 `recurrent_state`；
+- 自动量化 Gated DeltaNet 的卷积状态（`conv_state`）和递归状态（`recurrent_state`）；
 - 保证长上下文质量不变。
 
 Qwen3.5-9B 有 8 个 Full Attention 层，Qwen3.5-35B-A3B 有 10 个；只有这些层使用随长度增长的 KV。若服务容量主要受每请求几十 MiB 的 Gated DeltaNet 固定状态限制，只量化 KV 的收益可能小于纯 Transformer 模型。
@@ -192,7 +192,7 @@ Continuous Batching 只说明 Batch 成员能动态变化，不自动表示 Pref
 | 数据并行（DP） | 复制完整模型，分配不同请求 | 通常只进入一个模型副本 | 集群吞吐与并发容量 |
 | 张量并行（TP） | 切分同一层中的矩阵或 Attention 头 | 每层都由多个 Rank 共同计算 | 单卡容量与单请求计算分担 |
 | 流水线并行（PP） | 按深度切分连续 Decoder Layer | 依次经过多个阶段 | 单副本模型容量 |
-| 专家并行（EP） | 把不同 Routed Experts 放到不同设备 | 每个 MoE 层按路由结果跨设备分发 | MoE 专家容量与计算组织 |
+| 专家并行（EP） | 把不同路由专家放到不同设备 | 每个 MoE 层按路由结果跨设备分发 | MoE 专家容量与计算组织 |
 
 ### 7.1 数据并行（DP）
 
@@ -210,17 +210,17 @@ TP 能降低每卡权重和计算量，但集合通信进入每层关键路径�
 
 ### 7.3 流水线并行（PP）
 
-PP 按模型深度切分层。例如 32 层模型分成 4 个阶段，每个阶段保存连续 8 层。一个 token 的 Hidden State 先经过阶段 0，再传给阶段 1，直到最后一个阶段输出 Logits。
+PP 按模型深度切分层。例如 32 层模型分成 4 个阶段，每个阶段保存连续 8 层。一个 token 的隐藏状态先经过阶段 0，再传给阶段 1，直到最后一个阶段输出 Logits。
 
 PP 能让单个模型跨越多张卡或多个节点，但不会让同一个 token 跳过任何阶段。只有多个请求或 microbatch 同时处在不同阶段时，设备才能形成流水。Batch 太小、阶段耗时不均或 Decode 每步工作过少时，部分阶段会等待，形成流水线空泡。跨阶段还要传输激活。
 
 ### 7.4 专家并行（EP）
 
-EP 把 Routed Experts 分布到不同设备。Router 选完 Top-K 后，token 特征被送到持有相应 Expert 的设备；Expert 算完，再把结果送回原 token 位置。第 6 课的[EP 与 TP 结构图](06-dense-and-moe.md#10-专家并行ep与张量并行tp)画出了两种切分的差异。
+EP 把路由专家分布到不同设备。路由器选完 Top-K 后，token 特征被送到持有相应专家的设备；专家计算结束后，再把结果送回原 token 位置。第 6 课的[EP 与 TP 结构图](06-dense-and-moe.md#10-专家并行ep与张量并行tp)画出了两种切分的差异。
 
-低并发时，每个 Expert 可能只收到少量 token，小 GEMM 和通信延迟占主导。热点 Expert 若集中在少数 Rank，整层还要等待最慢设备。Top-K 越大，每个 token 的路由分配和通信通常也越多。
+低并发时，每个专家可能只收到少量 token，小 GEMM 和通信延迟占主导。热点专家若集中在少数 Rank，整层还要等待最慢设备。Top-K 越大，每个 token 的路由分配和通信通常也越多。
 
-Qwen3.5-35B-A3B 的 EP 主要分布 256 个 Routed Experts。Attention、Gated DeltaNet、Router 与 Shared Expert 仍要由其他并行或复制策略处理。具体使用哪种 Collective 取决于 runtime，不能把 EP 固定等同于 All-to-All。
+Qwen3.5-35B-A3B 的 EP 主要分布 256 个路由专家。Attention、Gated DeltaNet、路由器与共享专家仍要由其他并行或复制策略处理。具体使用哪种 Collective 取决于 runtime，不能把 EP 固定等同于 All-to-All。
 
 ## 8. 推测解码（Speculative Decoding）
 
@@ -370,7 +370,7 @@ $$
 
 72% 的请求共享 4096 个精确 token，Prefix Cache 能直接消除已经确认存在的重复 Prefill，因此适合先做对照实验。它仍可能只改善命中请求。28% 的请求没有这段共享前缀，足以覆盖最慢的 1%。
 
-Qwen3.5 同时保存 Full Attention KV、卷积状态和 recurrent state。固定版本的 vLLM 配方仍把相关模式标为 experimental，所以正式做性能对照前要先过兼容性检查：命中不同长度前缀后，恢复的三类状态必须与完整 Prefill 一致；冷启动、驱逐和回退路径也要能得到一致输出。若这一关不通过，后续 TTFT 数字没有评审价值。
+Qwen3.5 同时保存 Full Attention KV、卷积状态和递归状态。固定版本的 vLLM 配方仍把相关模式标为 experimental，所以正式做性能对照前要先过兼容性检查：命中不同长度前缀后，恢复的三类状态必须与完整 Prefill 一致；冷启动、驱逐和回退路径也要能得到一致输出。若这一关不通过，后续 TTFT 数字没有评审价值。
 
 TP=8 的低并发测试如下：
 
@@ -386,7 +386,7 @@ TP=8 的低并发测试如下：
 
 ### 12.2 Prefix Cache 改善 P50，但 P99 未达标
 
-Prefix Cache 对照使用相同的到达记录回放。模型输出一致，Full Attention KV、卷积状态和 recurrent state 的恢复检查均通过。结果如下：
+Prefix Cache 对照使用相同的到达记录回放。模型输出一致，Full Attention KV、卷积状态和递归状态的恢复检查均通过。结果如下：
 
 | 请求组 | TTFT P50 | TTFT P99 |
 | --- | ---: | ---: |
@@ -431,7 +431,7 @@ Prefix Cache 有保留价值，但它没有解决当前的 P99 SLO。评审结�
 | Prefix Cache 已开启 | 重复请求一定命中并改善尾延迟 | 精确前缀命中 token 数、驱逐率和命中/未命中分桶 |
 | Batch 增大后离线吞吐更高 | 在线服务一定更好 | 到达率、排队、TTFT/TPOT P99 和同 SLO `goodput` |
 | TP 使用的 GPU 数翻倍 | 吞吐线性翻倍 | Collective 时间、本地矩阵大小、副本数和队列变化 |
-| MoE 每 token 只选少量 Expert | MoE 延迟只取决于 Active Parameters | 每层 `n_e` 分布、Grouped GEMM、Dispatch 和慢 Rank |
+| MoE 每 token 只选少量专家 | MoE 延迟只取决于激活参数 | 每层 `n_e` 分布、Grouped GEMM、Token 分发和慢 Rank |
 | 推测解码接受长度增加 | 高并发吞吐也会增加 | Drafter 成本、Lookahead Cache、拒绝率和 Token Budget |
 | 平均值改善 | 尾延迟和上线目标达标 | P99、显存峰值、回退路径、质量与固定 SLO |
 

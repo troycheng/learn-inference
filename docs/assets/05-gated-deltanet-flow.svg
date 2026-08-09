@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 820" width="1400" height="820" role="img" aria-labelledby="title desc">
   <title id="title">Gated DeltaNet 的完整数据流</title>
-  <desc id="desc">输入经过投影和因果卷积生成 Q、K、V。因果卷积读写 conv state，Delta Rule 读写 recurrent state，读出结果再经过输出门和输出投影。</desc>
+  <desc id="desc">输入经过投影和因果卷积生成 Q、K、V。因果卷积读写卷积状态，Delta Rule 读写递归状态，读出结果再经过输出门和输出投影。</desc>
   <defs>
     <marker id="a-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
     <marker id="a-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#ea580c"/></marker>
@@ -17,7 +17,7 @@
   </style>
   <rect width="1400" height="820" fill="#ffffff"/>
   <text x="55" y="58" class="title">一个 token 怎样读写 Gated DeltaNet 状态</text>
-  <text x="55" y="92" class="sub">蓝色是当前 token 的特征流，绿色是 recurrent state，橙色是门控信号；conv_state 在因果卷积中更新。</text>
+  <text x="55" y="92" class="sub">蓝色是当前 token 的特征流，绿色是递归状态，橙色是门控信号；卷积状态在因果卷积中更新。</text>
 
   <path d="M185 197 H260 V525" class="line" stroke="#2563eb"/>
   <path d="M260 197 H315" class="line" stroke="#2563eb" marker-end="url(#a-blue)"/>
@@ -50,7 +50,7 @@
   <text x="400" y="517" class="h">z</text><text x="400" y="545" class="s">输出门控</text>
 
   <rect x="585" y="145" width="170" height="104" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-  <text x="670" y="180" class="h">因果卷积</text><text x="670" y="210" class="s">最近 4 个位置</text><text x="670" y="232" class="s">读取并更新 conv_state</text>
+  <text x="670" y="180" class="h">因果卷积</text><text x="670" y="210" class="s">最近 4 个位置</text><text x="670" y="232" class="s">读取并更新卷积状态</text>
   <rect x="825" y="145" width="180" height="104" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
   <text x="915" y="180" class="h">拆分 Q/K/V</text><text x="915" y="211" class="s">Q/K 做 L2Norm</text><text x="915" y="232" class="s">Q 再除以 sqrt(Dk)</text>
 
@@ -67,9 +67,9 @@
   <text x="1350" y="385" class="t" font-weight="700">out_proj</text><text x="1350" y="415" class="s">H 维输出</text>
 
   <rect x="205" y="620" width="325" height="95" rx="14" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
-  <text x="367" y="657" class="h">上一 token 的 recurrent_state</text><text x="367" y="690" class="s">供 Delta Rule 继续读写</text>
+  <text x="367" y="657" class="h">上一 token 的递归状态</text><text x="367" y="690" class="s">供 Delta Rule 继续读写</text>
   <rect x="1115" y="620" width="230" height="95" rx="14" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
-  <text x="1230" y="657" class="h">新的 recurrent_state</text><text x="1230" y="690" class="s">交给下一 token</text>
+  <text x="1230" y="657" class="h">新的递归状态</text><text x="1230" y="690" class="s">交给下一 token</text>
 
   <g transform="translate(55 770)">
     <line x1="0" y1="0" x2="36" y2="0" stroke="#2563eb" stroke-width="3" marker-end="url(#a-blue)"/><text x="48" y="6" font-size="15" fill="#6b7280">当前 token 数据</text>

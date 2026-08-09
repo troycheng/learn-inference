@@ -5,7 +5,7 @@
 ```text
 Embedding 输出
 → 多层 Decoder
-→ Hidden States
+→ 隐藏状态
 ```
 
 本课分析其中一个 Decoder Layer。它接收一组 token 向量，输出同样 shape 的一组向量。中间完成两类计算：先让 token 之间交换信息，再分别加工每个 token。两次计算的结果都通过残差连接加回各自的输入。
@@ -52,7 +52,7 @@ $$
 
 第一次变换是 Token Mixer，第二次变换是 FFN。
 
-## 2. Hidden State 的维度含义
+## 2. 隐藏状态的维度含义
 
 设一个极小例子只有 3 个 token，每个 token 用 4 个数表示：
 
@@ -76,9 +76,9 @@ $$
 
 这些坐标通常没有稳定的人工名称。不能看到第 17 列就断言它只表示“名词”，也不能把一列等同于一个人类可解释概念。模型使用很多坐标的组合表示语义、语法、位置和上下文关系。
 
-第 1 课中的 Embedding 是最初的表示。经过每个 Decoder Layer 后，同一位置的向量不断变化，于是成为越来越深的 Hidden State。
+第 1 课中的 Embedding 是最初的表示。经过每个 Decoder Layer 后，同一位置的隐藏状态会被继续更新。
 
-![Hidden State 的行与列](../assets/02-hidden-state.svg)
+![隐藏状态的行与列](../assets/02-hidden-state.svg)
 
 ## 3. Token Mixer 与 FFN 的分工
 
@@ -527,7 +527,7 @@ RMSNorm → Token Mixer → Residual
 
 ```text
 RMSNorm → Token Mixer → Residual
-→ RMSNorm → Router + 少量专家 FFN → Residual
+→ RMSNorm → 路由器 + 少量专家 FFN → Residual
 ```
 
 Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 课完整对比。
@@ -552,7 +552,7 @@ Linear 和 FFN 对每个 token 使用同一套权重。模型、dtype、状态�
 | 名称 | 指什么 | 所属层面 |
 | --- | --- | --- |
 | Decoder-only 语言模型 | 语言主干采用因果模型，按已有 token 预测下一个 token | 模型架构 |
-| Decoder Layer | 反复更新 Hidden States 的一层模型计算，Prefill 和 Decode 都会执行 | 模型计算 |
+| Decoder Layer | 反复更新隐藏状态的一层模型计算，Prefill 和 Decode 都会执行 | 模型计算 |
 | Decode 阶段 | Prefill 之后，逐步生成新 token 的运行阶段 | 请求执行 |
 | Tokenizer Decode | 把生成的 Token IDs 还原成文字 | 输出处理 |
 

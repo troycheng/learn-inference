@@ -9,7 +9,7 @@
 1. 用户输入先变成模型可以接收的 `[B,T,H]` 向量。文字经过 Chat Template、Tokenizer 和 Embedding；图片或视频经过视觉编码器。
 2. 每个 Decoder Layer 都接收和输出 `[B,T,H]`。Token Mixer 让不同 token 位置交换信息，FFN 加工单个 token 内部的特征。
 3. Full Attention 层保存随缓存长度增长的 KV Cache。Gated DeltaNet 层保存固定 shape 的卷积状态和递归状态。
-4. LM Head 把最后的 Hidden States 变成词表 Logits。贪心或采样选出的 Token ID 会成为下一轮 Decode 的输入。
+4. LM Head 把最后的隐藏状态变成词表 Logits。贪心或采样选出的 Token ID 会成为下一轮 Decode 的输入。
 5. Prefill 和 Decode 执行同一套模型权重。Prefill 处理已经给出的 Prompt，Decode 每轮处理刚刚确定的新 token。
 
 ## 各阶段的检查对象
@@ -21,7 +21,7 @@
 | Decoder Layer | `[B,T,H]` → `[B,T,H]` | 每层的模型权重 | 层数、FFN 宽度、Dense/MoE | [第 2 课](lessons/02-inside-a-decoder-layer.md)、[第 6 课](lessons/06-dense-and-moe.md) |
 | Full Attention | Q/K/V → 上下文向量 | 历史 K/V | 上下文长度、KV dtype、GQA、FlashAttention | [第 3 课](lessons/03-attention.md)、[第 4 课](lessons/04-prefill-decode-kv-cache.md) |
 | Gated DeltaNet | 当前 token 与旧状态 → 新状态和输出 | 卷积状态、递归状态 | 固定状态容量、Prefix Cache 完整性 | [第 5 课](lessons/05-gated-deltanet.md) |
-| LM Head 与选择策略 | Hidden State → Logits → Token ID | 生成历史由请求继续使用 | 词表投影、采样参数、停止条件 | [第 1 课](lessons/01-text-to-next-token.md) |
+| LM Head 与选择策略 | 隐藏状态 → Logits → Token ID | 生成历史由请求继续使用 | 词表投影、采样参数、停止条件 | [第 1 课](lessons/01-text-to-next-token.md) |
 | Prefill 与 Decode | 已知位置 → 新 Logits 和新状态 | KV、卷积状态、递归状态 | TTFT、TPOT、Batching、调度 | [第 4 课](lessons/04-prefill-decode-kv-cache.md) |
 | 资源与优化 | 配置与工作负载 → 容量和性能判断 | 取决于具体方案 | 权重、状态、FLOPs、通信、SLO | [第 8 课](lessons/08-config-and-sizing.md)、[第 9 课](lessons/09-optimization-judgment.md) |
 

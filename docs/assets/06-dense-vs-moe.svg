@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760" role="img" aria-labelledby="title desc">
   <title id="title">Dense 和 MoE 替换的是 FFN 子层</title>
-  <desc id="desc">两种模型保留相同的 Decoder Layer 主架构，Dense 使用一套固定 FFN，MoE 用 Router 选择少数 Expert。</desc>
+  <desc id="desc">两种模型保留相同的 Decoder Layer 主架构，Dense 使用一套固定 FFN，MoE 用路由器选择少数专家。</desc>
   <defs><marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker></defs>
   <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.panel{font-size:24px;font-weight:700;text-anchor:middle}.h{font-size:19px;font-weight:700;text-anchor:middle}.t{font-size:16px;text-anchor:middle}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#arrow)}</style>
   <rect width="1400" height="760" fill="#fff"/>
@@ -17,7 +17,7 @@
   <rect x="910" y="215" width="260" height="70" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1040" y="258" class="h">Token Mixer</text>
   <path d="M1040 285 V335" class="line"/>
   <rect x="875" y="335" width="330" height="185" rx="16" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
-  <text x="1040" y="375" class="h">Sparse MoE</text><text x="1040" y="414" class="t">Router 选择少数 Routed Experts</text><text x="1040" y="447" class="t">所有 token 执行 Shared Expert</text><text x="1040" y="480" class="t">加权合并各套 FFN 输出</text>
+  <text x="1040" y="375" class="h">稀疏 MoE</text><text x="1040" y="414" class="t">路由器选择少数路由专家</text><text x="1040" y="447" class="t">所有 token 执行共享专家</text><text x="1040" y="480" class="t">加权合并各套 FFN 输出</text>
   <path d="M1040 520 V570" class="line"/><rect x="910" y="570" width="260" height="70" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1040" y="613" class="h">输出 [B,T,H]</text>
   <text x="360" y="672" class="sub" text-anchor="middle">每个 token 使用同一套完整 FFN</text><text x="1040" y="672" class="sub" text-anchor="middle">每个 token 只选少数路由专家</text>
 </svg>

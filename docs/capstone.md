@@ -45,7 +45,7 @@ Qwen3.5-9B 的语言模型有 32 个 Decoder Layer：
 | Token Mixer | 请求状态 | 是否随上下文长度增长 |
 | --- | --- | --- |
 | Full Attention | 每个历史位置的 K/V | 是 |
-| Gated DeltaNet | 卷积状态与 recurrent state | 否，shape 固定 |
+| Gated DeltaNet | 卷积状态与递归状态 | 否，shape 固定 |
 
 因此，长上下文首先放大的是 8 个 Full Attention 层的 KV Cache。Gated DeltaNet 的固定状态仍要计入单请求显存，但不会从 9K 跟着增长到 68K。
 
@@ -164,7 +164,7 @@ Chunked Prefill 解决的是调度问题。它可以避免一个 65K Prompt 长�
 2. 上下文长度从 9,216 提高到 69,632 后，Full Attention 需要读取更长的历史 K/V，Prefill 也要处理更多位置。容量可容纳不等于 TTFT 和 TPOT 能达标。
 3. 两个 `TP=8` 副本和 FP8 KV 都有直接的容量收益，前者增加模型副本，后者改变缓存格式。跨节点 `TP=16`、Chunked Prefill 和 Prefix Cache 分别改变通信、调度和重复前缀计算，不能替代 KV 容量验证。
 
-这项结论保留了长上下文方案，但要求先补齐容量、延迟和质量证据。
+因此，评审不是拒绝长上下文，而是要求先补齐容量、延迟和质量证据。
 
 ## 8. 验证实验
 
