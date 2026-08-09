@@ -1,0 +1,21 @@
+# 可运行的手算示例
+
+这些脚本把正文中的手算步骤写成代码，并沿用同一组数字。所有脚本只依赖 Python 标准库，便于逐项核对。
+
+| 脚本 | 对应课程 | 复算内容 |
+| --- | --- | --- |
+| `decoder_layer_walkthrough.py` | 第 2 课 | RMSNorm、SwiGLU 的三组投影与门控 |
+| `attention_walkthrough.py` | 第 3 课 | QK 点积、因果遮罩、Softmax 与 V 的加权求和 |
+| `gated_deltanet_walkthrough.py` | 第 5 课 | Delta Rule、状态衰减、修正幅度与输出门控 |
+| `model_sizing_walkthrough.py` | 第 8 课 | KV、TP 下每 Rank KV、固定状态与 Attention 长度项 |
+
+在仓库根目录运行：
+
+```bash
+python3 examples/decoder_layer_walkthrough.py
+python3 examples/attention_walkthrough.py
+python3 examples/gated_deltanet_walkthrough.py
+python3 examples/model_sizing_walkthrough.py
+```
+
+每个脚本都会打印中间结果，并用断言检查正文中的关键数值。

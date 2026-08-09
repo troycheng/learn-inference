@@ -603,6 +603,8 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 | 长上下文计算 | Full Attention 层的 `4LfullNqDT` |
 | 带宽还是计算限制 | FLOPs、搬运字节、算术强度与硬件 Machine Balance |
 
+仓库中的 [`model_sizing_walkthrough.py`](../../examples/model_sizing_walkthrough.py) 使用本课公式复算两个示例模型的逻辑 KV、TP=8 时每 Rank KV、Gated DeltaNet 固定状态和 Attention 长度项。改动配置或上下文长度后，可以直接观察各项怎样变化。
+
 [第 9 课](09-optimization-judgment.md)会分析量化、FlashAttention、Prefix Cache、Batching、DP、TP、PP、EP 和推测解码：它们减少了哪些工作，又增加了哪些成本，以及怎样估算端到端收益上限。
 
 ## 参考资料

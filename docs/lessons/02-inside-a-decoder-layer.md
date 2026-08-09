@@ -459,6 +459,8 @@ W_down = [[1, 0,   0],
 down_proj(...) ≈ [2.193, 1.977]
 ```
 
+仓库中的 [Decoder Layer 手算程序](../../examples/decoder_layer_walkthrough.py) 使用同一组输入和权重，可以逐项核对 RMSNorm、SiLU、门控相乘和三个投影的结果。
+
 FFN 输出重新回到 `[H]=[2]`。这个例子只计算 FFN 分支，因此没有把它与残差输入相加。真实 Decoder Layer 中，残差分支保存的是 RMSNorm 之前的 `y`，不能直接把这里的 `y_norm` 当成残差输入。完整的残差关系已经在第 6 节给出。
 
 ## 9. FFN 的 shape 变化

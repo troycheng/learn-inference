@@ -47,6 +47,8 @@ end
 puts "Markdown structure and local links: PASS (#{files.length} files)"
 RUBY
 
+ruby scripts/check-course-content.rb
+
 svg_render_target=$(mktemp "${TMPDIR:-/tmp}/learn-inference-svg.XXXXXX.png")
 trap 'unlink "$svg_render_target"' EXIT
 
@@ -58,8 +60,12 @@ for file in docs/assets/*.svg; do
 done
 echo "SVG XML and render: PASS (${svg_count} files)"
 
-python3 examples/attention_walkthrough.py > /dev/null
-echo "Runnable examples: PASS"
+example_count=0
+for file in examples/*_walkthrough.py; do
+  python3 "$file" > /dev/null
+  example_count=$((example_count + 1))
+done
+echo "Runnable examples: PASS (${example_count} files)"
 
 git diff --check
 echo "Whitespace check: PASS"

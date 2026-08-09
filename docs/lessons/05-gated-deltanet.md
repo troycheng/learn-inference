@@ -262,6 +262,8 @@ $$
 
 `out_proj` 把所有 Value 头的结果重新混合回 `H` 维。Token Mixer 的输入和输出都是 `[B,T,H]`，因此它仍能接回第 2 课讲过的残差路径。
 
+仓库中的 [Gated DeltaNet 手算程序](../../examples/gated_deltanet_walkthrough.py) 从 `S_0` 开始执行相同的三次更新，并打印旧记录、误差、状态矩阵和门控后的输出。
+
 ## 8. Prefill 与 Decode 的执行方式
 
 对单个 token 来说，状态更新天然是递归的：`S_t` 依赖 `S_{t-1}`。这不等于 Prefill 只能由 Python 循环逐 token 运行。
