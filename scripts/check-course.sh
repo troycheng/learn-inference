@@ -4,7 +4,7 @@ set -euo pipefail
 
 ruby <<'RUBY'
 errors = []
-files = ["README.md"] + Dir["docs/**/*.md"]
+files = ["README.md", "CONTRIBUTING.md"] + Dir["docs/**/*.md"]
 
 files.each do |file|
   text = File.read(file)
@@ -20,6 +20,17 @@ files.each do |file|
   errors << "#{file}: <details> tags are not balanced" if details_open != details_close
   errors << "#{file}: GitHub does not allow \\operatorname here" if text.include?("\\operatorname")
   errors << "#{file}: display math appears in a heading" if lines.any? { |line| line.start_with?("#") && line.include?("$$") }
+
+  in_display_math = false
+  lines.each_with_index do |line, index|
+    if line.strip == "$$"
+      in_display_math = !in_display_math
+      next
+    end
+    if in_display_math && line.strip.match?(/\A[=-]+\z/)
+      errors << "#{file}:#{index + 1}: standalone #{line.strip.inspect} inside display math breaks GitHub rendering"
+    end
+  end
 
   image_counts = Hash.new(0)
   text.scan(/!\[[^\]]*\]\(([^)]+)\)/).flatten.each do |target|
@@ -48,6 +59,14 @@ puts "Markdown structure and local links: PASS (#{files.length} files)"
 RUBY
 
 ruby scripts/check-course-content.rb
+
+ruby <<'RUBY'
+require "yaml"
+
+files = Dir[".github/ISSUE_TEMPLATE/*.yml"].sort
+files.each { |file| YAML.load_file(file) }
+puts "GitHub issue template YAML: PASS (#{files.length} files)"
+RUBY
 
 svg_render_target=$(mktemp "${TMPDIR:-/tmp}/learn-inference-svg.XXXXXX.png")
 trap 'unlink "$svg_render_target"' EXIT

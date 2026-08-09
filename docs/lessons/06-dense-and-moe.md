@@ -310,23 +310,23 @@ TP 可以继续切分单个 Expert 的 gate/up/down 矩阵。一个部署也可�
 
 ## 11. MoE 推理的性能因素
 
-### Routed Assignment 数量
+### 11.1 Routed Assignment 数量
 
 一轮 `N` 个 token、Top-K 为 `K`，逻辑上产生 `N×K` 份 Routed Expert 工作。这个数比请求数更接近 Expert 侧的计算规模。
 
-### Expert 的 Token 分布
+### 11.2 Expert 的 token 分布
 
 Grouped GEMM 的效率取决于各 Expert 的 `n_e`，不只取决于所有 assignment 的总数。平均值相同，分布倾斜程度也可能完全不同。
 
-### Expert 权重的加载与驻留
+### 11.3 Expert 权重的加载与驻留
 
 Total Parameters 决定所有 Expert 权重必须存在哪里。即使单 token 只激活 8 个 Expert，小 Batch 下不同轮次命中的 Expert 变化仍会影响缓存和显存带宽行为。
 
-### Dispatch、Combine 与网络拓扑
+### 11.4 Dispatch、Combine 与网络拓扑
 
 跨 NVLink、PCIe 或跨机网络的代价差异很大。EP 映射要结合热点 Expert 分布和实际互联，不能只看卡数。
 
-### Shared Expert 的设备布局
+### 11.5 Shared Expert 的设备布局
 
 Shared Expert 可能复制、做 TP，或与 Routed Expert 计算重叠。模型公式只规定它对所有 token 执行，具体优化方式属于 runtime。
 

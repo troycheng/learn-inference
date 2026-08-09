@@ -41,7 +41,7 @@
 | 模型参数 | Parameters | 训练得到、推理时被请求重复使用的数据 |
 | 运行时数据 | Runtime Data | 当前请求在推理过程中产生的数据和状态 |
 
-## 文本、Token 与 Embedding
+## 文本、token 与 Embedding
 
 | 正文用词 | 英文或代码名 | 简短含义 |
 | --- | --- | --- |

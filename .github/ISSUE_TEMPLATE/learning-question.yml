@@ -1,0 +1,37 @@
+name: 学习问题
+description: 反馈某一段为什么难以理解，帮助课程补齐必要解释
+title: "[学习问题] "
+labels:
+  - learning-question
+body:
+  - type: input
+    id: location
+    attributes:
+      label: 课程位置
+      description: 文件、小节标题或链接
+    validations:
+      required: true
+  - type: textarea
+    id: understood
+    attributes:
+      label: 已经理解到哪里
+      description: 简要说明前面哪些概念已经能够复述或计算
+    validations:
+      required: true
+  - type: textarea
+    id: blocked
+    attributes:
+      label: 从哪里开始无法继续
+      description: 请指出不明白的术语、图、公式或前后关系
+    validations:
+      required: true
+  - type: textarea
+    id: interpretation
+    attributes:
+      label: 你目前怎样理解
+      description: 可以写下自己的推断，方便判断是缺少前置知识还是正文表达不清
+  - type: textarea
+    id: expected
+    attributes:
+      label: 希望补充什么
+      description: 例如小数字手算、shape 变化、时间线、真实配置或反例

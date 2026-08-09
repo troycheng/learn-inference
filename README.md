@@ -1,4 +1,6 @@
-# 看懂大模型推理
+# 大模型推理原理与优化
+
+面向推理系统工程师的模型原理入门课。
 
 这套课写给正在维护推理系统、希望补齐模型原理的工程师。你可能已经处理过显存不足、吞吐下降或首 token 变慢，但碰到 QKV、RoPE、KV Cache 或 MoE 时，还很难从模型计算解释原因。
 
@@ -19,21 +21,13 @@
 
 ## 课程主线
 
-```mermaid
-flowchart LR
-    A["文字"] --> B["Token IDs"]
-    B --> C["文本 Embedding"]
-    V["图片或视频"] --> VE["视觉编码器"]
-    VE --> U["统一输入向量"]
-    C --> U
-    U --> D["多层 Decoder"]
-    D --> E["Logits"]
-    E --> F["概率与采样"]
-    F --> G["下一个 token"]
-    G --> B
+```text
+用户输入 → 模型输入向量 → 多层 Decoder → Logits → 下一个 token → 下一轮 Decode
 ```
 
 前几课先讲文字生成，第 7 课再加入图片和视频。两类输入最终都会变成与语言模型 Hidden Size 对齐的向量，进入同一个 Decoder 主干。
+
+需要复习完整数据流、Decoder Layer 内部结构和两类请求状态时，可以打开带图的[大模型推理链路速查](docs/inference-map.md)。
 
 课程一直用 Qwen3.5 作例子，但会区分模型版本的用途：
 
@@ -49,7 +43,7 @@ flowchart LR
 | 课次 | 内容 | 读完后能做什么 |
 | ---: | --- | --- |
 | 0 | [第 0 课：张量与模型计算基础](docs/lessons/00-math-and-tensors.md) | 根据轴和运算推导 shape |
-| 1 | [第 1 课：大模型生成下一个 Token 的过程](docs/lessons/01-text-to-next-token.md) | 区分文本、Token ID、向量、Logit 和概率，解释因果训练目标 |
+| 1 | [第 1 课：大模型生成下一个 token 的过程](docs/lessons/01-text-to-next-token.md) | 区分文本、Token ID、向量、Logit 和概率，解释因果训练目标 |
 | 2 | [第 2 课：Decoder Layer 的结构与计算](docs/lessons/02-inside-a-decoder-layer.md) | 解释 RMSNorm、残差连接和 SwiGLU FFN |
 | 3 | [第 3 课：Attention 的计算原理](docs/lessons/03-attention.md) | 手算一次 Attention 并解释 RoPE、GQA |
 | 4 | [第 4 课：Prefill、Decode 与 KV Cache](docs/lessons/04-prefill-decode-kv-cache.md) | 解释生成阶段、缓存复用和批处理 |
@@ -62,7 +56,10 @@ flowchart LR
 配套资料：
 
 - [完整课程路线](docs/roadmap.md)
+- [大模型推理链路速查](docs/inference-map.md)
+- [结业案例：从模型配置到优化判断](docs/capstone.md)
 - [课程术语与符号表](docs/glossary.md)
+- [模型分析工作表](docs/model-analysis-workbook.md)
 - [课程编写与讲解规范](docs/teaching-method.md)
 
 ## 学习顺序
@@ -70,6 +67,8 @@ flowchart LR
 第 0 课补齐后文会用到的数学动作。第 1 至第 4 课是一条连续主线，先把文字生成和自回归过程读通；第 5 至第 7 课再加入 Gated DeltaNet、MoE 和图片输入；第 8、9 课把模型原理变成配置估算和优化判断。
 
 建议读两遍。第一遍只追踪数据表示、shape 变化和请求需要保留的状态，不必记住 Qwen3.5 的每个配置数字。第二遍再带着真实模型和工作负载回来，用复算程序核对参数、状态和计算量，并完成每课末尾的综合练习。
+
+读完第 9 课后，用[结业案例](docs/capstone.md)完成一次不按章节提示的综合分析。再拿一份自己正在部署的模型配置，填写[模型分析工作表](docs/model-analysis-workbook.md)。能把每个数字追溯到配置、源码或测量结果，才算把课程方法用到了真实问题中。
 
 正文用小数字缩短手算过程，向量和矩阵的维度虽然变小，计算顺序与真实模型相同。每课末尾都有练习和一个综合自测，答案默认折叠。如果能在不看正文的情况下画出数据流并标对 shape，说明这一课已经掌握。
 
@@ -84,6 +83,12 @@ flowchart LR
 ## 当前状态
 
 第 0～9 课已经形成完整主线。主课只保留经过资料核对、手算校验和图文检查的版本。
+
+## 反馈与纠错
+
+发现公式、配置数字、图示或引用有误时，请提交[内容纠错](https://github.com/troycheng/learn-inference/issues/new?template=content-error.yml)，注明课程位置、问题和可核对的来源。读到某一步无法继续，也可以提交[学习问题](https://github.com/troycheng/learn-inference/issues/new?template=learning-question.yml)。这类反馈会用来判断正文是否还缺少必要解释。
+
+修改课程前请阅读[贡献说明](CONTRIBUTING.md)。
 
 ## 许可
 

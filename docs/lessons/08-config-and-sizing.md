@@ -21,7 +21,7 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 
 第一次打开 `config.json`，不用逐行读。先找下面四组字段。
 
-### 模型接口配置
+### 1.1 模型接口配置
 
 | 符号 | 配置字段 | 含义 |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 | `H` | `hidden_size` | 每个语言位置用多少个数表示 |
 | `L` | `num_hidden_layers` | 语言 Decoder Layer 数 |
 
-### Attention 配置
+### 1.2 Attention 配置
 
 | 符号 | 配置字段 | 含义 |
 | --- | --- | --- |
@@ -38,13 +38,13 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 | `D` | `head_dim` | 每个头的宽度 |
 | `L_full` | 从 `layer_types` 计数 | Full Attention 层数 |
 
-### Dense FFN 配置
+### 1.3 Dense FFN 配置
 
 | 符号 | 配置字段 | 含义 |
 | --- | --- | --- |
 | `I` | `intermediate_size` | Dense FFN 中间宽度 |
 
-### MoE 配置
+### 1.4 MoE 配置
 
 | 符号 | 配置字段 | 含义 |
 | --- | --- | --- |
@@ -104,7 +104,7 @@ FLOPs：这次前向做了多少次浮点运算
 
 这些数字回答的是不同问题，不能互相替代。
 
-### 临时激活与运行时预留
+### 2.1 临时激活与运行时预留
 
 权重和请求状态可以按配置估算，进程峰值显存还取决于这一轮实际执行了多少 token。令 `M` 表示当前执行批次打包后的 token 位置总数，常见临时张量包括：
 
@@ -345,7 +345,7 @@ T：每个请求已缓存的长度
 s：每个缓存元素的字节数
 ```
 
-### Qwen3.5-9B 的 BF16 KV Cache
+### 7.1 Qwen3.5-9B 的 BF16 KV Cache
 
 每个请求每增加一个位置：
 
@@ -353,7 +353,7 @@ $$
 2\times8\times4\times256\times2=32768\ Byte=32\ KiB
 $$
 
-### Qwen3.5-35B-A3B 的 BF16 KV Cache
+### 7.2 Qwen3.5-35B-A3B 的 BF16 KV Cache
 
 $$
 2\times10\times2\times256\times2=20480\ Byte=20\ KiB
@@ -368,7 +368,7 @@ $$
 
 这些数字不包括块尾空余、预分配、页表、对齐、跨设备布局和临时 Workspace。
 
-### Tensor Parallel 下的 KV 头复制
+### 7.3 Tensor Parallel 下的 KV 头复制
 
 上面的 32 KiB 和 20 KiB 是整个模型的逻辑有效载荷。Tensor Parallelism（TP）还要决定每个 Rank 实际保存几个 K/V 头。vLLM 的固定版本使用：
 
@@ -429,7 +429,7 @@ $$
 
 一个输出元素需要 K 次乘法和约 K 次加法，所以近似记为 `2K` 次浮点运算。
 
-### Dense FFN FLOPs
+### 9.1 Dense FFN FLOPs
 
 单层、单 token：
 
@@ -439,7 +439,7 @@ $$
 
 Qwen3.5-9B 每层约 0.302 GFLOPs，32 层 FFN 合计约 9.66 GFLOPs/token。
 
-### MoE FFN FLOPs
+### 9.2 MoE FFN FLOPs
 
 35B-A3B 每 token 计算 8 个 Routed Experts 加 1 个 Shared Expert：
 
@@ -449,7 +449,7 @@ $$
 
 这里跟 9 条实际执行的 Expert 路径相关，不跟 256 个 Expert 总数成正比。权重容量则必须包含全部 256 个 Expert。
 
-### 单 Token 的主要 Linear 计算量
+### 9.3 单 token 的主要 Linear 计算量
 
 把文本 Decode 本步使用的主要 Linear 和卷积权重按每个权重一次乘加估算，并加入 LM Head：
 
@@ -557,19 +557,19 @@ $$
 
 ## 13. 从配置推导工程约束
 
-### 单卡权重容量
+### 13.1 单卡权重容量
 
 先算实际加载权重，再留出请求状态、临时激活、通信 Buffer 和 runtime 预留。不能只拿“模型名 × dtype”与显存容量比较。
 
-### 长上下文状态容量
+### 13.2 长上下文状态容量
 
 按 `L_full`、`Nkv`、`D` 和 KV dtype 算每个位置的 KV，再加每请求固定的 Gated DeltaNet 状态。不要把全部 Decoder Layer 都代入 KV 公式。
 
-### Dense 与 MoE 的成本差异
+### 13.3 Dense 与 MoE 的成本差异
 
 至少同时列出 Total Parameters、Active Parameters、Expert 分布和通信。Active 少不代表权重显存少，也不保证延迟按比例下降。
 
-### 固定成本与长度相关成本
+### 13.4 固定成本与长度相关成本
 
 Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV 和 KV 读取随上下文长度增长。两者的优化方向不同。
 

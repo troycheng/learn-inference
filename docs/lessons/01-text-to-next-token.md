@@ -1,4 +1,4 @@
-# 第 1 课：大模型生成下一个 Token 的过程
+# 第 1 课：大模型生成下一个 token 的过程
 
 聊天框里是文字，模型里流动的是数字。一条消息要先变成 Token ID，再变成向量；模型算出下一个 Token ID 后，Tokenizer 才把它还原成文字。本课沿着一次真实生成，把这条链路走完。
 
@@ -119,7 +119,7 @@ Qwen3.5 当前配置使用 `Qwen2Tokenizer`，其实现基于 Byte-level BPE。�
 
 BPE 决定的是“怎样切分和编号”。Token 在上下文里表达什么，仍由模型参数学习。
 
-### 3.3 Token 与 Token ID
+### 3.3 token 与 Token ID
 
 假设一个极小词表是：
 
@@ -271,7 +271,7 @@ Qwen3.5-9B 的文本模型使用 `H=4096`，共有 32 层。Embedding 输出进�
 
 第 2 课会打开一个 Decoder Layer，解释 RMSNorm、Residual 和 FFN；第 3 课再完整拆解 Attention 的计算过程。
 
-### 5.1 下一个 Token 由最后一个位置预测
+### 5.1 下一个 token 由最后一个位置预测
 
 假设已知输入有三个 token：
 
@@ -381,7 +381,7 @@ Qwen3.5-9B 的 `tie_word_embeddings` 当前配置为 `false`，输入 Embedding
 与输出 LM Head 不共享同一套权重。即使某些模型选择共享权重，
 Tokenizer Decode 也仍然负责 ID 到文字的转换，不能把 Embedding 当作解码器。
 
-## 7. 从 Logits 选择下一个 Token
+## 7. 从 Logits 选择下一个 token
 
 Logits 已经给出了候选 token 的相对排序。下一步有两类常用选择方式。
 
@@ -721,7 +721,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 </details>
 
-## 16. 综合练习：复述下一个 Token 的生成过程
+## 16. 综合练习：复述下一个 token 的生成过程
 
 不看正文，画出并解释下面这条链路：
 

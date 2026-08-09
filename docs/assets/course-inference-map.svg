@@ -1,0 +1,203 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 1040" width="1200" height="1040" role="img" aria-labelledby="course-map-title course-map-desc">
+  <title id="course-map-title">一次大模型生成中的数据、计算和请求状态</title>
+  <desc id="course-map-desc">从用户输入到下一个 token，展示输入处理、Decoder Layer、LM Head、Prefill、Decode，以及 Full Attention 和 Gated DeltaNet 需要保存的请求状态。</desc>
+  <style>
+    text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei','Microsoft JhengHei','SimHei',sans-serif;fill:#111827}
+    .title{font-size:32px;font-weight:700}.subtitle{font-size:17px;fill:#6b7280}
+    .section{font-size:20px;font-weight:700}.card-title{font-size:18px;font-weight:700}.label{font-size:15px;font-weight:600}.detail{font-size:14px;fill:#4b5563}.small{font-size:13px;fill:#6b7280}.mono{font-size:14px;font-family:'SFMono-Regular',Consolas,'Liberation Mono',monospace}
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0,10 3.5,0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0,10 3.5,0 7" fill="#059669"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="1040" fill="#ffffff" data-graph-role="canvas"/>
+  <g data-graph-role="title-block">
+    <text x="48" y="58" class="title">一次大模型生成中的数据、计算和请求状态</text>
+    <text x="48" y="90" class="subtitle">蓝色箭头是本轮数据流，绿色虚线表示模型为后续 token 保存请求状态。</text>
+  </g>
+
+  <g data-graph-role="annotation">
+    <text x="48" y="137" class="section">从输入到下一个 token</text>
+  </g>
+
+  <g data-graph-role="edge" data-source="request" data-target="model-input">
+    <path d="M 218 205 H 266" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  </g>
+  <g data-graph-role="edge" data-source="model-input" data-target="decoder-stack">
+    <path d="M 446 205 H 494" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  </g>
+  <g data-graph-role="edge" data-source="decoder-stack" data-target="lm-head">
+    <path d="M 714 205 H 762" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  </g>
+  <g data-graph-role="edge" data-source="lm-head" data-target="token-choice">
+    <path d="M 922 205 H 970" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  </g>
+
+  <g data-graph-role="node" id="request" aria-label="用户输入">
+    <rect x="48" y="160" width="170" height="90" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="133" y="190" class="card-title" text-anchor="middle">用户输入</text>
+    <text x="133" y="216" class="detail" text-anchor="middle">文字、图片或视频</text>
+    <text x="133" y="238" class="small" text-anchor="middle">Chat Template</text>
+  </g>
+  <g data-graph-role="node" id="model-input" aria-label="模型输入向量">
+    <rect x="266" y="160" width="180" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+    <text x="356" y="190" class="card-title" text-anchor="middle">模型输入向量</text>
+    <text x="356" y="216" class="detail" text-anchor="middle">Embedding 或视觉编码</text>
+    <text x="356" y="239" class="mono" text-anchor="middle">[B,T,H]</text>
+  </g>
+  <g data-graph-role="node" id="decoder-stack" aria-label="多层 Decoder">
+    <rect x="494" y="145" width="220" height="120" rx="12" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2.5"/>
+    <text x="604" y="180" class="card-title" text-anchor="middle">多层 Decoder</text>
+    <text x="604" y="207" class="detail" text-anchor="middle">反复更新每个位置的表示</text>
+    <text x="604" y="232" class="mono" text-anchor="middle">[B,T,H] → [B,T,H]</text>
+    <text x="604" y="253" class="small" text-anchor="middle">下面打开其中一层</text>
+  </g>
+  <g data-graph-role="node" id="lm-head" aria-label="语言模型输出层">
+    <rect x="762" y="160" width="160" height="90" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+    <text x="842" y="190" class="card-title" text-anchor="middle">LM Head</text>
+    <text x="842" y="216" class="detail" text-anchor="middle">为词表候选打分</text>
+    <text x="842" y="239" class="mono" text-anchor="middle">[B,T,V]</text>
+  </g>
+  <g data-graph-role="node" id="token-choice" aria-label="选择下一个 token">
+    <rect x="970" y="160" width="182" height="90" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+    <text x="1061" y="190" class="card-title" text-anchor="middle">选择下一个 token</text>
+    <text x="1061" y="216" class="detail" text-anchor="middle">贪心或采样</text>
+    <text x="1061" y="239" class="small" text-anchor="middle">下一轮 Decode 的输入</text>
+  </g>
+
+  <g data-graph-role="annotation">
+    <text x="48" y="318" class="section">一个 Decoder Layer 怎样更新 Hidden States</text>
+  </g>
+  <g data-graph-role="decoration" aria-label="Decoder Layer">
+    <rect x="48" y="342" width="1104" height="304" rx="16" fill="#fafafa" stroke="#d1d5db" stroke-width="2"/>
+  </g>
+
+  <g data-graph-role="edge" data-source="layer-input" data-target="norm-one">
+    <path d="M 164 416 H 201" fill="none" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-blue)"/>
+  </g>
+  <g data-graph-role="edge" data-source="norm-one" data-target="token-mixer">
+    <path d="M 311 416 H 348" fill="none" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-blue)"/>
+  </g>
+  <g data-graph-role="edge" data-source="token-mixer" data-target="residual-one">
+    <path d="M 530 416 H 567" fill="none" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-blue)"/>
+  </g>
+  <g data-graph-role="edge" data-source="residual-one" data-target="norm-two">
+    <path d="M 677 416 H 714" fill="none" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-blue)"/>
+  </g>
+  <g data-graph-role="edge" data-source="norm-two" data-target="ffn">
+    <path d="M 824 416 H 861" fill="none" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-blue)"/>
+  </g>
+  <g data-graph-role="edge" data-source="ffn" data-target="residual-two">
+    <path d="M 1015 416 H 1052" fill="none" stroke="#2563eb" stroke-width="2.3" marker-end="url(#arrow-blue)"/>
+  </g>
+
+  <g data-graph-role="node" id="layer-input">
+    <rect x="74" y="382" width="90" height="68" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.8"/>
+    <text x="119" y="410" class="label" text-anchor="middle">输入 x</text>
+    <text x="119" y="434" class="mono" text-anchor="middle">[B,T,H]</text>
+  </g>
+  <g data-graph-role="node" id="norm-one">
+    <rect x="201" y="382" width="110" height="68" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8"/>
+    <text x="256" y="410" class="label" text-anchor="middle">RMSNorm</text>
+    <text x="256" y="434" class="small" text-anchor="middle">调整尺度</text>
+  </g>
+  <g data-graph-role="node" id="token-mixer">
+    <rect x="348" y="372" width="182" height="88" rx="10" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+    <text x="439" y="401" class="label" text-anchor="middle">Token Mixer</text>
+    <text x="439" y="426" class="detail" text-anchor="middle">跨 token 交换信息</text>
+    <text x="439" y="449" class="small" text-anchor="middle">Full Attention 或 GDN</text>
+  </g>
+  <g data-graph-role="node" id="residual-one">
+    <rect x="567" y="382" width="110" height="68" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.8"/>
+    <text x="622" y="410" class="label" text-anchor="middle">加回 x</text>
+    <text x="622" y="434" class="small" text-anchor="middle">得到 y</text>
+  </g>
+  <g data-graph-role="node" id="norm-two">
+    <rect x="714" y="382" width="110" height="68" rx="10" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.8"/>
+    <text x="769" y="410" class="label" text-anchor="middle">RMSNorm</text>
+    <text x="769" y="434" class="small" text-anchor="middle">调整尺度</text>
+  </g>
+  <g data-graph-role="node" id="ffn">
+    <rect x="861" y="372" width="154" height="88" rx="10" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+    <text x="938" y="401" class="label" text-anchor="middle">FFN</text>
+    <text x="938" y="426" class="detail" text-anchor="middle">加工单个 token</text>
+    <text x="938" y="449" class="small" text-anchor="middle">Dense 或 MoE</text>
+  </g>
+  <g data-graph-role="node" id="residual-two">
+    <rect x="1052" y="382" width="74" height="68" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="1.8"/>
+    <text x="1089" y="410" class="label" text-anchor="middle">加回 y</text>
+    <text x="1089" y="434" class="small" text-anchor="middle">输出 z</text>
+  </g>
+
+  <g data-graph-role="edge" data-source="token-mixer" data-target="attention-state">
+    <path d="M 411 460 V 500 H 318 V 520" fill="none" stroke="#059669" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow-green)"/>
+  </g>
+  <g data-graph-role="edge" data-source="token-mixer" data-target="gdn-state">
+    <path d="M 467 460 V 500 H 560 V 520" fill="none" stroke="#059669" stroke-width="2" stroke-dasharray="7 5" marker-end="url(#arrow-green)"/>
+  </g>
+  <g data-graph-role="node" id="attention-state" aria-label="Full Attention 请求状态">
+    <rect x="188" y="520" width="260" height="92" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="1.8"/>
+    <text x="318" y="549" class="label" text-anchor="middle">Full Attention：KV Cache</text>
+    <text x="318" y="575" class="mono" text-anchor="middle">[B,Nkv,T,D] × 2</text>
+    <text x="318" y="598" class="small" text-anchor="middle">每多一个缓存位置，T 增加 1</text>
+  </g>
+  <g data-graph-role="node" id="gdn-state" aria-label="Gated DeltaNet 请求状态">
+    <rect x="468" y="520" width="304" height="92" rx="10" fill="#ecfdf5" stroke="#34d399" stroke-width="1.8"/>
+    <text x="620" y="549" class="label" text-anchor="middle">Gated DeltaNet：固定 shape 状态</text>
+    <text x="620" y="575" class="mono" text-anchor="middle">conv_state + recurrent_state</text>
+    <text x="620" y="598" class="small" text-anchor="middle">序列变长时只更新数值，不扩展 shape</text>
+  </g>
+  <g data-graph-role="node" aria-label="FFN 权重">
+    <rect x="792" y="520" width="294" height="92" rx="10" fill="#fff7ed" stroke="#fb923c" stroke-width="1.8"/>
+    <text x="939" y="549" class="label" text-anchor="middle">FFN 保存的是模型权重</text>
+    <text x="939" y="575" class="detail" text-anchor="middle">Dense 使用同一套 FFN</text>
+    <text x="939" y="598" class="small" text-anchor="middle">MoE 每个 token 只激活选中的 Expert</text>
+  </g>
+
+  <g data-graph-role="annotation">
+    <text x="48" y="704" class="section">同一套模型，两种生成阶段</text>
+  </g>
+  <g data-graph-role="node" aria-label="Prefill">
+    <rect x="48" y="730" width="532" height="126" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+    <text x="76" y="766" class="card-title">Prefill</text>
+    <text x="76" y="795" class="detail">一次处理已经给出的 Prompt 位置，建立各层请求状态。</text>
+    <text x="76" y="823" class="detail">最后一个 Prompt 位置的 Logits 用来选择第一个输出 token。</text>
+    <text x="76" y="847" class="small">Prompt 中多个已知位置可以组织成较大的前向计算。</text>
+  </g>
+  <g data-graph-role="node" aria-label="Decode">
+    <rect x="620" y="730" width="532" height="126" rx="14" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+    <text x="648" y="766" class="card-title">Decode</text>
+    <text x="648" y="795" class="detail">把刚刚确定的新 token 送入模型，读取并更新请求状态。</text>
+    <text x="648" y="823" class="detail">本轮选出下一个 token 后，下一轮才能继续。</text>
+    <text x="648" y="847" class="small">单个请求逐 token 串行，不同请求可以组成 Batch。</text>
+  </g>
+
+  <g data-graph-role="annotation">
+    <text x="48" y="914" class="section">遇到性能问题时，先区分四类数字</text>
+  </g>
+  <g data-graph-role="node">
+    <rect x="48" y="936" width="250" height="72" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="173" y="965" class="label" text-anchor="middle">模型权重</text>
+    <text x="173" y="989" class="small" text-anchor="middle">参数量、dtype、设备切分</text>
+  </g>
+  <g data-graph-role="node">
+    <rect x="332" y="936" width="250" height="72" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="457" y="965" class="label" text-anchor="middle">请求状态</text>
+    <text x="457" y="989" class="small" text-anchor="middle">KV、卷积状态、递归状态</text>
+  </g>
+  <g data-graph-role="node">
+    <rect x="616" y="936" width="250" height="72" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="741" y="965" class="label" text-anchor="middle">本轮计算与临时数据</text>
+    <text x="741" y="989" class="small" text-anchor="middle">Batched Tokens、FLOPs、HBM 读写</text>
+  </g>
+  <g data-graph-role="node">
+    <rect x="900" y="936" width="252" height="72" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+    <text x="1026" y="965" class="label" text-anchor="middle">服务结果</text>
+    <text x="1026" y="989" class="small" text-anchor="middle">TTFT、TPOT、吞吐、质量</text>
+  </g>
+</svg>

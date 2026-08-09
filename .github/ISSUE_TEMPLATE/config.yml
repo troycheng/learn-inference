@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 课程路线
+    url: https://github.com/troycheng/learn-inference/blob/main/docs/roadmap.md
+    about: 先确认问题属于哪一课以及课程当前范围

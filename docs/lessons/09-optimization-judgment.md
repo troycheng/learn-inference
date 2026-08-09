@@ -29,7 +29,7 @@
 
 一项改动通常只影响部分耗时。例如 FlashAttention 减少 Full Attention 的中间读写，但 FFN 和 Gated DeltaNet 仍照常计算。因此，算子时间下降多少，不能直接当成整个请求的加速比例。
 
-### `token/s` 的统计口径
+### 1.1 `token/s` 的统计口径
 
 同一个 `token/s` 可能统计不同内容。比较前要把分子和时间窗口写清楚。本课使用以下口径：
 
@@ -46,7 +46,7 @@
 
 ## 2. 权重量化
 
-### 直接改动
+### 2.1 权重量化改变了哪些数据
 
 BF16 每个参数占 2 Byte。INT8 的理想下限是 1 Byte，INT4 是 0.5 Byte。第 8 课已经说明，这只是保存 dtype 的有效载荷；计算 dtype、累加 dtype、Scale 和对齐要另算。
 
@@ -54,17 +54,17 @@ Qwen3.5-35B-A3B 的 BF16 权重有效载荷约 66.97 GiB。若所有参数都用
 
 Weight-only 量化通常仍让激活保持 BF16 或 FP16。低比特 Kernel 读取压缩权重，再在寄存器或片上存储中完成反量化和矩阵运算。
 
-### 理论收益
+### 2.2 理论容量收益
 
 小 Batch Decode 经常需要为很少的 token 读取大量活跃权重。若时间主要花在 HBM 搬权重，读取字节减少，延迟就有下降空间。省下的显存还可以换成更多 KV Cache 或更高并发。
 
-### 限制条件
+### 2.3 延迟收益受哪些条件限制
 
 低比特格式缺少合适的硬件路径、反量化代价过大或部分层回退到通用 Kernel 时，省下的读取时间会被新增工作抵消。大 Batch GEMM 已经偏计算受限，或者 MoE 单个 Expert 收到的 token 太少时，低比特 Kernel 也未必高效。
 
 权重从 2 Byte 变成 0.5 Byte，只证明编码数据理论上缩小四倍，不证明端到端时间也缩短四倍。
 
-### 权重量化的验证方法
+### 2.4 怎样验证权重量化
 
 至少固定同一模型输入、输出长度、采样参数、并发和 SLO，再比较固定回归集质量、进程真实显存、TTFT、TPOT、P99 以及同 SLO 吞吐。Profile 还要确认量化层是否命中预期 Kernel，有没有回退路径。
 
@@ -102,13 +102,13 @@ FlashAttention 把 Q/K/V 分块搬到片上 SRAM，在块内维护 Softmax 所�
 
 ![普通 Attention 与 FlashAttention 的数据流](../assets/09-flashattention.svg)
 
-### HBM 读写优化
+### 4.1 FlashAttention 怎样减少 HBM 读写
 
 FlashAttention 减少的是 Attention 中间矩阵的 HBM 读写和临时显存。Q/K/V 投影、QK 与 AV 的数学运算、Softmax 和因果关系仍然存在。
 
 FlashAttention 是精确 Attention 算法，不是稀疏 Attention，也不是近似检索。
 
-### FlashAttention 的作用范围
+### 4.2 FlashAttention 只改变 Full Attention
 
 Qwen3.5 只有四分之一语言层是 Full Attention。其余层是 Gated DeltaNet，FlashAttention 不会直接加速它们；Dense 或 MoE FFN 也不在这个子图内。
 
@@ -135,7 +135,7 @@ $$
 收益\propto命中率\times可复用token数\times每token\ Prefill成本
 $$
 
-### 前缀复用条件
+### 5.1 哪些前缀可以复用
 
 - 不是同一请求 Decode 使用的普通 KV Cache。
 - 不是语义缓存。两句话意思接近但 Token ID 不同，不能直接复用内部状态。
@@ -144,7 +144,7 @@ $$
 
 Qwen3.5 还是混合模型。可复用前缀不仅包含 Full Attention K/V，还要在正确的 token 位置恢复 Gated DeltaNet 的卷积和递归状态。vLLM 固定版本的 Qwen3.5 配方仍把相关 `align` 模式标为 experimental，因此不能只看“Prefix Cache 开关已打开”就假定行为与纯 Attention 模型完全一致。
 
-### Prefix Cache 的验证方法
+### 5.2 怎样验证 Prefix Cache
 
 需要记录命中的前缀 token 数、首次与重复请求 TTFT、真实命中率、驱逐率和 Cache 占用。对混合模型还要验证 Gated DeltaNet 状态能否正确恢复。
 
@@ -156,11 +156,11 @@ Qwen3.5 还是混合模型。可复用前缀不仅包含 Full Attention K/V，�
 
 Batching 不改变模型公式，改变的是每次执行装入多少工作。
 
-### Static Batching
+### 6.1 Static Batching
 
 一批请求一起开始，通常也要一起等待。短请求先完成后，空出来的位置不能及时补入新请求，直到整批结束。
 
-### Continuous Batching
+### 6.2 Continuous Batching
 
 系统在每轮生成结束时重新组织 Batch：完成的请求退出，等待请求进入。不同输出长度造成的空转因此减少。
 
@@ -168,7 +168,7 @@ Batching 不改变模型公式，改变的是每次执行装入多少工作。
 
 Continuous Batching 只说明 Batch 成员能动态变化，不自动表示 Prefill chunk 和 Decode token 一定能进入同一次模型执行。混批还需要调度器、执行器和 Kernel 支持。
 
-### Batch 大小、吞吐与排队时间
+### 6.3 Batch 大小怎样影响吞吐与排队时间
 
 | 调度选择 | 可能得到什么 | 可能付出什么 |
 | --- | --- | --- |
@@ -230,7 +230,7 @@ Qwen3.5-35B-A3B 的 EP 主要分布 256 个 Routed Experts。Attention、Gated D
 
 验证会从前往后接受候选。遇到第一个拒绝位置后，系统按目标模型结果修正，再开始下一轮。
 
-### 收益条件
+### 8.1 推测解码在什么条件下有收益
 
 设每轮草稿提出 `k` 个候选，平均接受 `a` 个。只有当：
 
@@ -249,7 +249,7 @@ Drafter 足够便宜
 低并发下仍有空余计算能力
 ```
 
-### 额外成本
+### 8.2 推测解码增加了哪些成本
 
 - Drafter 权重、计算和请求状态。
 - 候选位置占用的 Lookahead Cache。
@@ -327,19 +327,19 @@ Amdahl 定律估算的是服务时间组成，不直接描述排队系统。一�
 
 ## 12. 优化评估案例
 
-### 例 1：把 Qwen3.5-35B-A3B 从 BF16 改为 INT4
+### 12.1 把 Qwen3.5-35B-A3B 从 BF16 改为 INT4
 
 当前检查点的权重有效载荷约 66.97 GiB，全部参数按纯 INT4 编码的理想下限约 16.74 GiB。这个数字先证明容量有下降空间。若目标工作负载是小 Batch Decode，Profile 又显示大部分时间用于读取活跃 Linear 权重，低比特 Kernel 才有明确的延迟收益假设。
 
 实验要检查实际加载显存、量化层覆盖率、反量化与 fallback Kernel，并在同一请求分布下比较质量、TTFT、TPOT 和同 SLO 吞吐。若主要瓶颈是跨节点 EP 通信，或者 Expert GEMM 过小导致 INT4 Kernel 效率下降，权重缩小四倍也不会兑现成四倍加速。
 
-### 例 2：为共享 20K 系统 Prompt 开启 Prefix Cache
+### 12.2 为共享 20K 系统 Prompt 开启 Prefix Cache
 
 先确认线上请求在应用 Chat Template 后，确实共享相同的 20K Token IDs。命中时可以跳过这段前缀的重复 Prefill；未命中的请求仍要完整计算。理论收益因此同时取决于可复用 token 数和真实命中率。
 
 压测要区分首次请求与重复请求，记录命中 token、TTFT、Cache 占用和驱逐率。Qwen3.5 还要验证 Full Attention KV、卷积状态和 recurrent state 能否一起正确恢复。若请求在前几十个 token 就不同，或者文档只是语义相似，20K 的名义前缀不会产生同样收益。
 
-### 例 3：把 TP 从 4 提高到 8
+### 12.3 把 TP 从 4 提高到 8
 
 TP 从 4 增加到 8 后，每卡保存和计算的矩阵分片变小，容量压力下降。与此同时，每层仍要同步部分结果，通信组扩大，本地 GEMM 也更小。容量收益较确定，性能收益则取决于本地计算减少能否覆盖通信和 Kernel 效率损失。
 
@@ -358,52 +358,7 @@ TP 从 4 增加到 8 后，每卡保存和计算的矩阵分片变小，容量�
 9. 改变输入分布、并发和 SLO 后，仍把两组数字当成公平对比。
 10. 只报平均值，不看 P99、显存峰值、回退路径与质量变化。
 
-## 14. 案例：为一个线上工作负载选择优化
-
-假设线上使用 Qwen3.5-9B，工作负载如下：
-
-```text
-Prompt：            4096 token
-最大输出：           256 token
-并发请求：            32
-完全相同的系统前缀：  2048 token，覆盖 80% 请求
-当前现象：            P99 TTFT 超过目标，TPOT 已经达标
-```
-
-先算容量。第 8 课得到这个模型的 BF16 逻辑 KV 为 `32 KiB/位置`，Gated DeltaNet 固定状态约为 `49.5 MiB/请求`。按最大上下文 `4096+256=4352` 个位置预留时：
-
-```text
-KV：                 4352 × 32 KiB = 136 MiB / 请求
-Gated DeltaNet 状态：                    49.5 MiB / 请求
-两类模型状态合计：                      185.5 MiB / 请求
-32 个并发请求：                         约 5.80 GiB
-```
-
-这里算的是模型状态的逻辑容量，不含 PagedAttention 块尾空余、TP 下 K/V 头复制、临时激活、通信 Buffer 和 runtime 预留。生成 256 个输出 token 时，Prefill 的最后位置先给出第一个输出；剩余 255 个输出通常还要经过 255 次 Decode 前向。按 `4352` 预留容量，是为了覆盖请求继续生成到该上下文长度的情况，不表示选出最后一个 token 的瞬间一定已经把它写入全部层的 Cache。
-
-再看优化方向。当前超标的是 TTFT，不是 TPOT；80% 请求又共享完全相同的 2048-token 前缀，应优先验证 Prefix Cache。在缓存已经建立、能够命中且没有被驱逐的理想条件下，平均每个请求可少做的重复 Prefill 位置是：
-
-$$
-0.8\times2048=1638.4
-$$
-
-这个数只表示平均可复用的 token 数，不能直接写成 TTFT 降低 40%。实际收益还取决于命中、查找、驱逐、剩余 Prefill、排队和其他模型计算。Qwen3.5 还必须一起恢复 Full Attention KV、卷积状态和 recurrent state。
-
-FlashAttention 也可能缩短长 Prompt 的 Prefill，但只作用于 Full Attention 子图。权重量化更可能帮助权重读取突出的 Decode 或容量问题，而本例的 TPOT 已经达标。没有 Profile 数据时，不能只凭“INT4 更省显存”把它排在 Prefix Cache 前面。
-
-验证方案至少要保留下面这些证据：
-
-| 检查项 | 怎样比较 |
-| --- | --- |
-| Cache 是否真的命中 | 记录命中请求比例和每次命中的 token 数 |
-| TTFT 是否改善 | 分别报告冷请求、命中请求和总体 P50/P99 |
-| 是否伤害其他请求 | 同时检查 TPOT、同 SLO 吞吐和排队时间 |
-| 状态是否正确 | 固定采样条件，对比相同输入的 Logits 或 Token IDs，并验证三类前缀状态都恢复 |
-| 容量代价 | 记录 Cache 占用、驱逐率和进程显存峰值 |
-
-仓库中的[请求容量复算程序](../../examples/request_budget_walkthrough.py)会计算 `136 MiB`、`185.5 MiB` 和 `5.80 GiB`，也会给出平均可复用的 Prompt token 数。
-
-## 15. 练习
+## 14. 练习
 
 1. 测试一个优化时，为什么要先说明它改了哪段计算或数据？
 2. INT4 权重理想容量缩小四倍，为什么延迟不一定缩小四倍？
@@ -415,7 +370,6 @@ FlashAttention 也可能缩短长 Prompt 的 Prefill，但只作用于 Full Atte
 8. EP 为什么容易受到专家负载倾斜影响？
 9. 推测解码为什么仍满足自回归约束？MTP 一层是否表示一次必然多生成一个 token？
 10. 一个方案 TPOT 下降，但 P99 TTFT、质量和同 SLO 吞吐都变差，能否直接说整体更优？
-11. 在本课案例中，为什么优先验证 Prefix Cache，而不是直接宣布 INT4 或增加 TP 一定更好？
 
 <details>
 <summary>查看参考答案</summary>
@@ -431,11 +385,10 @@ FlashAttention 也可能缩短长 Prompt 的 Prefill，但只作用于 Full Atte
 8. 热点 Expert 会让少数 Rank 同时承担更多计算和通信，整层等待最慢设备。
 9. 候选只是草稿，Target Model 仍按顺序验证并在拒绝点修正。MTP 一层只表示存在辅助模块，不保证候选被接受。
 10. 不能。上线判断要同时满足业务 SLO、质量、容量和吞吐目标，不能只凭一个平均指标。
-11. 当前未达标的是 TTFT，且大部分请求有完全相同的长前缀，Prefix Cache 与已知问题直接对应。INT4 和增加 TP 是否改善 TTFT，还取决于原始瓶颈、Kernel 和通信，现有证据不足。
 
 </details>
 
-## 16. 综合练习：评估一项新的推理优化
+## 15. 综合练习：评估一项新的推理优化
 
 现在可以从用户输入一路解释到优化判断：
 
@@ -475,3 +428,5 @@ Chat Template 与 Tokenizer
 ---
 
 [上一课：模型配置与资源估算](08-config-and-sizing.md) · [返回课程路线](../roadmap.md)
+
+完成本课后，继续做[结业案例：从模型配置到优化判断](../capstone.md)。案例不会再按课程顺序提示公式，需要独立还原一次完整分析。仓库中的[请求容量复算程序](../../examples/request_budget_walkthrough.py)可以核对案例使用的容量数字。

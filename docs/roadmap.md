@@ -1,4 +1,4 @@
-# 《看懂大模型推理》课程路线
+# 《大模型推理原理与优化》课程路线
 
 这套课面向已经参与推理系统研发、但没有系统学过模型原理的工程师。课程只保留会反复用于工程判断的模型主线，不追求收齐所有术语。
 
@@ -46,7 +46,7 @@
 | 课次 | 主题 | 学习目标 |
 | ---: | --- | --- |
 | [0](lessons/00-math-and-tensors.md) | 张量与模型计算基础 | 根据输入、运算和输出推导 shape |
-| [1](lessons/01-text-to-next-token.md) | 大模型生成下一个 Token 的过程 | 区分文本、Token ID、向量、Logit 和概率，解释因果训练目标以及训练与生成的数据依赖 |
+| [1](lessons/01-text-to-next-token.md) | 大模型生成下一个 token 的过程 | 区分文本、Token ID、向量、Logit 和概率，解释因果训练目标以及训练与生成的数据依赖 |
 | [2](lessons/02-inside-a-decoder-layer.md) | Decoder Layer 的结构与计算 | 解释 RMSNorm、Token Mixer、残差和 SwiGLU FFN |
 | [3](lessons/03-attention.md) | Attention 的计算原理 | 手算 QK 点积、因果遮罩、Softmax 和 V 的加权求和 |
 | [4](lessons/04-prefill-decode-kv-cache.md) | Prefill、Decode 与 KV Cache | 解释生成阶段、缓存复用和服务端批处理 |
@@ -55,6 +55,8 @@
 | [7](lessons/07-multimodal-input.md) | 多模态输入与视觉编码 | 从像素、Patch 和视觉编码器推导到 `[B,T,H]` |
 | [8](lessons/08-config-and-sizing.md) | 模型配置与资源估算 | 区分保存、计算与累加 dtype，估算参数、权重、请求状态和计算量 |
 | [9](lessons/09-optimization-judgment.md) | 推理优化的分析与评估 | 比较常见优化和并行策略，估算端到端上限并设计验证实验 |
+
+完成 0～9 课后，使用[结业案例](capstone.md)把输入链路、层结构、请求状态、容量估算和优化判断连起来。分析其他模型时，可以复制[模型分析工作表](model-analysis-workbook.md)，把配置、计算和实测结果放在同一份记录中。
 
 ## 教学示例与真实模型
 

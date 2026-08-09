@@ -84,7 +84,7 @@ $$
 
 理解 Decoder Layer，关键是分清两种不同的信息处理方式。
 
-### 3.1 Token Mixer 负责跨 Token 信息交换
+### 3.1 Token Mixer 负责跨 token 信息交换
 
 假设句子是：
 
@@ -101,7 +101,7 @@ Qwen3.5 的 Token Mixer 有两种实现：
 
 两者的算法和状态不同，但在本层骨架中占据同一个位置：输入 `[B,T,H]`，输出仍是 `[B,T,H]`。
 
-### 3.2 FFN 负责单个 Token 的特征变换
+### 3.2 FFN 负责单个 token 的特征变换
 
 Token Mixer 交换位置间的信息后，每个 token 已经拿到一些上下文。前馈网络（Feed-Forward Network，FFN）再对每个 token 的 `H` 个特征进行同一种非线性变换。
 
@@ -677,4 +677,4 @@ y → RMSNorm → SwiGLU FFN  → 加回 y → z
 
 ---
 
-[上一课：大模型生成下一个 Token 的过程](01-text-to-next-token.md) · [返回课程路线](../roadmap.md) · [下一课：Attention 的计算原理](03-attention.md)
+[上一课：大模型生成下一个 token 的过程](01-text-to-next-token.md) · [返回课程路线](../roadmap.md) · [下一课：Attention 的计算原理](03-attention.md)

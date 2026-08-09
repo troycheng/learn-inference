@@ -122,8 +122,7 @@ $$
 $$
 k_1^T\Delta_1=
 \begin{bmatrix}1\\0\end{bmatrix}
-\begin{bmatrix}3&4\end{bmatrix}
-=
+\begin{bmatrix}3&4\end{bmatrix}=
 \begin{bmatrix}3&4\\0&0\end{bmatrix}
 $$
 
@@ -354,23 +353,23 @@ Qwen3.5 把两者混在同一模型中。不能把 24 个 Gated DeltaNet 层当�
 
 ## 11. Gated DeltaNet 对推理系统的影响
 
-### 上下文长度与状态容量
+### 11.1 上下文长度与状态容量
 
 Gated DeltaNet 的 `conv_state` 和 `recurrent_state` shape 不随 token 数增长。Full Attention 层的 KV Cache 仍会增长，所以整个 Qwen3.5 请求状态不是常数大小。
 
-### Prefix Cache 的状态完整性
+### 11.2 Prefix Cache 的状态完整性
 
 复用相同前缀时，只复用 8 层 K/V 不足以恢复完整模型状态。24 个 Gated DeltaNet 层的卷积状态和 recurrent state 也必须与该前缀对应。
 
-### Decode Kernel 的计算与状态读写
+### 11.3 Decode Kernel 的计算与状态读写
 
 固定状态省掉了逐 token KV 列表，却没有让这一层免费。每个新 token 仍要做投影、因果卷积更新、状态衰减、误差修正、状态读取、门控和输出投影。状态矩阵的 dtype、融合方式和访存仍会影响延迟。
 
-### Batch 内的独立请求状态
+### 11.4 Batch 内的独立请求状态
 
 不同请求不能共用同一份 recurrent state。请求加入、退出、重排或做 Beam Search 时，runtime 要让状态与正确序列保持对应。
 
-### Chunk Kernel 与 Chunked Prefill
+### 11.5 Chunk Kernel 与 Chunked Prefill
 
 Gated Delta Rule 的 Chunk Kernel 是算子内部的并行算法。服务端 Chunked Prefill 是调度器把长 Prompt 分成多个执行轮次。两者都使用 Chunk 这个词，但切分层级不同。
 

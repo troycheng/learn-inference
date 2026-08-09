@@ -1,0 +1,53 @@
+name: 内容纠错
+description: 报告公式、配置数字、shape、图示或引用中的具体错误
+title: "[纠错] "
+labels:
+  - content-error
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请指出可以定位和核对的问题。涉及实现行为时，尽量提供固定 revision。
+  - type: input
+    id: location
+    attributes:
+      label: 课程位置
+      description: 文件、小节标题或链接
+      placeholder: 例如：第 4 课，6. 单步 Decode 的数据流
+    validations:
+      required: true
+  - type: textarea
+    id: original
+    attributes:
+      label: 原文或图示
+      description: 贴出需要检查的句子、公式、数字或图中标签
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题说明
+      description: 说明哪里不准确，以及正确说法应该满足什么条件
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 核对依据
+      description: 官方配置、固定 revision 源码、论文、复算过程或运行结果
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 运行环境（如适用）
+      description: 模型、runtime、硬件、并行方式和工作负载
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我区分了教学示例数字与真实模型数字
+          required: true
+        - label: 我没有把单个运行环境的现象写成所有实现都成立的结论
+          required: true

@@ -76,7 +76,7 @@ $$
 [4096]     表示一个一维张量的 shape
 ```
 
-### 2.2 Hidden Size 与 Token 向量宽度
+### 2.2 Hidden Size 与 token 向量宽度
 
 隐藏维度 `H` 表示：模型在每个 token 位置上，用多少个数记录当前表示。
 
@@ -500,4 +500,4 @@ Token ID 只决定取哪一行。ID 的数值大小没有语义强弱关系。
 
 ---
 
-[返回课程路线](../roadmap.md) · [下一课：大模型生成下一个 Token 的过程](01-text-to-next-token.md)
+[返回课程路线](../roadmap.md) · [下一课：大模型生成下一个 token 的过程](01-text-to-next-token.md)

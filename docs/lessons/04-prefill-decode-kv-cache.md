@@ -142,7 +142,7 @@ LM Head 也不一定要计算 4 个位置的完整词表 Logits。生成 `y1` �
 
 这使得 K/V 可以在后续轮次直接复用。
 
-### 无缓存的重复计算
+### 5.1 无缓存的重复计算
 
 为了生成 `y2`，模型重新输入：
 
@@ -158,7 +158,7 @@ p1 p2 p3 p4 y1 y2
 
 每一轮都会重复计算整个前缀的 Embedding、各层投影、FFN 和 Attention。
 
-### 使用 KV Cache 的增量计算
+### 5.2 使用 KV Cache 的增量计算
 
 Prefill 已经保存 `p1` 到 `p4` 的历史状态。选出 `y1` 后，下一轮只把 `y1` 送进模型。每个 Full Attention 层为 `y1` 计算新的 Q/K/V，让新 Q 读取历史 K/V，再把新 K/V 追加到缓存。
 
@@ -201,13 +201,13 @@ Softmax 后汇总 V_all         → [B,Nq,1,D]
 
 这一步完成后，缓存长度从 4 变成 5。下一轮输入 `y2` 时，过程相同，长度再变成 6。
 
-### Q、K、V 的缓存需求
+### 6.1 Q、K、V 的缓存需求
 
 Q 表示当前位置发起的查询。`y1` 的 Q 只用于更新 `y1` 这个位置，后续生成 `y2`、`y3` 时不会再次读取它。
 
 K 和 V 则不同。它们代表一个历史位置以后怎样接受查询、怎样提供信息。每个未来 token 的新 Q 都可能读取过去的 K/V，所以需要保留。
 
-### RoPE 位置与 K Cache
+### 6.2 RoPE 位置与 K Cache
 
 Qwen3.5 的 Full Attention 先对 Q/K 应用 RoPE，再把 K 写入缓存。缓存中的 K 已经带有它原来的位置信息。追加新 K 时，必须使用连续且正确的位置编号。
 
@@ -241,7 +241,7 @@ $$
 | `D` | 每个头的维度 |
 | `s` | 每个缓存元素占用的字节数 |
 
-### 小模型计算示例
+### 7.1 小模型计算示例
 
 设：
 
@@ -263,7 +263,7 @@ $$
 
 这 192 Bytes 可以逐层拆开检查：每层 K 有 `1×2×3×4=24` 个元素，V 也有 24 个；两层共 96 个元素，每个元素 2 Bytes。
 
-### Qwen3.5-9B 的 KV Cache
+### 7.2 Qwen3.5-9B 的 KV Cache
 
 Qwen3.5-9B 共 32 层，每 4 层中只有 1 层 Full Attention，因此：
 
@@ -296,7 +296,7 @@ $$
 
 `partial_rotary_factor=0.25` 也不会把 KV Cache 缩小到四分之一。RoPE 只旋转 K 的部分维度，缓存仍然保存完整的 `D=256` 维 K 和 V。
 
-### PagedAttention 的缓存块管理
+### 7.3 PagedAttention 的缓存块管理
 
 上面的公式回答了模型需要保存多少 K/V，却没有说明 runtime 怎样在显存中摆放这些数据。
 
@@ -420,7 +420,7 @@ Chunked Prefill 改变的是执行和调度方式。Prompt 的 token 顺序、�
 
 ![TTFT、TPOT 与 ITL](../assets/04-latency-metrics.svg)
 
-### TTFT
+### 12.1 TTFT
 
 首 token 延迟（Time to First Token，TTFT）是从发出请求到收到第一个输出 token 的时间。站在客户端测量时，它可能包含：
 
@@ -434,11 +434,11 @@ Chunked Prefill 改变的是执行和调度方式。Prompt 的 token 顺序、�
 
 因此，TTFT 不能直接等同于纯 Prefill Kernel 时间。它的主要模型计算来源是 Prompt 的 Prefill，但端到端指标还受系统开销影响。
 
-### ITL
+### 12.2 ITL
 
 相邻两个输出 token 到达时间之差叫作 Token 间延迟（Inter-token Latency，ITL）。一次回答会有多段 ITL，它们可能受调度、Batch 变化、上下文增长和系统抖动影响。
 
-### TPOT
+### 12.3 TPOT
 
 每输出 token 时间（Time per Output Token，TPOT）通常排除第一个 token，衡量后续生成的平均速度。vLLM 的 serving benchmark 使用：
 

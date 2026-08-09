@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 
 errors = []
+course_title = "大模型推理原理与优化"
 lesson_files = Dir["docs/lessons/[0-9][0-9]-*.md"].sort
 expected_numbers = (0..9).to_a
 actual_numbers = lesson_files.map { |file| File.basename(file, ".md")[0, 2].to_i }
@@ -12,6 +13,11 @@ end
 lesson_titles = {}
 referenced_assets = Hash.new { |hash, key| hash[key] = [] }
 roadmap = File.read("docs/roadmap.md")
+public_support_pages = ["README.md"] + Dir["docs/*.md"]
+
+readme = File.read("README.md")
+errors << "README.md: course title does not match" unless readme.start_with?("# #{course_title}\n")
+errors << "docs/roadmap.md: course title does not match" unless roadmap.start_with?("# 《#{course_title}》课程路线\n")
 
 (["README.md"] + Dir["docs/**/*.md"]).each do |file|
   text = File.read(file)
@@ -49,6 +55,28 @@ lesson_files.each_with_index do |file, lesson_index|
   expected_sections = (1..numbered_sections.length).to_a
   if numbered_sections != expected_sections
     errors << "#{file}: numbered H2 sections must be consecutive; found #{numbered_sections.inspect}"
+  end
+
+  current_h2 = nil
+  h3_counts = Hash.new(0)
+  lines.each do |line|
+    if (h2_match = line.match(/\A## (\d+)\. /))
+      current_h2 = h2_match[1].to_i
+      next
+    end
+    next unless line.start_with?("### ")
+
+    h3_match = line.match(/\A### (\d+)\.(\d+) /)
+    if h3_match.nil?
+      errors << "#{file}: H3 must use '### N.M 标题': #{line.strip}"
+      next
+    end
+
+    major = h3_match[1].to_i
+    minor = h3_match[2].to_i
+    errors << "#{file}: H3 #{major}.#{minor} is not under H2 #{current_h2}" if major != current_h2
+    h3_counts[major] += 1
+    errors << "#{file}: H3 under section #{major} must be consecutive" if minor != h3_counts[major]
   end
 
   errors << "#{file}: lesson pages use SVG instead of Mermaid" if text.include?("```mermaid")
@@ -100,7 +128,18 @@ lesson_files.each_with_index do |file, lesson_index|
   end
 end
 
-readme = File.read("README.md")
+public_support_pages.each do |file|
+  text = File.read(file)
+  text.scan(/!\[([^\]]*)\]\(([^)]+)\)/).each do |alt, raw_target|
+    errors << "#{file}: image alt text must not be empty" if alt.strip.empty?
+    target = raw_target.split(/[?#]/).first
+    next unless target.end_with?(".svg")
+
+    resolved = File.expand_path(target, File.dirname(file))
+    referenced_assets[resolved] << file
+  end
+end
+
 readme_lessons = readme.scan(/\[(第 \d+ 课：[^\]]+)\]\((docs\/lessons\/[^)]+)\)/)
 
 if readme_lessons.length != lesson_files.length
