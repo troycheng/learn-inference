@@ -18,7 +18,11 @@
 
 但模型内部不认识 JSON 字段，也不直接计算汉字。本课跟踪这条短对话，Chat Template、token 切分和 Token ID 均取自已核实的 Qwen3.5-9B 信息。
 
-链路中有两个观察点。Tokenizer 和 Embedding 部分跟踪用户内容中的 `优化`，它的 Token ID 是 `99945`；LM Head 部分跟踪完整 Prompt 的最后一个位置，也就是 Chat Template 补出的 assistant 生成起点。前者用来说明查表，后者才负责预测回答的第一个 token。为了能手算，后文把向量缩到两三维，并把词表缩成四个候选；这些数不是 Qwen3.5 的真实模型输出。
+链路中有两个观察点。Tokenizer 和 Embedding 部分跟踪用户内容中的 `优化`，它的 Token ID 是 `99945`。这一处用来说明 Token ID 怎样查询 Embedding 表。
+
+LM Head 部分跟踪完整 Prompt 的最后一个位置，也就是 Chat Template 补出的 assistant 生成起点。这个位置才负责预测回答的第一个 token。
+
+为了能手算，后文把向量缩到两三维，并把词表缩成四个候选。这些数不是 Qwen3.5 的真实模型输出。
 
 这条消息会依次经过下面这些组件：
 

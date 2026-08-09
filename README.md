@@ -1,8 +1,11 @@
 # 大模型推理原理与优化
 
-面向推理系统工程师的模型原理入门课。
+[![Course checks](https://github.com/troycheng/learn-inference/actions/workflows/course-checks.yml/badge.svg)](https://github.com/troycheng/learn-inference/actions/workflows/course-checks.yml)
+[![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](LICENSE)
 
-这套课面向已经参与推理系统研发、但模型理论基础还不完整的工程师。课程不从框架参数讲起，而是先把 QKV、RoPE、KV Cache、MoE 等概念放回模型计算，再讨论显存、吞吐和首 token 延迟。
+面向推理系统工程师的模型原理课程。从 token、Decoder 和请求状态出发，建立资源估算与优化判断所需的理论主线。
+
+课程适合已经参与推理系统研发、但模型理论基础还不完整的工程师。它不从框架参数讲起，而是先把 QKV、RoPE、KV Cache、MoE 等概念放回模型计算，再讨论显存、吞吐和首 token 延迟。
 
 课程从一条输入开始，沿生成过程解释文字怎样变成 token、token 怎样经过 Decoder、模型怎样读取前文，以及自回归生成为何逐 token 推进。学完后，你应该能指出 Prefill、Decode、KV Cache、Dense、MoE 分别涉及哪些模型层、张量和请求状态，并据此分析常见优化。
 

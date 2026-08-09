@@ -70,7 +70,9 @@ p4 可以读取 p1、p2、p3、p4
 
 把 4 个已知位置看成分数矩阵中的 4 行。GPU 可以同时计算这 4 行；因果遮罩只是在每一行上限制可以读取哪些列。各行能否一起计算，与每一行可以读取哪些位置，是两个不同的问题。
 
-“Prompt 可以并行”是一种简写，不表示模型里的所有运算都彼此独立。Decoder Layer 仍要逐层执行，Qwen3.5 的 Gated DeltaNet 层内部也有递归状态依赖。更准确的说法是：Prompt 的 token 在前向开始前已经全部确定，runtime 可以把多个已知位置组织成一次或若干次较大的前向计算。至于每个算子内部怎样并行，由模型结构和 Kernel 决定。
+“Prompt 可以并行”是一种简写，不表示模型里的所有运算都彼此独立。Decoder Layer 仍要逐层执行，Qwen3.5 的 Gated DeltaNet 层内部也有递归状态依赖。
+
+准确地说，Prompt 的 token 在前向开始前已经全部确定，runtime 可以把多个已知位置组织成一次或若干次较大的前向计算。每个算子内部怎样并行，仍由模型结构和 Kernel 决定。
 
 ## 3. Decode 的自回归依赖
 
@@ -294,7 +296,9 @@ $$
 
 这里的 `T` 包括 Prompt 和已经追加进缓存的输出 token。若同时保存多个请求或 Beam，容量还要乘以对应序列数。
 
-这只是 Full Attention 的 K/V 数值容量，不等于 runtime 实际申请的显存，也不等于 Qwen3.5 一个请求的全部状态。分块分配会产生预留和碎片；TP 可能把头分到不同设备；KV 量化会改变 `s`。更重要的是，Qwen3.5 的 24 个 Gated DeltaNet 层还保存 recurrent state 和卷积状态，第 5 课会单独解释。
+这只是 Full Attention 的 K/V 数值容量，不等于 runtime 实际申请的显存，也不等于 Qwen3.5 一个请求的全部状态。分块分配会产生预留和碎片，TP 可能把头分到不同设备，KV 量化则会改变 `s`。
+
+Qwen3.5 的 24 个 Gated DeltaNet 层还保存 recurrent state 和卷积状态。第 5 课会单独计算这部分容量。
 
 `partial_rotary_factor=0.25` 也不会把 KV Cache 缩小到四分之一。RoPE 只旋转 K 的部分维度，缓存仍然保存完整的 `D=256` 维 K 和 V。
 
@@ -346,7 +350,9 @@ runtime 为缓存预留了多少显存
 
 Prefill 的 Linear 和 FFN 可以把许多 token 行组成较大的矩阵乘法。Full Attention 在概念上还要处理 Prompt 内大量位置组合，长 Prompt 的 Attention 成本会快速增长。
 
-Decode 每轮虽然只处理一个新位置，却仍要让这个位置通过所有模型层。每个 Full Attention 层还要读取不断增长的历史 K/V。小 Batch 时，单轮 GPU 计算量较少，但 Kernel Launch、CPU 调度等固定开销不会按相同比例缩短，因此更容易占到较高比例；模型权重也只服务少量新位置，复用不足。Batch 增大后，同一套权重可以服务更多位置，矩阵形状和瓶颈都会变化。
+Decode 每轮虽然只处理一个新位置，却仍要让这个位置通过所有模型层。每个 Full Attention 层还要读取不断增长的历史 K/V。
+
+小 Batch 时，单轮 GPU 计算量较少，但 Kernel Launch、CPU 调度等固定开销不会按相同比例缩短，因此更容易占到较高比例。模型权重也只服务少量新位置，复用不足。Batch 增大后，同一套权重可以服务更多位置，矩阵形状和瓶颈都会变化。
 
 Prefill 常偏计算，Decode 常偏访存，但这不是定律。模型结构、Batch、上下文长度和硬件都会改变瓶颈。判断实际情况，仍要看矩阵尺寸、缓存长度和执行时间线。
 

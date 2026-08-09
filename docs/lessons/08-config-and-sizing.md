@@ -119,7 +119,9 @@ FLOPs：这次前向做了多少次浮点运算
 
 实现方式会改变哪些中间张量真正写入显存。算子融合可以让部分结果留在片上，FlashAttention 避免长期保存完整的 Attention 分数矩阵，LM Head 也可以只处理需要输出 Logits 的位置。
 
-运行时还会申请公式外的显存：集合通信要有收发 Buffer，部分 Kernel 需要临时工作区（Workspace），CUDA Graph 可能为固定执行图保留内存，缓存分配器也会把释放后的显存块留在内存池中等待复用。因此，配置公式适合估算权重和逻辑状态，部署容量仍要用目标 runtime、Batch 和序列长度测量峰值。PyTorch 分别提供 `max_memory_allocated` 和 `max_memory_reserved`：前者统计张量占用峰值，后者还包含缓存分配器管理的显存。
+运行时还会申请公式外的显存。集合通信需要收发 Buffer，部分 Kernel 需要临时工作区（Workspace），CUDA Graph 可能为固定执行图保留内存。缓存分配器也会把已经释放的显存块留在内存池中，等待后续复用。
+
+因此，配置公式适合估算权重和逻辑状态，部署容量仍要在目标 runtime、Batch 和序列长度下测量峰值。PyTorch 的 `max_memory_allocated` 统计张量占用峰值；`max_memory_reserved` 还包含缓存分配器管理的显存。
 
 ## 3. 保存、计算与累加使用的 dtype
 

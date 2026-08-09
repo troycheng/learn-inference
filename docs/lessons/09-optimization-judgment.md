@@ -142,7 +142,9 @@ $$
 - 不会减少未命中后缀的 Prefill。
 - 不会加速之后每个新 token 的正常 Decode。
 
-Qwen3.5 还是混合模型。可复用前缀不仅包含 Full Attention K/V，还要在正确的 token 位置恢复 Gated DeltaNet 的卷积和递归状态。vLLM 固定版本的 Qwen3.5 配方仍把相关 `align` 模式标为 experimental，因此不能只看“Prefix Cache 开关已打开”就假定行为与纯 Attention 模型完全一致。
+Qwen3.5 是混合模型。可复用前缀不仅包含 Full Attention K/V，还要在正确的 token 位置恢复 Gated DeltaNet 的卷积和递归状态。
+
+vLLM 固定版本的 Qwen3.5 配方仍把相关 `align` 模式标为 experimental。因此，开关已经打开只能证明功能被请求启用，不能证明它已经正确命中并恢复了完整状态。
 
 ### 5.2 Prefix Cache 的验证指标
 
@@ -352,7 +354,11 @@ $$
 \frac{1}{0.76+0.24/1.8}\approx1.12
 $$
 
-这个 1.12 倍只描述 Prefill GPU 执行时间，不是 TTFT 加速比。若排队、调度、输入处理和返回时间都不变，TTFT 的直接加速会更小；但在高负载下，服务时间缩短也可能减少排队，使尾延迟产生非线性变化。因此，1.12 倍既不能直接当成 TTFT 收益，也不是排队系统中 TTFT 的严格上限。当前 TTFT 从 2.35 秒降到 1.5 秒需要约 1.57 倍整体加速，仅凭这项 Microbenchmark 还无法判断 FlashAttention 能否单独完成目标。
+这个 1.12 倍只描述 Prefill GPU 执行时间，不是 TTFT 加速比。若排队、调度、输入处理和返回时间都不变，TTFT 的直接加速会更小。
+
+高负载下还存在另一种可能：服务时间缩短后，队列也随之缩短，尾延迟可能出现非线性变化。因此，1.12 倍既不能直接当成 TTFT 收益，也不是排队系统中 TTFT 的严格上限。
+
+当前 TTFT 从 2.35 秒降到 1.5 秒需要约 1.57 倍整体加速。仅凭这项 Microbenchmark，还不能判断 FlashAttention 能否单独完成目标。
 
 仓库中的[优化决策复算程序](../../examples/optimization_decision_walkthrough.py)使用相同数字计算这两个加速比。
 
