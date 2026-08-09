@@ -16,11 +16,11 @@
 {"role": "user", "content": "推理优化"}
 ```
 
-但模型内部不认识 JSON 字段，也不直接计算汉字。本课跟踪这条短对话，Chat Template、token 切分和 Token ID 均取自已核实的 Qwen3.5-9B 信息。
+但模型内部不认识 JSON 字段，也不直接计算汉字。本课跟踪这条短对话，Chat Template 结构、token 切分和 Token ID 都按文末列出的 Qwen3.5-9B 固定 revision 核对。
 
-链路中有两个观察点。Tokenizer 和 Embedding 部分跟踪用户内容中的 `优化`，它的 Token ID 是 `99945`。这一处用来说明 Token ID 怎样查询 Embedding 表。
+Tokenizer 和 Embedding 部分跟踪用户内容中的 `优化`。它的 Token ID 是 `99945`，用来说明 Token ID 怎样查询 Embedding 表。
 
-LM Head 部分跟踪完整 Prompt 的最后一个位置，也就是 Chat Template 补出的 assistant 生成起点。这个位置才负责预测回答的第一个 token。
+LM Head 部分改为跟踪完整 Prompt 的最后一个位置，也就是 Chat Template 补出的 assistant 生成起点。这个位置负责预测回答的第一个 token。
 
 为了能手算，后文把向量缩到两三维，并把词表缩成四个候选。这些数不是 Qwen3.5 的真实模型输出。
 
@@ -85,7 +85,7 @@ Tokenizer 按照模型配套的词表和切分规则，把文本拆成可以编�
 
 ### 3.1 Qwen3.5 的实际分词结果
 
-按 Qwen3.5-9B 当前官方 Tokenizer：
+按本课固定版本的 Qwen3.5-9B Tokenizer：
 
 | 原文字串 | Token 切分 | Token IDs |
 | --- | --- | --- |
@@ -111,7 +111,7 @@ Tokenizer 按照模型配套的词表和切分规则，把文本拆成可以编�
 
 ### 3.2 词表与切分规则
 
-Qwen3.5 当前配置使用 `Qwen2Tokenizer`，其实现基于 Byte-level BPE。第一轮不需要推导完整算法，只需理解三个步骤：
+本课固定的 Qwen3.5 Tokenizer 配置使用 `Qwen2Tokenizer`，其实现基于 Byte-level BPE。这里不推导完整算法，只说明切分所依赖的三个步骤：
 
 ```text
 先保证文字可以由基础字节表示
@@ -244,7 +244,9 @@ input_embeddings.shape = [2, 8, 4096]
 
 ### 4.4 Embedding 与上下文语义
 
-Embedding 表中的向量是训练得到的模型参数。Token ID 只负责选中其中一行；这一行的 `H` 个连续数值不是人手预设的词义标签。训练会让整条向量带上词法和使用规律，但不能把某个坐标直接解释成固定的人类概念。
+Embedding 表中的向量是训练得到的模型参数。Token ID 只负责选中其中一行，这一行的 `H` 个连续数值不是人手预设的词义标签。
+
+训练会让整条向量带上词法和使用规律，但单个坐标通常没有固定的人类解释。
 
 但一个 token 的输入 Embedding 在当前请求中还没有结合上下文。比如“苹果”出现在下面两句话里：
 
@@ -381,9 +383,7 @@ Embedding：Token ID → H 维向量
 LM Head： H 维 Hidden State → V 个候选分数
 ```
 
-Qwen3.5-9B 的 `tie_word_embeddings` 当前配置为 `false`，输入 Embedding
-与输出 LM Head 不共享同一套权重。即使某些模型选择共享权重，
-Tokenizer Decode 也仍然负责 ID 到文字的转换，不能把 Embedding 当作解码器。
+本课使用的 Qwen3.5-9B revision 中，`tie_word_embeddings=false`，输入 Embedding 与输出 LM Head 不共享权重。即使某些模型选择共享权重，Tokenizer Decode 仍负责 ID 到文字的转换；Embedding 不能代替它。
 
 ## 7. 从 Logits 选择下一个 token
 
@@ -457,20 +457,17 @@ $$
 - **Top-K**：只保留分数最高的 K 个候选；
 - **其他约束**：屏蔽非法 token、重复惩罚或任务特定约束。
 
-Top-P 依赖概率，不能只看原始 Logit 决定保留哪些候选。它先对当前分数做 Softmax，再按概率从高到低累加，只保留累计概率达到阈值所需的最小候选集合。许多框架把 Top-P 包装成一个 Logits Processor：处理器内部计算一次概率来确定屏蔽范围，再把被屏蔽的 Logits 交给最后的归一化和采样。
-
-常见的采样流程是：
+Top-P 依赖归一化后的概率。候选按概率从高到低排列，只保留累计概率达到阈值所需的最小集合，然后在这个集合中重新归一化并采样。主流程可以写成：
 
 ```text
 原始 Logits
 → Temperature、Top-K 和其他约束
-→ 对当前分数做 Softmax，计算 Top-P 累计概率
-→ 屏蔽 Top-P 集合外的候选
+→ 计算概率并确定 Top-P 候选集合
 → 对剩余候选重新归一化
 → 按概率抽取 Token ID
 ```
 
-不同框架可能组合或调整处理器顺序。需要区分的是：贪心可以直接 `argmax`，Top-P 和最终概率采样都依赖归一化后的分布。
+不同框架可能融合这些步骤，处理顺序也会影响最终分布。核心区别不变：贪心可以直接 `argmax`，Top-P 和随机采样需要概率。
 
 ## 8. 自回归生成的数据依赖
 
@@ -478,9 +475,7 @@ Top-P 依赖概率，不能只看原始 Logit 决定保留哪些候选。它先�
 
 ![每一轮都把刚选出的 token 加回输入](../assets/01-generation-loop.svg)
 
-第二个未来 token 的概率取决于第一个 token 实际生成了什么。如果第一个
-token 尚未确定，第二步就缺少输入。因此，不能把同一个请求未来未知的
-100 个 token 直接当成 100 个已知位置，使用普通方式一次并行算完。
+第二个未来 token 的概率取决于第一个 token 实际生成了什么。如果第一个 token 尚未确定，第二步就缺少输入。因此，不能把同一个请求未来未知的 100 个 token 直接当成 100 个已知位置，一次并行算完。
 
 这里要区分两件事：
 
@@ -607,7 +602,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 ## 12. 按生成阶段定位工程问题
 
-有了这条链路，已经可以避免几类常见误判：
+这条生成链路可以直接用于定位几类常见问题：
 
 | 现象或方案 | 先查哪里 |
 | --- | --- |
@@ -621,7 +616,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 定位问题时，先确认差异出现在哪个阶段，再核对该阶段的输入、参数和配置。这样可以避免把采样问题归因于模型权重，或把模板差异误判为推理精度问题。
 
-## 13. 生成链路的错误诊断
+## 13. 练习：诊断错误的生成链路
 
 某份设计文档这样描述本课使用的对话接口和训练过程：
 

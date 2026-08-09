@@ -44,38 +44,21 @@ Attention 的头数要和头宽一起读。`num_attention_heads=16`、`head_dim=
 
 层类型还要结合总层数计算。`full_attention_interval=4` 表示每四层出现一次 Full Attention；32 层中共有 8 层 Full Attention，其余 24 层是 Gated DeltaNet。
 
-掌握这次映射后，再把字段归纳成下面四组。
+按用途查找配置时，可以把常用字段归为一张表：
 
-### 1.1 模型接口配置
-
-| 符号 | 配置字段 | 含义 |
-| --- | --- | --- |
-| `V` | `vocab_size` | 词表有多少行 |
-| `H` | `hidden_size` | 每个语言位置用多少个数表示 |
-| `L` | `num_hidden_layers` | 语言 Decoder Layer 数 |
-
-### 1.2 Attention 配置
-
-| 符号 | 配置字段 | 含义 |
-| --- | --- | --- |
-| `Nq` | `num_attention_heads` | Query 头数 |
-| `Nkv` | `num_key_value_heads` | K/V 头数 |
-| `D` | `head_dim` | 每个头的宽度 |
-| `L_full` | 从 `layer_types` 计数 | Full Attention 层数 |
-
-### 1.3 Dense FFN 配置
-
-| 符号 | 配置字段 | 含义 |
-| --- | --- | --- |
-| `I` | `intermediate_size` | Dense FFN 中间宽度 |
-
-### 1.4 MoE 配置
-
-| 符号 | 配置字段 | 含义 |
-| --- | --- | --- |
-| `E` | `num_experts` | Routed Expert 总数 |
-| `K` | `num_experts_per_tok` | 每 token 选几个 Routed Experts |
-| `I_moe` | `moe_intermediate_size` | 每个 Expert 的中间宽度 |
+| 模块 | 符号 | 配置字段 | 含义 |
+| --- | --- | --- | --- |
+| 模型接口 | `V` | `vocab_size` | 词表有多少行 |
+| 模型接口 | `H` | `hidden_size` | 每个语言位置用多少个数表示 |
+| 模型深度 | `L` | `num_hidden_layers` | 语言 Decoder Layer 数 |
+| Attention | `Nq` | `num_attention_heads` | Query 头数 |
+| Attention | `Nkv` | `num_key_value_heads` | K/V 头数 |
+| Attention | `D` | `head_dim` | 每个头的宽度 |
+| Attention | `L_full` | 从 `layer_types` 计数 | Full Attention 层数 |
+| Dense FFN | `I` | `intermediate_size` | Dense FFN 中间宽度 |
+| MoE | `E` | `num_experts` | Routed Expert 总数 |
+| MoE | `K` | `num_experts_per_tok` | 每 token 选择几个 Routed Experts |
+| MoE | `I_moe` | `moe_intermediate_size` | 每个 Expert 的中间宽度 |
 
 下面是两个模型的主配置：
 
@@ -121,7 +104,7 @@ FLOPs：这次前向做了多少次浮点运算
 ```text
 35B Total Parameters
 3B Active Parameters
-66.97 GiB 当前检查点权重 payload
+66.97 GiB 固定 revision 的权重 payload
 单 token 约 5.9 GFLOPs 的主要 Linear
 ```
 
@@ -333,7 +316,7 @@ $$
 Weight\ Bytes=P\times bytes\_per\_parameter
 $$
 
-| 模型 | 参数数 | 当前 payload，BF16 加少量 FP32 | 全部 INT8 理想下限 | 全部 INT4 理想下限 |
+| 模型 | 参数数 | 固定 revision 的 payload，BF16 加少量 FP32 | 全部 INT8 理想下限 | 全部 INT4 理想下限 |
 | --- | ---: | ---: | ---: | ---: |
 | 9B 检查点 | 9.653B | 17.98 GiB | 8.99 GiB | 4.50 GiB |
 | 35B-A3B 检查点 | 35.952B | 66.97 GiB | 33.48 GiB | 16.74 GiB |
@@ -605,7 +588,7 @@ $$
 
 配置可以给出资源下限和计算规模，不能代替目标 runtime 上的峰值显存与端到端性能测量。
 
-## 14. 容量推导：逻辑 KV 与每 Rank KV
+## 14. 练习：从逻辑 KV 推到每 Rank KV
 
 某模型配置给出：
 

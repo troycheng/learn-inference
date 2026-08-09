@@ -246,7 +246,7 @@ $$
 y=x+F(x)
 $$
 
-但它表达了重要的结构：`F(x)` 不必从头重建完整输出，只需要产生“这一子层希望补充或修改的部分”。
+`F(x)` 只需计算这一子层要补充或修改的部分，原输入 `x` 由旁路直接保留。
 
 ```text
 旧表示 x ───────────────────────┐
@@ -358,7 +358,7 @@ $$
 
 ![SiLU 函数曲线](../assets/02-silu-curve.svg?rev=20260809-1)
 
-较大的负输入被压到接近 0，正输入较大时输出逐渐接近输入本身。SiLU 给网络加入非线性：如果只连续堆叠 Linear，没有激活或门控，多个 Linear 可以通过结合律合成一个 Linear，表达能力不会因堆叠而发生同样的增长。
+较大的负输入被压到接近 0，正输入较大时输出逐渐接近输入本身。SiLU 给网络加入非线性。若多个 Linear 之间没有激活或门控，它们可以通过结合律合成一个 Linear，仍只能表示一次线性或仿射映射。
 
 `SiLU` 中最后一个字母是大写 `U`，不是数字或笔误。
 
@@ -516,7 +516,7 @@ Full Attention → Dense FFN
 
 32 层就是 8 组这样的排列。每层的 Token Mixer 类型可以不同，但本课讲的预归一化、两次残差和 Dense SwiGLU FFN 骨架相同。
 
-MoE 模型也不是替换整个 Decoder Layer。它主要把第二个子层中的 Dense SwiGLU FFN 换成稀疏 MoE：
+MoE 模型保留 Decoder Layer 的其余骨架，只把第二个子层中的 Dense SwiGLU FFN 换成稀疏 MoE：
 
 ```text
 RMSNorm → Token Mixer → Residual
@@ -541,7 +541,7 @@ Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 �
 | Prefill | 通常同时处理多个已知 prompt token | 同一套 FFN 独立应用到所有位置 |
 | Decode | 每个运行中请求通常贡献一个新 token 位置 | 同一套 FFN 应用到各请求的新位置 |
 
-因为 Linear 和 FFN 都是逐 token 使用同一套权重，runtime 在满足模型、dtype、状态和调度约束时，可以把多个位置组织成更大的矩阵计算。这是 Chunked Prefill 能把部分 Prefill token 与 Decode token 放入同一轮执行的基础之一。
+Linear 和 FFN 对每个 token 使用同一套权重。模型、dtype、状态和调度条件允许时，runtime 可以把多个位置合并成更大的矩阵计算。Chunked Prefill 把部分 Prefill token 与 Decode token 放进同一轮时，FFN 部分就可以这样合并。
 
 但不能只看 FFN 就断言整个 Decoder Layer 可以随意拼接。Token Mixer 还必须正确处理每个序列的因果关系、位置和缓存边界。第 4 课再展开这部分。
 
@@ -560,7 +560,7 @@ Qwen3.5 整体还包含视觉编码器，所以“Decoder-only 语言主干”�
 
 Decoder Layer 并不只在 Decode 阶段运行。Prompt 的 Prefill 同样会经过全部 Decoder Layer，只是本轮处理的位置数和历史状态不同。
 
-## 14. 结构审查：修正 Decoder Layer 数据流
+## 14. 练习：修正 Decoder Layer 数据流
 
 下面的数据流有多处错误：
 

@@ -2,7 +2,7 @@
 
 第 2 课已经拆开过 Dense SwiGLU FFN：每个 token 都经过 `gate_proj`、`up_proj`、SiLU、逐元素乘法和 `down_proj`。Qwen3.5-9B 的 32 个 Decoder Layer 都使用这套 Dense FFN。
 
-Qwen3.5-35B-A3B 则在语言模型的 40 个 Decoder Layer 中使用 MoE。RMSNorm、残差连接以及 Gated DeltaNet 和 Full Attention 的排列没有因此消失，模型只是把每层的一套 Dense FFN 换成了 Router 和多套 Expert FFN。
+Qwen3.5-35B-A3B 在语言模型的 40 个 Decoder Layer 中保留 RMSNorm、残差连接以及 Gated DeltaNet 和 Full Attention，只把每层的一套 Dense FFN 换成 Router 和多套 Expert FFN。
 
 这里的 MoE 指语言 Decoder 的 FFN。Qwen3.5-35B-A3B 的视觉编码器仍使用自己的 Dense Vision MLP，不能把语言层的 Expert 数量套到视觉路径上。
 
@@ -52,7 +52,7 @@ $$
 
 每个 token 都会使用这些参数。
 
-## 2. 最小 MoE 示例
+## 2. Router 选择与 Expert 输出合并
 
 假设一层有 4 个 Routed Experts，每个 Expert 都是一套独立的 SwiGLU FFN：
 
@@ -261,7 +261,7 @@ Decode 小 Batch 尤其容易出现碎片。若一轮只有 8 个 token，Top-8 
 
 训练时的负载均衡损失会惩罚长期过度集中的路由，但它不是推理调度器，也不能保证每个推理 Batch 完全平均。判断 MoE 性能要看每层实际 `n_e` 分布，不能只用 `M×K/E` 的平均值。
 
-## 9. Total Parameters 与 Active Parameters
+## 9. 总参数量与激活参数量
 
 总参数回答模型需要保存多少权重。Active Parameters 描述一个 token 本轮实际使用了哪些权重。没被当前 token 选中的 Expert 仍属于模型，其他 token 或下一轮可能会用到。
 
@@ -305,7 +305,7 @@ $$
 
 所以 A3B 不表示只需要加载 3B 权重，也不表示推理速度必然是同等 Dense 模型的若干倍。一批 token 合起来可能访问很多甚至全部 Expert，实际成本还受权重读取、Dispatch、Grouped GEMM 大小和通信影响。
 
-## 10. Expert Parallel 与 Tensor Parallel
+## 10. 专家并行（EP）与张量并行（TP）
 
 ![Expert Parallel 与 Tensor Parallel 分别怎样切分](../assets/06-ep-vs-tp.svg)
 
@@ -334,7 +334,7 @@ TP 可以继续切分单个 Expert 的 gate/up/down 矩阵。一个部署也可�
 
 因此，MoE 性能分析不能只用 `M×K/E` 的平均值代替真实分布，也不能只看卡数推断通信代价。
 
-## 12. 路由执行：从 Expert 分组到输出合并
+## 12. 练习：从 Expert 分组到输出合并
 
 一个教学用 MoE 有 4 个 Routed Experts，每个 token 选择 2 个。Router 给出：
 

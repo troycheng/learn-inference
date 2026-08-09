@@ -216,7 +216,7 @@ PP 能让单个模型跨越多张卡或多个节点，但不会让同一个 toke
 
 ### 7.4 专家并行（EP）
 
-EP 把 Routed Experts 分布到不同设备。Router 选完 Top-K 后，token 特征被送到持有相应 Expert 的设备；Expert 算完，再把结果送回原 token 位置。第 6 课的[EP 与 TP 结构图](06-dense-and-moe.md#10-expert-parallel-与-tensor-parallel)画出了两种切分的差异。
+EP 把 Routed Experts 分布到不同设备。Router 选完 Top-K 后，token 特征被送到持有相应 Expert 的设备；Expert 算完，再把结果送回原 token 位置。第 6 课的[EP 与 TP 结构图](06-dense-and-moe.md#10-专家并行ep与张量并行tp)画出了两种切分的差异。
 
 低并发时，每个 Expert 可能只收到少量 token，小 GEMM 和通信延迟占主导。热点 Expert 若集中在少数 Rank，整层还要等待最慢设备。Top-K 越大，每个 token 的路由分配和通信通常也越多。
 
@@ -437,7 +437,7 @@ Prefix Cache 有保留价值，但它没有解决当前的 P99 SLO。评审结�
 
 公平对比还要求两组实验使用相同的输入分布、并发、硬件、runtime 和统计口径。只要这些条件发生变化，就应重新说明实验问题，不能把数字直接横向相减。
 
-## 14. 案例复盘
+## 14. 练习：复核 P99 TTFT 评审结论
 
 回到第 12 节的 trace，完成三个判断：
 

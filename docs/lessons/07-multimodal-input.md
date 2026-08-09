@@ -304,19 +304,19 @@ Decode 时通常不会每生成一个 token 就重跑视觉塔。首次处理图
 但这不等于不同请求自动复用同一张图片的视觉编码结果。跨请求复用还需要服务框架提供 Processor Cache 或 Encoder Cache。
 
 <details>
-<summary>Qwen3.5 实现注记：当前检查点未启用 DeepStack</summary>
+<summary>Qwen3.5 实现注记：本课引用的检查点未启用 DeepStack</summary>
 
-Qwen3-VL 技术报告介绍过 DeepStack，它把视觉塔多个中间层的特征注入语言模型的不同层。Qwen3.5-9B 和 Qwen3.5-35B-A3B 的当前配置中：
+Qwen3-VL 技术报告介绍过 DeepStack，它把视觉塔多个中间层的特征注入语言模型的不同层。本课引用的 Qwen3.5-9B 和 Qwen3.5-35B-A3B 固定 revision 中：
 
 ```text
 deepstack_visual_indexes = []
 ```
 
-因此，这两个检查点的实际前向不应画成“多个视觉层分别注入语言 Decoder”。课程这里讲的是当前 Qwen3.5 配置启用的路径：视觉塔最终输出经过 Merger 后，替换输入序列中的图片占位位置。
+因此，这两个检查点的实际前向不应画成“多个视觉层分别注入语言 Decoder”。本课讲的是这两个固定配置启用的路径：视觉塔最终输出经过 Merger 后，替换输入序列中的图片占位位置。
 
 </details>
 
-## 11. 图像输入的计算与状态增量
+## 11. 练习：计算图像输入增加的状态
 
 一张图片经过预处理后的尺寸为 `768×512`。Qwen3.5 使用 `16×16` 空间 Patch 和 `2×2` Patch Merger。以 Qwen3.5-9B 为例，语言侧每增加一个缓存位置会增加 32 KiB 逻辑 KV。
 

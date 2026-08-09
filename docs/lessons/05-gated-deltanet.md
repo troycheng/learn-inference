@@ -84,7 +84,7 @@ S_1=S_0+k_1^T\Delta_1=
 \begin{bmatrix}3&4\\0&0\end{bmatrix}
 $$
 
-现在令 Query 为 `q_1=[1,0]`，它会从更新后的状态读出：
+令 Query 为 `q_1=[1,0]`，它从更新后的状态读出：
 
 $$
 q_1S_1=[3,4]
@@ -255,7 +255,7 @@ Decode 时，`conv_state` 保存卷积窗口需要的最近投影值。新 token
 
 ## 7. Gated DeltaNet 的完整数据流
 
-现在再看完整数据流。输入仍是 Decoder Layer 传来的 Hidden States：
+把前面的因果卷积、状态更新和三组门控接起来。输入仍是 Decoder Layer 传来的 Hidden States：
 
 ```text
 X：[B,T,H]
@@ -371,7 +371,7 @@ Gated DeltaNet 的 `conv_state` 和 `recurrent_state` shape 不随 token 数增�
 
 Gated Delta Rule 的 Chunk Kernel 是算子内部的并行算法。服务端 Chunked Prefill 是调度器把长 Prompt 分成多个执行轮次。两者都使用 Chunk 这个词，但切分层级不同。
 
-## 12. 状态更新与容量变化
+## 12. 练习：状态更新与容量变化
 
 ### 12.1 完成一次带门控的 Delta Rule
 
