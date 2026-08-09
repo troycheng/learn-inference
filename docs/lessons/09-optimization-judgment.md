@@ -349,7 +349,7 @@ TPOT 已经达标。问题在首 token，而且慢请求既有 GPU Prefill，也
 | 排队 | 1.08 s |
 | 输入处理与调度 | 0.12 s |
 | GPU Prefill | 1.05 s |
-| 首次 Decode 与返回 | 0.10 s |
+| LM Head、采样与返回 | 0.10 s |
 | 合计 | 2.35 s |
 
 GPU Profile 显示，Full Attention 占 Prefill GPU 时间的 24%，Gated DeltaNet 与 FFN 合计占 68%，其余算子占 8%。评审会上提出三个方案：升级 FlashAttention Kernel、开启 Prefix Cache、把两个 TP=4 副本改成一个 TP=8 副本。
@@ -439,33 +439,21 @@ Prefix Cache 有保留价值，但它没有解决当前的 P99 SLO。评审结�
 
 公平对比还要求两组实验使用相同的输入分布、并发、硬件、runtime 和统计口径。只要这些条件发生变化，就应重新说明实验问题，不能把数字直接横向相减。
 
-## 14. 练习
+## 14. 案例复盘
 
-1. 测试一个优化时，为什么要先说明它改了哪段计算或数据？
-2. INT4 权重理想容量缩小四倍，为什么延迟不一定缩小四倍？
-3. FlashAttention 把占端到端时间 20% 的部分加速 2 倍，按 Amdahl 定律，整体理论加速约是多少？
-4. Prefix Cache 为什么不能按“语义相似”命中？对 Qwen3.5 还要恢复哪些状态？
-5. Continuous Batching 是否自动表示 Prefill 和 Decode 混批？更大 Batch 为什么可能伤害 TTFT？
-6. DP、TP、PP 和 EP 分别切分或复制什么？哪一种通常不缩短单请求模型路径？
-7. TP 的本地计算收益需要与什么成本比较？PP 在低并发 Decode 中为什么容易出现空泡？
-8. EP 为什么容易受到专家负载倾斜影响？
-9. 推测解码为什么仍满足自回归约束？MTP 一层是否表示一次必然多生成一个 token？
-10. 一个方案 TPOT 下降，但 P99 TTFT、质量和同 SLO 吞吐都变差，能否直接说整体更优？
+回到第 12 节的 trace，完成三个判断：
+
+1. Full Attention Kernel 快 1.8 倍后，为什么不能承诺 TTFT P99 从 2.35 秒降到 1.5 秒？请同时使用 Profile 占比和排队时间说明。
+2. Prefix Cache 让命中请求的 TTFT P99 降到 1.18 秒，但全量 P99 仍是 2.31 秒。这个结果证明了什么，又没有证明什么？
+3. TP=8 的并发 1 TPOT 更低。为什么评审仍暂缓把两个 TP=4 副本合成一个 TP=8 副本？下一轮至少要补哪组实验？
 
 <details>
 <summary>查看参考答案</summary>
 
 
-1. 只有确定作用范围，才能计算原路径占比、理论上限和新增成本，并选择正确的验证指标。
-2. 还受反量化、Kernel 覆盖、硬件、Batch、通信和原始瓶颈影响。
-3. `1/(0.8+0.2/2)≈1.11` 倍。
-4. 内部状态由确切 Token IDs、位置和模型计算决定。Qwen3.5 还要恢复 Full Attention KV、卷积状态和 recurrent state。
-5. 不是，混批还需要执行器和 Kernel 支持。更大 Batch 可能增加凑批、排队和长 Prefill 阻塞时间。
-6. DP 复制完整模型并分请求；TP 切同一层矩阵；PP 按层深度切阶段；EP 按 Expert ID 分专家。DP 通常不缩短单请求模型路径。
-7. TP 要计入集合通信、同步和小矩阵效率。PP 需要多个请求或 microbatch 同时占据不同阶段，低并发 Decode 很难填满流水。
-8. 热点 Expert 会让少数 Rank 同时承担更多计算和通信，整层等待最慢设备。
-9. 候选只是草稿，Target Model 仍按顺序验证并在拒绝点修正。MTP 一层只表示存在辅助模块，不保证候选被接受。
-10. 不能。上线判断要同时满足业务 SLO、质量、容量和吞吐目标，不能只凭一个平均指标。
+1. Full Attention 只占 Prefill GPU 时间的 24%。局部加速 1.8 倍后，Prefill 约加速到 1.12 倍；排队的 1.08 秒和其余阶段并没有被这项 Kernel 直接改变。按 trace 静态估算，TTFT 仍约为 2.24 秒。队列可能因为服务时间缩短而变化，但这需要端到端压测，不能提前写进承诺。
+2. 它证明 Prefix Cache 能减少命中请求的重复 Prefill，并改善命中组延迟。它没有证明全量 P99 已达标，也没有证明未命中、冷启动和驱逐路径得到改善。是否增加同 SLO 吞吐还需要单独测量。
+3. TP=8 的优势来自低并发单请求测试，而现网问题是带突发到达的 TTFT 和排队。合并副本会把可独立服务请求的副本数从 2 降到 1，并增加 Collective 时间。下一轮应使用相同到达记录，比较 2×TP4 与 1×TP8 的 TTFT、排队、同 SLO `goodput` 和资源占用。
 
 </details>
 
@@ -492,4 +480,4 @@ Prefix Cache 有保留价值，但它没有解决当前的 P99 SLO。评审结�
 
 [上一课：模型配置与资源估算](08-config-and-sizing.md) · [返回课程路线](../roadmap.md)
 
-完成本课后，继续做[综合评审：Qwen3.5-9B 的容量与优化方案](../capstone.md)。题目不会再按课程顺序提示公式，需要独立提交架构摘要、容量计算和上线判断。仓库中的[请求容量复算程序](../../examples/request_budget_walkthrough.py)可以核对其中的容量数字。
+完成本课后，可以继续阅读[综合案例：Qwen3.5-9B 长上下文扩容评审](../capstone.md)。案例会把模型结构、TP 下的 KV 容量和上线实验放进同一份评审。仓库中的[容量复算程序](../../examples/request_budget_walkthrough.py)可以核对其中的算术。

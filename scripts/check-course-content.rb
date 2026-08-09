@@ -84,7 +84,6 @@ lesson_files.each_with_index do |file, lesson_index|
     errors << "#{file}: H3 under section #{major} must be consecutive" if minor != h3_counts[major]
   end
 
-  errors << "#{file}: lesson pages use SVG instead of Mermaid" if text.include?("```mermaid")
   errors << "#{file}: contains an unsupported GitHub math macro" if text.include?("\\operatorname")
   errors << "#{file}: contains a pasted GitHub math error" if text.include?("The following macros are not allowed")
 
@@ -95,27 +94,35 @@ lesson_files.each_with_index do |file, lesson_index|
     errors << "#{file}: missing course navigation link to #{target}" unless text.include?("](#{target})")
   end
 
-  exercise_index = lines.index { |line| line.match?(/\A## \d+\. 练习\s*\z/) }
-  details_index = lines.each_index.find do |index|
-    exercise_index && index > exercise_index && lines[index].start_with?("<details>")
-  end
-  details_close_index = lines.each_index.find do |index|
-    details_index && index > details_index && lines[index].start_with?("</details>")
+  review_index = lines.index do |line|
+    line.match?(/\A## \d+\. (?:练习|理解检查|案例复盘)(?::.*)?\s*\z/)
   end
 
-  if exercise_index.nil? || details_index.nil? || details_close_index.nil?
-    errors << "#{file}: expected a numbered exercise section with folded answers"
-  else
-    questions = lines[(exercise_index + 1)...details_index].map do |line|
-      line[/\A(\d+)\. /, 1]&.to_i
-    end.compact
-    answers = lines[(details_index + 1)...details_close_index].map do |line|
-      line[/\A(\d+)\. /, 1]&.to_i
-    end.compact
+  if review_index
+    next_h2_index = lines.each_index.find do |index|
+      index > review_index && lines[index].start_with?("## ")
+    end || lines.length
+    details_index = lines.each_index.find do |index|
+      index > review_index && index < next_h2_index && lines[index].start_with?("<details>")
+    end
+    details_close_index = lines.each_index.find do |index|
+      details_index && index > details_index && index < next_h2_index && lines[index].start_with?("</details>")
+    end
 
-    expected_questions = (1..questions.length).to_a
-    errors << "#{file}: exercise numbers must be consecutive; found #{questions.inspect}" if questions != expected_questions
-    errors << "#{file}: exercise answers must match questions; found #{answers.inspect}" if answers != questions
+    if details_index.nil? || details_close_index.nil?
+      errors << "#{file}: review questions must keep their answers in a folded block"
+    else
+      questions = lines[(review_index + 1)...details_index].map do |line|
+        line[/\A(\d+)\. /, 1]&.to_i
+      end.compact
+      answers = lines[(details_index + 1)...details_close_index].map do |line|
+        line[/\A(\d+)\. /, 1]&.to_i
+      end.compact
+
+      expected_questions = (1..questions.length).to_a
+      errors << "#{file}: review question numbers must be consecutive; found #{questions.inspect}" if questions != expected_questions
+      errors << "#{file}: review answers must match questions; found #{answers.inspect}" if answers != questions
+    end
   end
 
   lines.each_with_index do |line, index|

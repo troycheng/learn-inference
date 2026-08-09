@@ -11,7 +11,7 @@ full_attention_kernel_speedup = 1.8
 queue_seconds = 1.08
 input_and_scheduling_seconds = 0.12
 prefill_gpu_seconds = 1.05
-first_decode_and_return_seconds = 0.10
+lm_head_sampling_and_return_seconds = 0.10
 target_ttft_seconds = 1.5
 
 prefill_gpu_speedup_upper_bound = amdahl_speedup(
@@ -22,14 +22,14 @@ current_ttft_seconds = (
     queue_seconds
     + input_and_scheduling_seconds
     + prefill_gpu_seconds
-    + first_decode_and_return_seconds
+    + lm_head_sampling_and_return_seconds
 )
 optimized_prefill_gpu_seconds = prefill_gpu_seconds / prefill_gpu_speedup_upper_bound
 projected_ttft_with_queue_unchanged = (
     queue_seconds
     + input_and_scheduling_seconds
     + optimized_prefill_gpu_seconds
-    + first_decode_and_return_seconds
+    + lm_head_sampling_and_return_seconds
 )
 saved_seconds_with_queue_unchanged = (
     current_ttft_seconds - projected_ttft_with_queue_unchanged

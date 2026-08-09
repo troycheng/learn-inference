@@ -360,7 +360,7 @@ deepstack_visual_indexes = []
 
 1. 视觉塔最初得到多少个空间 Patch？
 2. Merger 后有多少个视觉位置进入语言 Decoder？
-3. 如果原来的 Prompt 长度不包含图片，这张图会增加多少逻辑 KV？
+3. 只计算 384 个视觉位置本身，它们会增加多少逻辑 KV？
 4. 这三个数字能否直接推出 TTFT 增加多少毫秒？还缺哪些测量？
 
 <details>
@@ -370,10 +370,12 @@ deepstack_visual_indexes = []
 ```text
 空间 Patch： (768/16) × (512/16) = 48 × 32 = 1536
 视觉位置：   1536 / 4 = 384
-逻辑 KV：    384 × 32 KiB = 12 MiB
+视觉位置增加的逻辑 KV：384 × 32 KiB = 12 MiB
 ```
 
-这些数字只说明位置数量和逻辑 KV 增量。TTFT 还取决于视觉塔、Merger、语言模型 Prefill、Batch、Kernel 和排队时间，需要在目标 runtime 上分段测量。
+12 MiB 只计算视觉向量占据的 384 个位置。若要比较“没有图片”和“加入图片”两条完整请求，还要以 Processor 最终产生的 `input_ids` 为准，把 `<|vision_start|>`、`<|vision_end|>` 等新增特殊 token 一并计入。
+
+这些数字只能说明视觉位置数量和逻辑 KV 增量。TTFT 还取决于视觉塔、Merger、语言模型 Prefill、Batch、Kernel 和排队时间，需要在目标 runtime 上分段测量。
 
 </details>
 

@@ -1,258 +1,204 @@
-# 综合评审：Qwen3.5-9B 的容量与优化方案
+# 综合案例：Qwen3.5-9B 长上下文扩容评审
 
-这是整套课程的综合练习。你将作为方案评审人，根据模型配置、工作负载和当前症状，判断 Prefix Cache 是否具备上线条件。题目不再提示公式来自哪一课。
+一项需求把 Qwen3.5-9B 的最大上下文从 9K 提高到 68K。修改配置只是第一步，上线前还要确认现有部署能否容纳这些请求、延迟会怎样变化，以及哪些优化能解决当前限制。
 
-最终交付是一份技术评审，不是知识点填空。它应让没有参加分析过程的人看懂四件事：结论是什么，依据是什么，哪些数字只是估算，还有哪些风险必须通过实验确认。建议先独立完成，再展开参考分析。
+这个案例按容量计算、方案比较和验证实验的顺序展开。模型配置来自固定版本；工作负载、显存和性能数据为教学而构造，不代表 Qwen3.5 的公开 benchmark。
 
-## 1. 评审背景
+## 1. 需求与现状
 
-某在线服务使用 Qwen3.5-9B，当前只处理文字请求。下面的模型配置来自固定版本，工作负载与性能数据为本练习构造，不代表 Qwen3.5 的公开 benchmark。
+服务运行在一台 8 卡机器上，Qwen3.5-9B 使用 `TP=8`。现网与目标规格如下：
 
-```text
-语言模型层数：              32
-Hidden Size：              4096
-Full Attention 层数：       8
-Gated DeltaNet 层数：      24
-Query Heads：              16
-Key/Value Heads：           4
-Head Dimension：          256
-KV Cache dtype：          BF16
+| 项目 | 现网 | 目标 |
+| --- | ---: | ---: |
+| 最大 Prompt | 8,192 token | 65,536 token |
+| 最大输出 | 1,024 token | 4,096 token |
+| 单请求最大缓存位置 | 9,216 | 69,632 |
+| 并发上限 | 32 | 32 |
+| KV Cache dtype | BF16 | 待评估 |
+| TTFT SLO | P99 ≤ 2 s | P99 ≤ 8 s |
+| TPOT SLO | P99 ≤ 30 ms | P99 ≤ 40 ms |
 
-Prompt：                  4096 token
-最大输出：                  256 token
-并发请求：                   32
-相同系统前缀：              2048 token
-前缀覆盖请求比例：             80%
-部署方式：                  TP=8
+引擎加载完成并预留通信、图捕获和工作区后，每个 Rank 可用于 KV Cache 的显存池是 18 GiB。这个数字来自目标部署的运行时日志，不是用 GPU 总显存减去权重大小得到的估算。
 
-TTFT SLO：                P99 ≤ 1.50 s
-当前 TTFT：               P50 = 1.08 s，P99 = 2.28 s
-TPOT SLO：                P99 ≤ 30 ms
-当前 TPOT：               P99 = 24.7 ms
-```
+评审会上出现了五个建议：
 
-这里的 `4096 token` 指应用 Chat Template 并完成 Tokenizer 后的 Prompt 长度，不是用户输入的汉字数。
+1. 直接把 `max_model_len` 改成 69,632；
+2. 把 KV Cache 从 BF16 改成 FP8；
+3. 增加 TP；
+4. 开启 Chunked Prefill；
+5. 开启 Prefix Cache。
 
-当前资料没有按前缀命中情况拆分 TTFT，也没有排队时间、Cache 驱逐率和 Qwen3.5 混合状态恢复测试。评审必须明确这些证据缺口，不能自行补成观测结果。
+这些建议改变的部分各不相同。先计算新增的请求状态，再逐项判断。
 
-## 2. 评审需要交付什么
+## 2. 与长上下文有关的模型结构
 
-提交三部分内容即可。
-
-1. **架构与状态摘要。** 用一页以内说明输入怎样到达首个输出 token、32 层怎样排列，以及 Prefill 结束后两类 Token Mixer 分别留下什么状态。首个输出 token 何时写入状态也要说明。
-2. **容量计算附件。** 给出单缓存位置、单请求和 32 并发的逻辑状态；再说明 TP=8 时每个 Rank 实际保存多少 K/V。公式、单位和未计入项都要保留，不能只写最终 GiB。
-3. **优化评审结论。** 对 Prefix Cache 给出“批准上线、附条件批准或暂不批准”之一，并写明证据。随后设计一轮可以复现的对照实验，覆盖工作负载、端到端指标、资源变化和状态恢复正确性；验收标准必须回到 TTFT P99 ≤ 1.50 s，同时保证已经达标的 TPOT 不发生退化。
-
-一份合格的评审还要区分三类信息：
-
-- **已观测：** 来自配置、源码、线上 trace 或压测的数据；
-- **由此计算：** 写得出公式、单位和前提的估算；
-- **尚待验证：** 目前只能作为假设，不能写成上线收益。
-
-判断标准很直接：别人能否沿着你的来源和计算复核结论；实验失败时，能否从预先定义的指标看出失败发生在哪条路径。
-
-<details>
-<summary>查看参考分析</summary>
-
-## 3. 从 API 输入到首个输出 token
-
-API 接收的是结构化消息，例如：
-
-```json
-{"role": "user", "content": "请解释这份日志"}
-```
-
-它不会直接送进 Decoder。主要数据变化是：
+Qwen3.5-9B 的语言模型有 32 个 Decoder Layer：
 
 ```text
-消息对象
-→ Chat Template 加入角色、边界和生成起点
-→ Tokenizer 得到 Token IDs [1,4096]
-→ Embedding 查表得到 [1,4096,4096]
-→ 32 个 Decoder Layer，shape 保持 [1,4096,4096]
-→ 最终 RMSNorm
-→ LM Head 为最后一个 Prompt 位置计算词表 Logits [1,V]
-→ 贪心或采样得到首个输出 Token ID
+24 个 Gated DeltaNet 层
+8 个 Full Attention 层
 ```
 
-如果实现为所有 Prompt 位置保留完整 Logits，LM Head 输出可以写成 `[1,4096,V]`。生成首个 token 只需要最后一个位置的 `[1,V]`。课程使用哪种写法时，都要说明是否保留了全部位置。
+两类 Token Mixer 保存的请求状态不同：
 
-## 4. Decoder Layer 与层排列
+| Token Mixer | 请求状态 | 是否随上下文长度增长 |
+| --- | --- | --- |
+| Full Attention | 每个历史位置的 K/V | 是 |
+| Gated DeltaNet | 卷积状态与 recurrent state | 否，shape 固定 |
 
-一个 Decoder Layer 有两段预归一化残差路径：
+因此，长上下文首先放大的是 8 个 Full Attention 层的 KV Cache。Gated DeltaNet 的固定状态仍要计入单请求显存，但不会从 9K 跟着增长到 68K。
 
-```text
-x → RMSNorm → Token Mixer → 加回 x → y
-y → RMSNorm → SwiGLU FFN  → 加回 y → z
-```
+## 3. 每增加一个位置，需要多少 KV Cache
 
-Token Mixer 负责不同 token 位置之间的信息交换，FFN 分别加工每个 token 的内部特征。这个 9B 模型按下面的顺序重复 8 次：
-
-```text
-Gated DeltaNet
-Gated DeltaNet
-Gated DeltaNet
-Full Attention
-```
-
-因此共有 24 个 Gated DeltaNet 层和 8 个 Full Attention 层。Dense SwiGLU FFN、RMSNorm 和残差连接仍存在于每个 Decoder Layer 中。
-
-## 5. Prefill 结束时的输出与状态
-
-Prefill 已经处理完整 Prompt，并为最后一个 Prompt 位置得到 Logits。选择策略用这组 Logits 选出首个输出 token，记为 `y1`。
-
-此时各层请求状态只对应 Prompt：
-
-```text
-8 个 Full Attention 层：Prompt 的 K/V
-24 个 Gated DeltaNet 层：处理完 Prompt 后的卷积状态和递归状态
-```
-
-`y1` 刚刚被选出来，还没有经过下一次模型前向。因此它的 K/V 不会在“选择出来的瞬间”自动出现在所有层的 Cache 中。下一轮 Decode 把 `y1` 送入模型，才会逐层计算并写入它的状态，同时预测 `y2`。
-
-这个时间点很容易发生差一位错误。讨论“已输出 token 数”“已经执行过模型的 token 数”和“Cache 中的位置数”时，应分别说明口径。
-
-## 6. 请求状态容量
-
-Full Attention 的单请求逻辑 KV 为：
+Full Attention 的逻辑 KV 容量是：
 
 $$
 KV\ Bytes=2L_{full}N_{kv}TDs
 $$
 
-最前面的 2 表示 K 和 V。代入 `L_full=8`、`Nkv=4`、`D=256`、BF16 `s=2 Byte`，每增加一个缓存位置：
+各符号在本例中的取值：
+
+| 符号 | 含义 | 数值 |
+| --- | --- | ---: |
+| `2` | K 和 V 两份状态 | 2 |
+| $L_{full}$ | Full Attention 层数 | 8 |
+| $N_{kv}$ | K/V 头数 | 4 |
+| $T$ | 缓存位置数 | 随请求变化 |
+| $D$ | 每个头的维度 | 256 |
+| $s$ | BF16 每个元素的字节数 | 2 Byte |
+
+每增加一个位置，模型逻辑上增加：
 
 $$
-2\times8\times4\times256\times2=32768\ Byte=32\ KiB
+2\times8\times4\times256\times2
+=32768\ Byte
+=32\ KiB
 $$
 
-若按 `4096+256=4352` 个位置预留：
+这个 32 KiB 只包含有效 K/V 元素，不包括分页块的尾部空余、页表、内存池预留和其他运行时数据。
+
+## 4. 现网与目标请求的逻辑状态
+
+现网最多缓存 `8192+1024=9216` 个位置：
 
 $$
-4352\times32\ KiB=136\ MiB
+9216\times32\ KiB=288\ MiB/请求
 $$
 
-第 8 课已经按 Qwen3.5 参考实现核算出 Gated DeltaNet 固定状态：`conv_state` 按 BF16、`recurrent_state` 按 FP32 计算，约为：
+目标最多缓存 `65536+4096=69632` 个位置：
+
+$$
+69632\times32\ KiB=2176\ MiB/请求=2.125\ GiB/请求
+$$
+
+第 8 课按参考实现计算出的 Gated DeltaNet 固定状态约为 49.5 MiB/请求。加入这部分后：
+
+| 单请求逻辑状态 | 现网 | 目标 |
+| --- | ---: | ---: |
+| Full Attention KV | 288 MiB | 2,176 MiB |
+| Gated DeltaNet 固定状态 | 49.5 MiB | 49.5 MiB |
+| 合计 | 337.5 MiB | 2,225.5 MiB |
+
+目标上下文把单请求逻辑状态从约 0.33 GiB 提高到约 2.17 GiB。32 个请求同时达到最大长度时，逻辑状态合计约 69.55 GiB。这个合计有助于理解模型状态规模，但不能直接除以 8 得到每卡显存。
+
+## 5. TP=8 为什么不能把 KV 简单除以 8
+
+模型只有 4 个 K/V 头，TP 却是 8。固定版本 vLLM 在 `Nkv<TP` 时会复制 K/V 头，让每个 Rank 至少保存 1 个头：
+
+$$
+N_{kv,rank}=\max\left(1,\left\lfloor\frac{N_{kv}}{TP}\right\rfloor\right)=1
+$$
+
+所以每个 Rank、每个位置实际保存的 KV 是：
+
+$$
+2\times8\times1\times256\times2=8\ KiB
+$$
+
+由此得到每个 Rank 的 KV 有效载荷：
+
+| 场景 | 每请求 | 32 并发 |
+| --- | ---: | ---: |
+| 现网 9,216 个位置 | 72 MiB | 2.25 GiB |
+| 目标 69,632 个位置 | 544 MiB | 17.00 GiB |
+
+目标场景的 KV 有效载荷已经占到 18 GiB KV 池的 94.4%。这里还没有计入分页块尾部空余和运行时元数据，也没有证明 32 个请求会以什么长度分布同时驻留。仅凭“17 GiB 小于 18 GiB”批准上线，余量过小。
+
+18 GiB 是引擎单独报告的 KV 池，不包含 Gated DeltaNet 状态。49.5 MiB 是模型逻辑状态，不能在不知道 runtime 布局时机械除以 TP。正式容量测试还要记录每个 Rank 的进程显存、KV 池和 Gated DeltaNet 状态分配。
+
+增加 TP 也不会继续降低本地 KV 头数，因为每个 Rank 已经只有一个 K/V 头。更多 GPU 可能分担部分权重和计算，却不能把本例的每 Rank KV 从一个头再切成半个头。它还会增加集合通信，不能作为这次容量问题的直接答案。
+
+## 6. 五个方案分别解决什么
+
+| 方案 | 对 KV 容量的影响 | 对长 Prompt 延迟的影响 | 本轮判断 |
+| --- | --- | --- | --- |
+| 只改 `max_model_len` | 不减少任何状态 | 不减少任何计算 | 不能单独上线 |
+| FP8 KV Cache | KV 有效载荷约减半 | 可能减少 KV 读写，也会增加量化相关代价 | 值得做 A/B 测试 |
+| 增加 TP | 本例每 Rank 仍至少保存一个 K/V 头 | 计算分担与通信同时变化 | 不是容量首选方案 |
+| Chunked Prefill | 不改变最终 KV 大小 | 把长 Prefill 拆成多轮，可能减少对 Decode 的阻塞 | 用于调度实验，不替代容量方案 |
+| Prefix Cache | 精确前缀命中时可共享已计算状态 | 命中请求可跳过重复 Prefill | 需要先证明工作负载存在稳定的精确共享前缀 |
+
+如果 FP8 KV 按 1 Byte/元素保存，目标场景的每 Rank KV 有效载荷会从 17 GiB 降到约 8.5 GiB。这个数字只是容量下限，不是上线结论。还要核对 Scale、对齐、Kernel 是否直接消费 FP8 Cache，以及长上下文质量是否可接受。
+
+Chunked Prefill 解决的是调度问题。它可以避免一个 65K Prompt 长时间独占某轮执行，但完整请求最终仍要保存同样多的 KV。Prefix Cache 只有在 Token IDs、位置和模型状态兼容时才会命中；题目没有给出共享前缀分布，所以不能把它当成确定收益。
+
+## 7. 评审结论
+
+当前结论是：暂不批准只修改最大上下文配置并直接上线，批准进入容量与性能验证。
+
+理由有三点：
+
+1. BF16 KV 下，32 个满长度请求会占用每 Rank 约 17 GiB 的 KV 有效载荷，距离 18 GiB 池上限只剩约 1 GiB，尚未计入分页损耗和长度波动。
+2. 上下文长度从 9,216 提高到 69,632 后，Full Attention 需要读取更长的历史 K/V，Prefill 也要处理更多位置。容量可容纳不等于 TTFT 和 TPOT 能达标。
+3. 增加 TP、Chunked Prefill 和 Prefix Cache 分别改变通信、调度和重复前缀计算，不能替代 KV 容量验证。FP8 KV 有较直接的容量收益，但必须同时验证 Kernel 覆盖与质量。
+
+这项结论保留了长上下文方案，但要求先补齐容量、延迟和质量证据。
+
+## 8. 验证实验
+
+第一轮只比较两种 KV dtype，其他条件保持不变：
 
 ```text
-24 层 conv_state 与 recurrent_state：49.5 MiB / 请求
+方案 A：BF16 KV
+方案 B：FP8 KV
+
+固定模型 revision、runtime revision、TP=8 和硬件
+固定 Prompt/Output 长度分布、到达记录和采样配置
+分别测试 1、8、16、24、32 个并发长请求
 ```
 
-于是单请求两类模型状态合计：
+每档并发都记录：
 
-$$
-136+49.5=185.5\ MiB
-$$
-
-32 个并发请求为：
-
-$$
-185.5\times32=5936\ MiB\approx5.80\ GiB
-$$
-
-这是逻辑模型状态，不包括 PagedAttention 块尾空余、页表、临时激活、通信 Buffer、CUDA Graph、Kernel Workspace 和运行时内存池。
-
-## 7. TP=8 时的 KV 头复制
-
-固定版本的 vLLM 在 `Nkv<TP` 时，会让每个 Rank 至少保存一个 K/V 头：
-
-$$
-N_{kv,rank}=\max\left(1,\left\lfloor\frac{N_{kv}}{TP}\right\rfloor\right)
-$$
-
-本例 `Nkv=4`、`TP=8`，所以每个 Rank 保存 1 个 K/V 头。每 Rank、每请求、每新增位置的 KV 是：
-
-$$
-2\times8\times1\times256\times2=8192\ Byte=8\ KiB
-$$
-
-8 个 Rank 合计为 64 KiB，比模型逻辑 KV 的 32 KiB 更大。原因是 4 个逻辑 K/V 头在 8 个 Rank 上发生了复制。多卡容量不能默认按设备数平均分配，必须核对 runtime 的实际布局。
-
-## 8. 优化方案的验证顺序
-
-现有信息还不足以断定哪项优化能改善总体 P99 TTFT。必须先把最慢请求分成三类：命中共享前缀、未命中前缀，以及主要耗时来自排队的请求。80% 请求拥有相同前缀，说明 Prefix Cache 有明确的重复计算可消除，适合作为第一轮对照实验；它不是已经确定的 P99 解决方案。
-
-在缓存已经建立、能够命中且没有被驱逐的理想条件下，平均每个请求可复用的 Prompt 位置数为：
-
-$$
-0.8\times2048=1638.4
-$$
-
-这个结果不能改写成“TTFT 降低 40%”。命中查找、剩余 Prefill、排队和其他计算仍然存在。
-
-20% 未命中请求足以覆盖最慢的 1%。如果 P99 主要落在未命中路径上，Prefix Cache 即使显著改善命中请求，也可能只改善 P50，而不改变总体 P99。
-
-Qwen3.5 的前缀状态还必须同时恢复 Full Attention KV、卷积状态和 recurrent state。固定版本的 vLLM 配方把相关模式标为 experimental，因此第一步是验证当前 runtime 是否真的支持这条路径，不能把“配置项已开启”当成兼容性证据。
-
-其他方案需要证据后再排序：
-
-| 方案 | 现有证据为什么不足 |
+| 证据 | 指标 |
 | --- | --- |
-| 权重量化 | 它可以减少权重容量和读取字节，但当前症状是长共享前缀带来的 TTFT；没有 Profile 不能断定权重读取是主要瓶颈。 |
-| FlashAttention | 它可能改善长 Prompt 的 Full Attention，但不会跳过 Gated DeltaNet、FFN 和未命中的 Prefill。 |
-| 增加 TP | 当前已经是 TP=8。继续增加设备会带来更多通信，还可能加重 K/V 头复制。 |
-| 推测解码或 MTP | 它主要瞄准后续逐 token 生成，而本例 TPOT 已经达标。 |
+| 容量 | 每 Rank KV 池使用量、块尾空余、抢占或重算次数、OOM |
+| 用户延迟 | TTFT P50/P99、TPOT P50/P99、端到端完成时间 |
+| 服务能力 | 固定 SLO 下的 request/s、input token/s、output token/s |
+| 执行分解 | Prefill、Decode、Attention、通信和排队时间 |
+| 正确性 | 固定输入下的输出对比，以及长上下文任务质量 |
 
-## 9. 验证实验
+第二轮再比较 Chunked Prefill 的 token 预算。它的目标是减少长 Prefill 对在途 Decode 的阻塞，因此必须在有并发 Decode 的到达记录下测试。只跑单请求离线 Prompt，无法回答调度是否改善。
 
-先做状态兼容性测试，再做性能对照。选取多个前缀长度，分别运行完整 Prefill 和“恢复前缀状态后只算后缀”两条路径；在固定采样条件下比较 Logits 或 Token IDs，并覆盖冷启动、命中、驱逐和回退。三类状态无法一致恢复时，实验应在这里停止，不能继续用性能数字申请上线。
+Prefix Cache 是否进入实验，由线上精确共享前缀分布决定。没有命中 token 数和驱逐率之前，不安排这项优化。
 
-至少固定下面这些条件：
+## 9. 上线门槛
 
-```text
-同一模型 revision 与权重 dtype
-同一 runtime 版本、并行配置和硬件
-同一 Prompt / Output 长度分布
-同一并发到达方式和测试时长
-同一采样设置与正确性输入集
-```
+满足以下条件后，长上下文配置才能进入灰度：
 
-对 Prefix Cache，测试必须区分冷请求和命中请求：
+- 目标长度和并发下没有 OOM，KV 池仍保留经过压测验证的余量；
+- TTFT P99 ≤ 8 s，TPOT P99 ≤ 40 ms；
+- 不发生无法接受的请求抢占、重算或短请求尾延迟退化；
+- FP8 KV 若被采用，长上下文质量和输出一致性达到预设标准；
+- 所有容量数字都来自每 Rank 实测，而不是把模型逻辑状态机械除以 GPU 数。
 
-| 证据 | 需要记录什么 |
-| --- | --- |
-| 缓存行为 | 命中请求比例、命中 token 数、驱逐率、Cache 占用 |
-| 用户延迟 | 命中、未命中、排队主导请求和总体的 TTFT P50/P99；同时保留 TPOT |
-| 服务能力 | 固定 SLO 下的 `goodput`、排队时间、输出 token 吞吐 |
-| 正确性 | 固定输入和采样条件，对比 Logits 或 Token IDs；确认三类前缀状态一起恢复 |
-| 资源 | 每 Rank 显存峰值、KV 分配、通信与回退路径 |
-
-如果 Prefix Cache 只改善命中请求的 P50，而总体 P99 仍由未命中请求主导，就不能说当前目标已经完成。反过来，如果它减少了整体 Prefill 负载和排队，使未命中请求的 P99 也下降，则应通过队列时间和分桶结果证明这条间接收益。Cache 驱逐导致尾延迟变差，或者 `goodput` 下降时，也不能只凭平均 TTFT 宣布方案有效。
-
-</details>
-
-## 10. 变更影响评审：服务加入图片输入
-
-假设请求再加入一张 `512×512` 图片。按本课程采用的 Qwen3.5 配置，图片先切成 `16×16` Patch，再由 Merger 把每 `2×2` 个视觉特征合并为一个，最终产生 256 个视觉位置。
-
-如果原来的 `4096 token` 不包含这些视觉位置，那么 Decoder Prefill 要多处理 256 个位置。逻辑 KV 会额外增加：
-
-$$
-256\times32\ KiB=8\ MiB/请求
-$$
-
-Gated DeltaNet 的状态 shape 不会因此扩大，但 Prefill 计算、临时激活和视觉编码器本身的计算都会增加。只看图片文件大小，无法推出 Decoder 中增加了多少工作。
-
-## 11. 一页评审结论示例
-
-> **当前证据不足以批准 Prefix Cache 直接全量上线。** TTFT P99 为 2.28 秒，距离 1.50 秒 SLO 仍有 0.78 秒缺口。80% 的请求共享 2048 个精确 token，说明系统存在可消除的重复 Prefill，值得优先做对照实验；但 20% 的未命中请求已经足以覆盖最慢的 1%。现有数据又没有按命中情况拆分 TTFT，也没有排队时间，因此不能由共享前缀比例推导 P99 收益。
->
-> Qwen3.5-9B 的语言模型有 32 层，其中 24 层使用 Gated DeltaNet，8 层使用 Full Attention。按 4352 个缓存位置计算，单请求 Full Attention KV 为 136 MiB，Gated DeltaNet 固定状态约 49.5 MiB，合计 185.5 MiB。32 个并发请求的逻辑状态约为 5.80 GiB。这个数字不包含块尾空余、运行时预留、临时激活和通信 Buffer，不能直接当作进程峰值显存。
->
-> TP=8 时，固定版本 vLLM 会让每个 Rank 至少保存一个 K/V 头。8 个 Rank 的物理 KV 合计大于模型逻辑 KV，容量评估不能直接除以 8。Prefix Cache 还必须同时恢复 Full Attention KV、卷积状态和 recurrent state，不能只验证 K/V 命中。
->
-> 第一轮实验应固定模型和 runtime revision、TP 配置、到达记录、Prompt/Output 长度分布与采样参数。结果按命中、未命中、驱逐和排队主导请求分桶，比较 TTFT P50/P99、TPOT、同 SLO `goodput`、每 Rank 显存和状态恢复正确性。只有总体 TTFT P99 达标，且质量、容量和未命中路径没有退化，才进入灰度上线。
-
-这份评审区分了观测、估算和待验证结果。80% 是工作负载观测，185.5 MiB 是根据模型结构得到的逻辑容量，P99 能否达标仍要通过对照实验确认。逻辑状态与进程显存也使用不同口径。
+仓库中的[容量复算程序](../examples/request_budget_walkthrough.py)使用本案例的数字，分别输出逻辑 KV、TP 下的每 Rank KV 和 32 并发容量。程序只负责核对算术，不能替代端到端压测。
 
 ## 资料来源
-
-本案例沿用第 4、5、7、8、9 课已经核对的配置、实现和公式：
 
 - [Qwen3.5-9B 配置，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/config.json)
 - [Transformers Qwen3.5 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py)
 - [vLLM KV 头分布实现，revision 653ebb5](https://github.com/vllm-project/vllm/blob/653ebb52dffd8b4653b430302473c771117529f1/vllm/config/model.py#L1501-L1516)
-- [vLLM Qwen3.5 配方，revision 689d6b9](https://github.com/vllm-project/recipes/blob/689d6b98c05ec4e92523a231afe9dce97e5d83dc/Qwen/Qwen3.5.md)
+- [PagedAttention 论文 v1](https://arxiv.org/abs/2309.06180v1)
 
 ---
 

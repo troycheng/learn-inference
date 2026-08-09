@@ -11,7 +11,7 @@
 | [`moe_routing_walkthrough.py`](moe_routing_walkthrough.py) | 第 6 课 | Router Softmax、Top-2、路由权重与 Shared Expert |
 | [`model_sizing_walkthrough.py`](model_sizing_walkthrough.py) | 第 8 课 | KV、TP 下每 Rank KV、固定状态与 Attention 长度项 |
 | [`optimization_decision_walkthrough.py`](optimization_decision_walkthrough.py) | 第 9 课 | 局部 Kernel 加速对同一条 TTFT trace 的实际影响 |
-| [`request_budget_walkthrough.py`](request_budget_walkthrough.py) | 综合评审 | 逻辑状态、TP 下物理 KV、并发容量与可复用前缀 |
+| [`request_budget_walkthrough.py`](request_budget_walkthrough.py) | 综合案例 | 长上下文的逻辑 KV、TP 下每 Rank KV 与并发容量 |
 
 在仓库根目录运行：
 
