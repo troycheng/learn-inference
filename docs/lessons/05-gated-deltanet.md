@@ -38,58 +38,7 @@ Query 用相似的特征从 S 中读取结果
 
 `recurrent state` 也不是 token 的 Hidden State。Hidden State 是某个位置在层与层之间传递的 `H` 维向量；recurrent state 是某个 Gated DeltaNet 层跨 token 保留并更新的矩阵。
 
-## 2. Gated DeltaNet 的完整数据流
-
-输入仍是 Decoder Layer 传来的 Hidden States：
-
-```text
-X：[B,T,H]
-```
-
-输入 `X` 会分成几条支路：一条产生 Q、K、V，另外三条产生状态衰减、修正幅度和输出门控。旧状态先衰减，再根据当前 K 和 V 修正，最后由 Q 读出结果。下图画出了各条支路及其汇合位置：
-
-![Gated DeltaNet 的完整数据流](../assets/05-gated-deltanet-flow.svg?rev=20260809-1)
-
-三组控制量作用在不同位置：
-
-| 名称 | 代码来源 | 控制什么 |
-| --- | --- | --- |
-| 状态保留系数 `alpha` | `a → g → alpha=exp(g)` | 旧状态保留多少 |
-| 修正幅度 `beta` | `b → beta=sigmoid(b)` | 当前误差写入多少 |
-| 输出门控 `z` | `in_proj_z` | 状态读出结果有多少进入层输出 |
-
-Q、K、V 以及原始控制量 `a`、`b`、`z` 都来自当前 Hidden State 的 Linear 投影。实现随后由 `a` 算出 `g` 和 `alpha`，由 `b` 算出 `beta`；这些数都不是 runtime 手工设置的参数。
-
-## 3. 因果卷积与局部顺序特征
-
-Qwen3.5 先用一个 Linear 生成混合 Q/K/V，再沿 token 轴做深度因果卷积，最后才拆成 Q、K、V。
-
-“因果”表示当前位置只能使用自己和左边的输入。假设某个通道上的值是：
-
-```text
-位置：  p1  p2  p3  p4
-数值：   2   5   1   4
-```
-
-若卷积窗口宽度为 3，处理 `p3` 时只能组合：
-
-```text
-p1、p2、p3
-```
-
-不能读取右边的 `p4`。使用一组便于手算的卷积权重 `[0.2,0.3,0.5]`，`p3` 的结果是：
-
-$$
-0.2\times2+0.3\times5+0.5\times1=2.4
-$$
-
-实际权重由训练得到。Qwen3.5 的窗口宽度是 4，并在卷积后使用 SiLU。
-
-深度卷积（Depthwise Convolution）表示每个通道分别沿 token 轴卷积，不在这一步混合不同通道。前面的 Linear 已经负责重组特征；这次卷积让 Q/K/V 的每个通道先看到很近的局部顺序。
-
-Decode 时不必重新读取完整序列。`conv_state` 只保留卷积所需的最近窗口。新 token 到来后，runtime 把它推入窗口，移出最旧的位置。
-
-## 4. 状态矩阵的写入与读取
+## 2. 状态矩阵的写入与读取
 
 下面只看一个头，把 Key、Query 和 Value 都缩成 2 维。例子从全零状态开始，后面一直沿用同一张状态矩阵：
 
@@ -151,7 +100,7 @@ $$
 
 再用 $k/\lVert k\rVert_2$ 参加状态计算。忽略实现中防止除零的极小稳定项，归一化后的向量长度为 1。这样读写方向主要由各维度的相对比例决定，不会因为整条 Q 或 K 同时放大几倍而突然变强。
 
-## 5. Delta Rule 的误差修正
+## 3. Delta Rule 的误差修正
 
 第二个 token 仍产生 `k_2=[1,0]`，但这一次希望关联到新的 Value：
 
@@ -176,7 +125,7 @@ $$
 
 ![Delta Rule 先读旧值，再按误差修正](../assets/05-delta-update.svg)
 
-## 6. 状态衰减与更新门控
+## 4. 状态衰减与更新门控
 
 真实更新还加入了衰减和修正幅度。对一个头来说，可以写成四步：
 
@@ -248,7 +197,7 @@ $$
 
 这个结果同时展示了两个门的作用：`alpha` 先衰减整张旧状态，`beta` 再决定当前修正写入多少。
 
-## 7. 输出门控
+## 5. 输出门控
 
 状态读出 `o_t` 后不会直接成为 Token Mixer 输出。Qwen3.5 还为当前 token 产生 `z_t`：
 
@@ -278,6 +227,51 @@ $$
 `out_proj` 把所有 Value 头的结果重新混合回 `H` 维。Token Mixer 的输入和输出都是 `[B,T,H]`，因此它仍能接回第 2 课讲过的残差路径。
 
 仓库中的 [Gated DeltaNet 手算程序](../../examples/gated_deltanet_walkthrough.py) 从 `S_0` 开始执行相同的三次更新，并打印旧记录、误差、状态矩阵和门控后的输出。
+
+## 6. 因果卷积补充短距离信息
+
+前面的状态更新只解释了递归主线。Qwen3.5 在进入这条主线前，还会先处理最近几个位置：它用一个 Linear 生成混合 Q/K/V，沿 token 轴做深度因果卷积，然后才拆成 Q、K、V。
+
+“因果”表示当前位置只能使用自己和左边的输入。假设某个通道上的值是：
+
+```text
+位置：  p1  p2  p3  p4
+数值：   2   5   1   4
+```
+
+若卷积窗口宽度为 3，处理 `p3` 时只能组合 `p1、p2、p3`，不能读取右边的 `p4`。使用一组便于手算的卷积权重 `[0.2,0.3,0.5]`，结果是：
+
+$$
+0.2\times2+0.3\times5+0.5\times1=2.4
+$$
+
+实际权重由训练得到。Qwen3.5 的窗口宽度是 4，并在卷积后使用 SiLU。
+
+深度卷积（Depthwise Convolution）表示每个通道分别沿 token 轴卷积，不在这一步混合不同通道。前面的 Linear 已经负责重组特征；这次卷积让 Q/K/V 的每个通道先带上很近的局部顺序信息。
+
+Decode 时，`conv_state` 保存卷积窗口需要的最近投影值。新 token 到来后，runtime 把新值推入窗口，移出最旧位置，再计算本轮卷积。它和 Delta Rule 使用的 `recurrent_state` 是两份不同的状态。
+
+## 7. 把各条支路接回完整模块
+
+现在再看完整数据流。输入仍是 Decoder Layer 传来的 Hidden States：
+
+```text
+X：[B,T,H]
+```
+
+输入 `X` 会分成几条支路：一条产生 Q、K、V，另外三条产生状态衰减、修正幅度和输出门控。Q/K/V 分支先在因果卷积中读写 `conv_state`，随后用 Delta Rule 读写 `recurrent_state`。Q 读出结果后，输出门和 `out_proj` 再把它送回 Decoder Layer 的残差路径。
+
+![Gated DeltaNet 的完整数据流](../assets/05-gated-deltanet-flow.svg?rev=20260809-2)
+
+三组控制量作用在不同位置：
+
+| 名称 | 代码来源 | 控制什么 |
+| --- | --- | --- |
+| 状态保留系数 `alpha` | `a → g → alpha=exp(g)` | 旧 recurrent state 保留多少 |
+| 修正幅度 `beta` | `b → beta=sigmoid(b)` | 当前误差写入多少 |
+| 输出门控 `z` | `in_proj_z` | 状态读出结果有多少进入层输出 |
+
+Q、K、V 以及原始控制量 `a`、`b`、`z` 都来自当前 Hidden State 的 Linear 投影。实现随后由 `a` 算出 `g` 和 `alpha`，由 `b` 算出 `beta`；这些数都不是 runtime 手工设置的参数。
 
 ## 8. Prefill 与 Decode 的执行方式
 
