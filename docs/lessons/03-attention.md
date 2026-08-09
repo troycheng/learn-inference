@@ -586,7 +586,7 @@ Qwen3.5 用 4 个 K/V 头服务 16 个查询头。判断 KV Cache 容量时，�
 
 位置旋转发生在 K 写入缓存前。处理缓存复用、前缀拼接或位置重映射时，必须保证位置编号和 RoPE 规则一致，不能只复制一段 K/V 就认为语义一定正确。
 
-## 17. Attention 中的概念辨析
+## 17. 容易混淆的概念
 
 | 容易产生的误解 | 实际情况 |
 | --- | --- |
@@ -665,3 +665,7 @@ Qwen3.5-9B：16 个 Q 头；4 个 K/V 头；每 4 个 Q 头共享一组 K/V；�
 - [Dive into Deep Learning：Queries, Keys, and Values](https://d2l.ai/chapter_attention-mechanisms-and-transformers/queries-keys-values.html)
 
 这里解释的是 Full Attention 的模型语义。FlashAttention 的内核与显存访问、KV Cache 的建立和复用，以及 Gated DeltaNet 的 recurrent state 会在后续课程继续展开。
+
+---
+
+[上一课：Decoder Layer 的结构与计算](02-inside-a-decoder-layer.md) · [返回课程路线](../roadmap.md) · [下一课：Prefill、Decode 与 KV Cache](04-prefill-decode-kv-cache.md)

@@ -32,6 +32,8 @@
 | 归约 | Reduction | 沿指定轴把多个数汇总为更少的数 |
 | 广播 | Broadcasting | 让较小 shape 按规则参与较大 shape 的逐元素计算 |
 | 逐元素计算 | Element-wise Operation | 对相同位置的元素分别计算 |
+| 指数函数 | Exponential / `exp` | $e^x$；常把不受范围限制的数转换为正数 |
+| Sigmoid | Sigmoid | `1/(1+exp(-x))`，把实数平滑映射到 0 和 1 之间 |
 | 点积 | Dot Product | 两个等长向量对应相乘后求和 |
 | 矩阵乘法 | Matrix Multiplication / `matmul` | 批量完成多次点积；Python 中常用 `@` |
 | 线性层 | Linear Layer / `Linear` | 使用学习权重做线性变换，可选地加偏置 |
@@ -81,6 +83,7 @@
 | 回收投影 | `down_proj` | `I→H`，混合中间特征并回到层接口宽度 |
 | 激活函数 | Activation Function | 给网络加入非线性变换 |
 | SiLU | Sigmoid Linear Unit / `SiLU` | `z × sigmoid(z)` |
+| GELU | Gaussian Error Linear Unit / `GELU` | 平滑激活函数；课程中的视觉 Merger 用它连接两层 Linear，shape 不变 |
 | SwiGLU | SwiGLU | `SiLU(gate_proj(x))` 与 `up_proj(x)` 逐元素相乘后做 `down_proj` |
 | Dense FFN | Dense FFN | 每个 token 使用同一套完整 FFN 参数 |
 | 混合专家模型 | Mixture of Experts / MoE | 用 Router 为每个 token 选择少数 FFN 专家执行的稀疏结构 |
@@ -140,6 +143,7 @@
 | 深度卷积 | Depthwise Convolution | 每个通道分别卷积，不在卷积内部混合不同通道 |
 | 卷积状态 | Conv State | Decode 时为下一次因果卷积保留的最近局部窗口 |
 | 递归状态 | Recurrent State | 每个 Gated DeltaNet 层跨 token 更新的固定 shape 状态矩阵 |
+| L2 归一化 | L2 Normalization | 用向量除以自身的 L2 长度，使整体长度约为 1 |
 | 状态衰减 | Decay / `alpha` | 在写入当前 token 前缩放旧状态，控制过去保留多少 |
 | 修正幅度 | Update Rate / `beta` | 控制当前 Value 与旧记录的误差写回多少 |
 | 误差修正规则 | Delta Rule | 先读出状态当前记录，再沿 Key 方向写入它与目标 Value 的差值 |

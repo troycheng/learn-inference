@@ -330,31 +330,16 @@ Total Parameters 决定所有 Expert 权重必须存在哪里。即使单 token 
 
 Shared Expert 可能复制、做 TP，或与 Routed Expert 计算重叠。模型公式只规定它对所有 token 执行，具体优化方式属于 runtime。
 
-## 12. MoE 中的概念辨析
+## 12. 容易混淆的概念
 
-### MoE 的替换范围
-
-Qwen3.5-MoE 仍按 3 层 Gated DeltaNet 加 1 层 Full Attention 排列。MoE 位于每个语言 Decoder Layer 的 FFN 支路。
-
-### 视觉编码器的 MLP 结构
-
-Qwen3.5-35B-A3B 的语言 Decoder 使用 MoE，视觉编码器仍有自己的 Dense Vision MLP。
-
-### Shared Expert 与 Top-8
-
-每个 token 执行 8 个 Routed Experts，再固定执行 1 个 Shared Expert。Shared Expert 的门控也不与 Top-8 Routing Weights 一起归一化。
-
-### Active Parameters 与权重显存
-
-35B 权重仍需加载或分布在设备上。3B 是官方每 token 激活参数口径，不是模型文件大小。
-
-### Expert 分工的来源
-
-Router 和 Expert 权重都由训练形成。可以分析某些路由模式，但不能只凭 Expert ID 给它命名。
-
-### Expert Parallel 的通信实现
-
-无论框架选择 All-to-All、All-Reduce 还是其他实现，都必须把 token 送到相应 Expert，再把 Expert 输出送回原 token。
+| 容易混淆的对象 | 应怎样理解 |
+| --- | --- |
+| MoE 替换了什么 | Qwen3.5-MoE 仍按 3 层 Gated DeltaNet 加 1 层 Full Attention 排列。MoE 替换的是各语言 Decoder Layer 的 FFN 支路。 |
+| 视觉编码器是否也使用语言 MoE | Qwen3.5-35B-A3B 的语言 Decoder 使用 MoE，视觉编码器仍有自己的 Dense Vision MLP。 |
+| Shared Expert 是否属于 Top-8 | 每个 token 执行 8 个 Routed Experts，再固定执行 1 个 Shared Expert。Shared Expert 的门控不与 Top-8 Routing Weights 一起归一化。 |
+| Active Parameters 是否等于权重显存 | 35B 权重仍需加载或分布在设备上。3B 是官方每 token 激活参数口径，不是模型文件大小。 |
+| Expert ID 是否代表固定知识领域 | Router 和 Expert 权重都由训练形成。可以分析路由模式，不能只凭 Expert ID 给它命名。 |
+| Expert Parallel 是否固定使用 All-to-All | 框架可以选择 All-to-All、All-Reduce 或其他实现，但都要把 token 送到相应 Expert，再把输出送回原 token。 |
 
 ## 13. 练习
 
@@ -430,3 +415,7 @@ Hidden States [B,T,H]
 - [Switch Transformers](https://arxiv.org/abs/2101.03961)
 - [DeepSeekMoE](https://arxiv.org/abs/2401.06066)
 - [Qwen Team：Global-batch load balance](https://qwenlm.github.io/blog/global-load-balance/)
+
+---
+
+[上一课：Gated DeltaNet 的状态更新机制](05-gated-deltanet.md) · [返回课程路线](../roadmap.md) · [下一课：多模态输入与视觉编码](07-multimodal-input.md)

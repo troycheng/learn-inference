@@ -663,39 +663,18 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 以后再看到一种优化，可以先问清它改的是 Tokenizer、Linear、Cache、采样还是调度，再去核对相应的框架参数和指标。
 
-## 14. 常见概念辨析
+## 14. 容易混淆的概念
 
-### 汉字与 Token 的非一一对应关系
-
-Token 是由具体 Tokenizer 学到或定义的文本片段。多个汉字可以组成一个 token，一个英文单词也可能被拆成多个 token。
-
-### Token ID 的索引语义
-
-ID 是词表索引。它的大小、差值和相邻关系都不能直接解释为语义关系。
-
-### Embedding 与当前上下文
-
-Embedding 是训练出的初始表示，具有基础语义；它缺少的是当前句子的上下文信息。
-
-### LM Head 的输出类型
-
-LM Head 直接输出的是 Logits。采样通常需要进一步处理并做 Softmax；贪心可以直接对 Logits 取 `argmax`。
-
-### 零 Logit 的 Softmax 概率
-
-Softmax 中 $e^0=1$。概率由所有候选共同决定。
-
-### 随机采样与最大概率项
-
-贪心会选中最大项；随机采样不保证。83.1% 仍然不是 100%。
-
-### Tokenizer Decode 的职责
-
-Embedding 的方向是 ID 到向量；Tokenizer Decode 才负责 ID 到文字。
-
-### KV Cache 的复用范围
-
-缓存复用已经发生的历史计算，不能提前知道尚未生成的 token。
+| 容易混淆的对象 | 应怎样理解 |
+| --- | --- |
+| 汉字与 token | Token 是具体 Tokenizer 使用的文本片段。多个汉字可以组成一个 token，一个英文单词也可能被拆成多个 token。 |
+| Token ID 与语义 | ID 只是词表索引。它的大小、差值和相邻关系都不表示语义关系。 |
+| Embedding 与上下文 | Embedding 是训练得到的初始表示，具有基础语义，但还没有结合当前句子的上下文。 |
+| LM Head 与概率 | LM Head 输出 Logits。采样通常还要处理 Logits 并做 Softmax；贪心可以直接取 `argmax`。 |
+| 零 Logit 与零概率 | Softmax 中 $e^0=1$。一个候选的概率由全部 Logits 共同决定。 |
+| 最大概率与必然选中 | 贪心一定选最大项，随机采样不保证。83.1% 仍然不是 100%。 |
+| Embedding 与 Tokenizer Decode | Embedding 把 ID 变成向量，Tokenizer Decode 把 ID 还原成文字。 |
+| KV Cache 与未来 token | 缓存只能复用已经发生的历史计算，无法提前知道尚未生成的 token。 |
 
 ## 15. 练习
 
@@ -787,3 +766,7 @@ Hidden State → 全词表分数：LM Head
 - [PyTorch：`CrossEntropyLoss`](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html)
 - [Attention Is All You Need：Decoder 遮罩与错位预测](https://arxiv.org/abs/1706.03762)
 - [PyTorch：Softmax](https://docs.pytorch.org/docs/stable/generated/torch.nn.Softmax.html)
+
+---
+
+[上一课：张量与模型计算基础](00-math-and-tensors.md) · [返回课程路线](../roadmap.md) · [下一课：Decoder Layer 的结构与计算](02-inside-a-decoder-layer.md)

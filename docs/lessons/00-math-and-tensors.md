@@ -497,3 +497,7 @@ Token ID 只决定取哪一行。ID 的数值大小没有语义强弱关系。
 - [PyTorch：`torch.matmul`](https://docs.pytorch.org/docs/stable/generated/torch.matmul.html)
 - [PyTorch：`torch.nn.Linear`](https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html)
 - [PyTorch：`torch.nn.Embedding`](https://docs.pytorch.org/docs/stable/generated/torch.nn.Embedding.html)
+
+---
+
+[返回课程路线](../roadmap.md) · [下一课：大模型生成下一个 Token 的过程](01-text-to-next-token.md)

@@ -470,31 +470,16 @@ Qwen3.5-9B 的 32 个 Decoder Layer 按下面的顺序重复：
 
 Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Full Attention 层更新 K/V，Gated DeltaNet 层更新卷积状态和 recurrent state。第 5 课会打开 Gated DeltaNet，解释固定 shape 的状态怎样逐步吸收历史。
 
-## 14. Prefill、Decode 与缓存的概念辨析
+## 14. 容易混淆的概念
 
-### KV Cache 与 Token ID
-
-Token IDs 仍由生成循环保存，用于输出、停止判断或后续处理。KV Cache 是每个 Full Attention 层根据 Hidden States 投影得到的浮点 K/V。
-
-### KV Cache 的存储范围
-
-缓存保存的是未来 Attention 需要读取的 K/V。每层的其他中间值、Attention Score 和 FFN 激活通常不会跨生成轮次保留。
-
-### KV Cache 与 Prefix Cache
-
-每个运行中请求都需要自己的历史状态。Prefix Cache 进一步尝试让具有相同前缀的不同请求复用已经算好的状态，还要处理匹配、生命周期和淘汰。二者不是同一个概念。
-
-### KV Cache 与自回归依赖
-
-缓存只复用已经确定的历史。下一个 Token ID 仍要经过当前轮 Logits 和选择策略才能知道。
-
-### 增量 Prefill
-
-首次请求常处理完整 Prompt；启用 Prefix Cache、Chunked Prefill 或外部已提供合法缓存时，本轮实际计算的位置可以少于逻辑上下文长度。
-
-### 请求级 Decode Batch
-
-单个请求通常贡献一个新位置。许多请求可以在同一轮各贡献一个位置，形成较大的 Batch。
+| 容易混淆的对象 | 应怎样理解 |
+| --- | --- |
+| KV Cache 与 Token ID | 生成循环仍会保存 Token IDs，用于输出、停止判断或后续处理。KV Cache 是各 Full Attention 层根据 Hidden States 投影得到的浮点 K/V。 |
+| KV Cache 与其他中间值 | Cache 保存后续 Attention 需要读取的 K/V。Attention Score、FFN 激活等中间值通常不会跨生成轮次保留。 |
+| KV Cache 与 Prefix Cache | 每个运行中请求都需要历史状态。Prefix Cache 让相同前缀的请求进一步共享已经计算好的状态，还要负责匹配、生命周期和淘汰。 |
+| KV Cache 与自回归依赖 | Cache 只复用已经确定的历史。下一个 Token ID 仍要由本轮 Logits 和选择策略决定。 |
+| 首次 Prefill 与增量 Prefill | 首次请求常处理完整 Prompt。命中 Prefix Cache、使用 Chunked Prefill 或收到合法外部缓存时，本轮计算的位置可以少于逻辑上下文长度。 |
+| 单请求 Decode 与 Decode Batch | 单个请求通常贡献一个新位置。许多请求可以在同一轮各贡献一个位置，形成较大的 Batch。 |
 
 ## 15. 练习
 
@@ -574,3 +559,7 @@ V_past [B,Nkv,T,D]
 - [PagedAttention](https://arxiv.org/abs/2309.06180)
 - [SARATHI：Chunked Prefill 与 Decode 混批](https://arxiv.org/abs/2308.16369)
 - [Sarathi-Serve](https://arxiv.org/abs/2403.02310)
+
+---
+
+[上一课：Attention 的计算原理](03-attention.md) · [返回课程路线](../roadmap.md) · [下一课：Gated DeltaNet 的状态更新机制](05-gated-deltanet.md)

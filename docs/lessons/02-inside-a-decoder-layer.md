@@ -579,35 +579,18 @@ Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 �
 | 逐元素乘法 | 两个相同 shape → 相同 shape | 实现 SwiGLU 门控 | 否 |
 | 残差加法 | 两个 `[B,T,H] → [B,T,H]` | 保留旧表示并叠加更新 | 否 |
 
-## 14. Decoder Layer 中的概念辨析
+## 14. 容易混淆的概念
 
-### 单一 Hidden State 特征坐标的含义
+| 容易混淆的对象 | 应怎样理解 |
+| --- | --- |
+| 单个 Hidden State 特征坐标 | 模型通常使用许多坐标的组合表示信息。单独一列很少能稳定对应一个人工命名的概念。 |
+| RMSNorm 的输出范围 | RMSNorm 调整整条向量的均方根，不限制单个元素的范围。 |
+| `rsqrt` 与 RMSNorm | `rsqrt(a)=1/sqrt(a)`，是实现“除以平方根”的一种写法。RMSNorm 中的 `a` 是 `mean(x²)+epsilon`。 |
+| 残差连接 | 输入直接传到输出，子层只需学习增量更新；训练时这条路径也有助于梯度跨层传播。 |
+| `gate_proj` 的门控值 | SwiGLU 的门控值是连续数，可以压低、放大或改变中间特征的符号，不只取 0 或 1。 |
+| Dense FFN 与 token 混合 | Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的信息交换由 Token Mixer 负责。 |
 
-模型通常使用很多坐标的组合表示信息。单独一列很少能稳定对应一个人工命名的概念。
-
-### RMSNorm 的归一化范围
-
-RMSNorm 调整整条向量的均方根，不限制单个元素的范围。
-
-### `rsqrt` 与 RMSNorm
-
-`rsqrt(a)=1/sqrt(a)`。它只是实现“除以平方根”的一种写法，RMSNorm 中的 `a` 是 `mean(x²)+epsilon`。
-
-### 残差连接的作用
-
-残差连接让输入直接传到输出，并让子层学习增量更新；训练时也为梯度提供直接路径。
-
-### `gate_proj` 的连续门控值
-
-SwiGLU 的门控值是连续数，可以压低、放大或改变对应中间特征的符号，不只取 0 或 1。
-
-### Dense FFN 的逐 Token 特性
-
-Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的信息交换由 Token Mixer 负责。
-
-### Decoder-only、Decoder Layer 与 Decode 阶段
-
-这三个名称说的不是同一件事：
+Decoder 还会出现在四个不同名称中：
 
 | 名称 | 指什么 | 所属层面 |
 | --- | --- | --- |
@@ -616,7 +599,7 @@ Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的�
 | Decode 阶段 | Prefill 之后，逐步生成新 token 的运行阶段 | 请求执行 |
 | Tokenizer Decode | 把生成的 Token IDs 还原成文字 | 输出处理 |
 
-Qwen3.5 整体还包含视觉编码器，所以不能把“Decoder-only 语言主干”理解为整个多模态模型没有任何 Encoder。对纯文本请求，Token IDs 经过 Embedding 后直接进入语言 Decoder；不存在一套单独的文本 Encoder，再让语言 Decoder 通过交叉注意力读取它。
+Qwen3.5 整体还包含视觉编码器，所以“Decoder-only 语言主干”不表示整个多模态模型没有任何 Encoder。对纯文本请求，Token IDs 经过 Embedding 后直接进入语言 Decoder；模型没有另一套文本 Encoder 供语言 Decoder 通过交叉注意力读取。
 
 Decoder Layer 并不只在 Decode 阶段运行。Prompt 的 Prefill 同样会经过全部 Decoder Layer，只是本轮处理的位置数和历史状态不同。
 
@@ -691,3 +674,7 @@ y → RMSNorm → SwiGLU FFN  → 加回 y → z
 - [PyTorch：`torch.nn.RMSNorm`](https://docs.pytorch.org/docs/stable/generated/torch.nn.RMSNorm.html)
 - [PyTorch：`torch.nn.Linear`](https://docs.pytorch.org/docs/stable/generated/torch.nn.Linear.html)
 - [PyTorch：SiLU](https://docs.pytorch.org/docs/stable/generated/torch.nn.SiLU.html)
+
+---
+
+[上一课：大模型生成下一个 Token 的过程](01-text-to-next-token.md) · [返回课程路线](../roadmap.md) · [下一课：Attention 的计算原理](03-attention.md)

@@ -11,13 +11,14 @@ end
 
 lesson_titles = {}
 referenced_assets = Hash.new { |hash, key| hash[key] = [] }
+roadmap = File.read("docs/roadmap.md")
 
 (["README.md"] + Dir["docs/**/*.md"]).each do |file|
   text = File.read(file)
   errors << "#{file}: use L_full for the Full Attention layer count" if text.match?(/\bLfull\b/)
 end
 
-lesson_files.each do |file|
+lesson_files.each_with_index do |file, lesson_index|
   text = File.read(file)
   lines = text.lines
   h1_lines = lines.select { |line| line.start_with?("# ") }
@@ -36,6 +37,9 @@ lesson_files.each do |file|
     title_number = match[1].to_i
     errors << "#{file}: filename and H1 lesson numbers differ" if file_number != title_number
     lesson_titles[file] = title.delete_prefix("# ")
+
+    roadmap_entry = "| [#{title_number}](lessons/#{File.basename(file)}) | #{match[2]} |"
+    errors << "docs/roadmap.md: lesson title does not match #{file}" unless roadmap.include?(roadmap_entry)
   end
 
   numbered_sections = lines.map do |line|
@@ -50,6 +54,13 @@ lesson_files.each do |file|
   errors << "#{file}: lesson pages use SVG instead of Mermaid" if text.include?("```mermaid")
   errors << "#{file}: contains an unsupported GitHub math macro" if text.include?("\\operatorname")
   errors << "#{file}: contains a pasted GitHub math error" if text.include?("The following macros are not allowed")
+
+  expected_navigation = ["../roadmap.md"]
+  expected_navigation << File.basename(lesson_files[lesson_index - 1]) if lesson_index.positive?
+  expected_navigation << File.basename(lesson_files[lesson_index + 1]) if lesson_index < lesson_files.length - 1
+  expected_navigation.each do |target|
+    errors << "#{file}: missing course navigation link to #{target}" unless text.include?("](#{target})")
+  end
 
   exercise_index = lines.index { |line| line.match?(/\A## \d+\. 练习\s*\z/) }
   details_index = lines.each_index.find do |index|

@@ -142,7 +142,13 @@ $$
 
 Key 和 Query 都用向量乘状态矩阵，但用途不同。`kS` 检查当前 Key 已经记录了什么，`qS` 产生本次要交给后续模块的输出。实际向量通常不是 `[1,0]` 这样的 one-hot，而是连续数值，因此读出的结果通常会混合状态的多行。
 
-Q 和 K 在进入状态计算前会做 L2 归一化，使向量的整体大小不至于支配读写强度。
+Q 和 K 在进入状态计算前会做 L2 归一化。对向量 $k=[k_1,\ldots,k_{D_k}]$，先计算长度：
+
+$$
+\lVert k\rVert_2=\sqrt{k_1^2+\cdots+k_{D_k}^2}
+$$
+
+再用 $k/\lVert k\rVert_2$ 参加状态计算。忽略实现中防止除零的极小稳定项，归一化后的向量长度为 1。这样读写方向主要由各维度的相对比例决定，不会因为整条 Q 或 K 同时放大几倍而突然变强。
 
 ## 5. Delta Rule 如何修正旧记录
 
@@ -207,7 +213,15 @@ $$
 | `q_t` | `[Dk]` | 从更新后状态中读取输出 |
 | `sqrt(Dk)` | 标量 | 控制 Query 读出结果的尺度 |
 
-Qwen3.5 的代码先算出一个非正数 `g_t`，再使用 `alpha_t=exp(g_t)`，所以衰减系数落在 0 到 1 之间。代码里的原始投影 `a` 不是 `alpha`。`beta_t` 由 Sigmoid 得到，也落在 0 到 1 之间。
+Qwen3.5 的代码先算出一个非正数 `g_t`，再使用 `alpha_t=exp(g_t)`，所以衰减系数落在 0 到 1 之间。这里的 `exp(g)` 就是 $e^g$：`g=0` 时结果为 1，`g` 越小，结果越接近 0。代码里的原始投影 `a` 不是 `alpha`。
+
+`beta_t` 由 Sigmoid 得到：
+
+$$
+\mathrm{sigmoid}(b)=\frac{1}{1+e^{-b}}
+$$
+
+Sigmoid 把任意实数平滑地映射到 0 和 1 之间，`b=0` 时结果为 0.5。模型可以先用 Linear 产生不受范围限制的数，再把它转换成本层可用的衰减系数或修正幅度。
 
 这两个门分工不同。`alpha` 作用于整张旧状态，适合快速减弱过去；`beta` 只控制当前误差写入多少。即使 `beta` 很大，也不等于清空所有旧信息。
 
@@ -360,27 +374,15 @@ Gated DeltaNet 的 `conv_state` 和 `recurrent_state` shape 不随 token 数增�
 
 Gated Delta Rule 的 Chunk Kernel 是算子内部的并行算法。服务端 Chunked Prefill 是调度器把长 Prompt 分成多个执行轮次。两者都使用 Chunk 这个词，但切分层级不同。
 
-## 12. Gated DeltaNet 中的概念辨析
+## 12. 容易混淆的概念
 
-### Gated DeltaNet 请求状态
-
-它不保存逐 token K/V，但 Decode 需要 `conv_state` 和 `recurrent_state`。
-
-### recurrent state 与 Hidden State
-
-Hidden State 是某个 token 在层间传递的 H 维表示。recurrent state 是一个 Gated DeltaNet 层跨 token 保留的矩阵状态。
-
-### 因果卷积的作用轴
-
-这里沿 token 序列的一维时间轴滑动。深度卷积在每个通道内部处理最近窗口，不是在图片上移动二维卷积核。
-
-### 固定状态的读写成本
-
-每步仍要读写整张状态矩阵，并执行本层的 Linear 和门控。固定的是随序列长度增长的那一维。
-
-### Chunk Kernel 的因果一致性
-
-Chunk Kernel 用代数变换并行组织已知 token 的计算，最终结果仍遵守前一状态到后一状态的因果顺序。
+| 容易混淆的对象 | 应怎样理解 |
+| --- | --- |
+| Gated DeltaNet 是否没有请求状态 | 它不保存逐 token K/V，但 Decode 需要 `conv_state` 和 `recurrent_state`。 |
+| recurrent state 与 Hidden State | Hidden State 是某个 token 在层间传递的 H 维表示；recurrent state 是一个 Gated DeltaNet 层跨 token 保留的矩阵状态。 |
+| 因果卷积是否处理图片 | 这里沿 token 序列的一维时间轴滑动。深度卷积在各通道内处理最近窗口，不在图片上移动二维卷积核。 |
+| 固定状态是否没有读写成本 | 每步仍要读写整张状态矩阵，并执行本层的 Linear 和门控。固定的是随序列长度增长的维度。 |
+| Chunk Kernel 是否改变因果关系 | Chunk Kernel 用代数变换并行组织已知 token 的计算，结果仍遵守前一状态到后一状态的因果顺序。 |
 
 ## 13. 练习
 
@@ -455,3 +457,7 @@ Hidden State
 
 - [Gated Delta Networks: Improving Mamba2 with Delta Rule](https://arxiv.org/abs/2412.06464)
 - [Parallelizing Linear Transformers with the Delta Rule over Sequence Length](https://arxiv.org/abs/2406.06484)
+
+---
+
+[上一课：Prefill、Decode 与 KV Cache](04-prefill-decode-kv-cache.md) · [返回课程路线](../roadmap.md) · [下一课：Dense FFN 与 MoE 的结构差异](06-dense-and-moe.md)

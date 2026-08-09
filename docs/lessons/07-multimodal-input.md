@@ -125,6 +125,8 @@ Vision RoPE：             由视觉网格位置生成，作用在每个视觉 A
 
 前者直接改变每条 Patch 向量，后者改变视觉 Attention 比较位置的方式。它们都发生在视觉塔内部，还没有进入语言 Decoder。
 
+这里的“插值”可以理解成把训练得到的位置 Embedding 网格调整到当前图片的网格大小。新位置的数值由附近位置平滑计算出来；它调整的是位置参数的尺寸，不是把图片内容再缩放一次。
+
 Qwen3.5 的视觉塔有 27 个视觉 Transformer Block，内部宽度为 1152。每个 Block 有两类主要工作：
 
 ```text
@@ -161,6 +163,8 @@ Merger 不是简单求平均，也不是随手删掉四条中的三条。拼接�
 ```text
 [4608] → Linear → GELU → Linear → [4096]
 ```
+
+GELU（Gaussian Error Linear Unit）是一种平滑激活函数。它不改变 shape，作用与第 2 课的 SiLU 相似：放在两层 Linear 之间加入非线性，让两层投影不至于等价于一层 Linear。它只加工拼接后的特征；视觉位置数从 1024 变成 256，发生在前面的 `2×2` 拼接。
 
 Qwen3.5-35B-A3B 的语言 Hidden Size 是 2048，所以最后一步输出 `[2048]`。
 
@@ -300,31 +304,16 @@ deepstack_visual_indexes = []
 
 </details>
 
-## 11. 多模态输入中的概念辨析
+## 11. 容易混淆的概念
 
-### 视觉位置与 Token ID
-
-图片占位符有 Token ID，描述图片内容的向量来自视觉编码器。
-
-### Patch 数与视觉位置数
-
-`512×512` 图片先产生 1024 个 Patch 特征，再经 `2×2` Merger 变成 256 个视觉位置。
-
-### Merger 的位置压缩与特征重组
-
-它拼接相邻特征，再用 Linear 和 GELU 投影到语言模型 Hidden Size。
-
-### 视觉编码器与语言 Decoder
-
-它有自己的 27 层视觉 Block，先加工图像 Patch；Merger 之后的视觉向量才进入语言 Decoder。
-
-### MRoPE 的位置编号
-
-三组位置编号作用在同一批输入位置上，token 数没有乘三。
-
-### 视频位置数的影响因素
-
-还要知道采样帧数、FPS、每帧分辨率和空间合并后的网格大小。
+| 容易混淆的对象 | 应怎样理解 |
+| --- | --- |
+| 视觉位置与 Token ID | 图片占位符有 Token ID，描述图片内容的向量来自视觉编码器。 |
+| Patch 数与视觉位置数 | `512×512` 图片产生 1024 个 Patch 特征，再经 `2×2` Merger 变成 256 个视觉位置。 |
+| Merger 是否只做下采样 | Merger 拼接相邻特征，再用 Linear 和 GELU 投影到语言模型 Hidden Size。 |
+| 视觉编码器与语言 Decoder | 视觉编码器用自己的 27 层视觉 Block 加工 Patch，Merger 之后的向量才进入语言 Decoder。 |
+| MRoPE 是否把 token 数乘三 | 三组位置编号作用在同一批输入位置上，token 数不变。 |
+| 视频位置数由什么决定 | 需要同时知道采样帧数、FPS、每帧分辨率和空间合并后的网格大小。 |
 
 ## 12. 练习
 
@@ -334,7 +323,7 @@ deepstack_visual_indexes = []
 4. 为什么最终视觉位置只有 256 个？
 5. Patch Embedding 与文本 Embedding 的输入分别是什么？
 6. 视觉 Attention 和视觉 MLP 分别混合什么？位置 Embedding 和 Vision RoPE 在哪里工作？
-7. Merger 对四条 1152 维特征做了什么？
+7. Merger 对四条 1152 维特征做了什么？GELU 是否会再次减少视觉位置数？
 8. Qwen3.5-9B 的 Merger 最终输出宽度是多少？为什么？
 9. 图片占位 Token ID 和视觉编码器输出的向量有什么区别？
 10. 混合序列进入 Decoder 时为什么仍能写成 `[B,T,H]`？
@@ -353,7 +342,7 @@ deepstack_visual_indexes = []
 4. Merger 每 `2×2` 个相邻特征合成一个，位置数除以 4。
 5. 文本 Embedding 输入是 Token ID；Patch Embedding 输入是局部像素值。
 6. 视觉 Attention 让不同 Patch 位置交换信息；视觉 MLP 加工每个位置内部的特征。位置 Embedding 和 Vision RoPE 都在视觉塔内部、Merger 之前工作。
-7. 先拼成 4608 维，再经 Linear、GELU、Linear 投影。
+7. 先拼成 4608 维，再经 Linear、GELU、Linear 投影。GELU 只做逐元素激活，不会再次减少视觉位置数。
 8. 4096，因为要与 9B 语言模型的 Hidden Size 对齐。
 9. 占位 Token ID 标记视觉向量应放的位置；描述图片内容的是视觉编码器输出。
 10. 文本和视觉位置最后一维都已经对齐为 `H`。
@@ -397,3 +386,8 @@ deepstack_visual_indexes = []
 
 - [Qwen3-VL Technical Report v2](https://arxiv.org/abs/2511.21631v2)
 - [Qwen2-VL: Enhancing Vision-Language Model's Perception of the World at Any Resolution v2](https://arxiv.org/abs/2409.12191v2)
+- [PyTorch：GELU](https://docs.pytorch.org/docs/stable/generated/torch.nn.GELU.html)
+
+---
+
+[上一课：Dense FFN 与 MoE 的结构差异](06-dense-and-moe.md) · [返回课程路线](../roadmap.md) · [下一课：模型配置与资源估算](08-config-and-sizing.md)

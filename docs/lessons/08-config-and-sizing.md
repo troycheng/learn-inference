@@ -104,6 +104,23 @@ FLOPs：这次前向做了多少次浮点运算
 
 这些数字回答的是不同问题，不能互相替代。
 
+### 临时激活与运行时预留
+
+权重和请求状态可以按配置估算，进程峰值显存还取决于这一轮实际执行了多少 token。令 `M` 表示当前执行批次打包后的 token 位置总数，常见临时张量包括：
+
+| 临时数据 | 典型 shape | 什么时候变大 |
+| --- | --- | --- |
+| 层输入与输出 | `[M,H]` | Batched Tokens 增加 |
+| FFN 中间结果 | `[M,I]` | 中间维度或 Batched Tokens 增加 |
+| Q/K/V 与 Attention 输出 | 由 `M`、头数和头维度共同决定 | 本轮处理位置增加 |
+| LM Head Logits | `[M,V]` 或只保留所需位置 | 计算更多位置的完整词表分数 |
+
+这里的 `M` 不是请求已经缓存的历史 token 总数。一个请求可以有很长的 KV Cache，但单步 Decode 只给当前轮增加一个位置；Chunked Prefill 则会让本轮 `M` 明显增大。
+
+实现方式会改变哪些中间张量真正写入显存。算子融合可以让部分结果留在片上，FlashAttention 避免长期保存完整的 Attention 分数矩阵，LM Head 也可以只处理需要输出 Logits 的位置。
+
+运行时还会申请公式外的显存：集合通信要有收发 Buffer，部分 Kernel 需要临时工作区（Workspace），CUDA Graph 可能为固定执行图保留内存，缓存分配器也会把释放后的显存块留在内存池中等待复用。因此，配置公式适合估算权重和逻辑状态，部署容量仍要用目标 runtime、Batch 和序列长度测量峰值。PyTorch 分别提供 `max_memory_allocated` 和 `max_memory_reserved`：前者统计张量占用峰值，后者还包含缓存分配器管理的显存。
+
 ## 3. 保存、计算与累加使用的 dtype
 
 `dtype` 表示一个数采用什么数据格式。工程讨论中说“这个模型是 BF16”仍不够精确，因为保存权重、送入算子和累加部分和可能使用不同格式。
@@ -568,6 +585,7 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 8. Linear `[M,K]×[K,N]` 的 FLOPs 近似是多少？Batch 从 1 增大时，为什么算术强度通常会上升？
 9. 为什么 Attention 的上下文长度项不能由参数量推出？
 10. 如果一个新检查点总参数较少，是否足以断定它显存更低、Decode 更快？还缺哪些信息？
+11. 用公式算出的权重、KV 和 recurrent state 之和，为什么通常小于进程实测峰值显存？
 
 <details>
 <summary>查看参考答案</summary>
@@ -583,6 +601,7 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 8. 约 `2MKN`。Batch 增大后，同一份权重有机会服务更多输入，FLOPs 随 `M` 增长，而权重读取可以复用。
 9. QK/AV 和 KV 读取随历史长度 `T` 增长，却没有新增模型参数。
 10. 不足。还要看 dtype、实际加载模块、Dense 或 MoE 的激活路径、KV 和固定状态、上下文长度、Batch、Kernel 与通信。
+11. 进程还需要本轮临时激活、通信 Buffer、Kernel Workspace、CUDA Graph 和分配器预留。哪些中间张量被物化又取决于融合方式、Batched Tokens 与 runtime 实现。
 
 </details>
 
@@ -600,6 +619,7 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 | KV 每位置大小 | `L_full`、`Nkv`、`D`、缓存 dtype |
 | TP 后每 Rank KV | 每 Rank K/V 头数、KV 头复制与 runtime 布局 |
 | 固定请求状态 | Gated DeltaNet 层数及 conv/recurrent state shape |
+| 峰值执行显存 | 本轮 Batched Tokens、临时激活、通信 Buffer、Kernel Workspace 与 runtime 预留 |
 | 长上下文计算 | Full Attention 层的 `4×L_full×Nq×D×T` |
 | 带宽还是计算限制 | FLOPs、搬运字节、算术强度与硬件 Machine Balance |
 
@@ -625,4 +645,9 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 - [vLLM：TP 下每 Rank 的 K/V 头数，revision 653ebb5](https://github.com/vllm-project/vllm/blob/653ebb52dffd8b4653b430302473c771117529f1/vllm/config/model.py#L1501-L1516)
 - [NVIDIA TensorRT：FP32、FP16 与 BF16 的数值范围](https://docs.nvidia.com/deeplearning/tensorrt/latest/inference-library/accuracy-considerations.html)
 - [PyTorch：FP16/BF16 GEMM 的累加精度](https://docs.pytorch.org/docs/stable/notes/numerical_accuracy.html#reduced-precision-reduction-for-fp16-and-bf16-gemms)
+- [PyTorch：CUDA 显存管理与统计](https://docs.pytorch.org/docs/stable/notes/cuda.html#cuda-memory-management)
 - [Roofline：算术强度与硬件上界](https://dl.acm.org/doi/10.1145/1498765.1498785)
+
+---
+
+[上一课：多模态输入与视觉编码](07-multimodal-input.md) · [返回课程路线](../roadmap.md) · [下一课：推理优化的分析与评估](09-optimization-judgment.md)
