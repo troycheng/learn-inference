@@ -287,9 +287,10 @@ Decode 时通常不会每生成一个 token 就重跑视觉塔。首次处理图
 
 但这不等于不同请求自动复用同一张图片的视觉编码结果。跨请求复用还需要服务框架提供 Processor Cache 或 Encoder Cache。
 
-## 11. Qwen3.5 未启用 DeepStack
+<details>
+<summary>Qwen3.5 实现注记：当前检查点未启用 DeepStack</summary>
 
-Qwen3-VL 技术报告介绍过 DeepStack：把视觉塔多个中间层的特征注入语言模型的不同层。Qwen3.5-9B 和 Qwen3.5-35B-A3B 的当前配置中：
+Qwen3-VL 技术报告介绍过 DeepStack，它把视觉塔多个中间层的特征注入语言模型的不同层。Qwen3.5-9B 和 Qwen3.5-35B-A3B 的当前配置中：
 
 ```text
 deepstack_visual_indexes = []
@@ -297,7 +298,9 @@ deepstack_visual_indexes = []
 
 因此，这两个检查点的实际前向不应画成“多个视觉层分别注入语言 Decoder”。课程这里讲的是当前 Qwen3.5 配置启用的路径：视觉塔最终输出经过 Merger 后，替换输入序列中的图片占位位置。
 
-## 12. 多模态输入中的概念辨析
+</details>
+
+## 11. 多模态输入中的概念辨析
 
 ### 视觉位置与 Token ID
 
@@ -323,7 +326,7 @@ deepstack_visual_indexes = []
 
 还要知道采样帧数、FPS、每帧分辨率和空间合并后的网格大小。
 
-## 13. 练习
+## 12. 练习
 
 1. 图片是否先被识别成文字，再进入语言模型？
 2. 文本 Embedding 与视觉编码结果在进入 Decoder 前必须满足什么 shape 条件？
@@ -361,7 +364,7 @@ deepstack_visual_indexes = []
 
 </details>
 
-## 14. 综合练习：推导视觉输入的 shape
+## 13. 综合练习：推导视觉输入的 shape
 
 不看正文，写出一张图片的 shape 变化：
 
@@ -377,7 +380,7 @@ deepstack_visual_indexes = []
 → 使用语言侧 MRoPE 进入 Decoder
 ```
 
-[第 8 课](08-config-and-sizing.md)不再介绍新算子，而是练习阅读 `config.json`：从配置字段还原层数、参数量、缓存大小和一轮计算的大致数量级。
+[第 8 课](08-config-and-sizing.md)开始阅读 `config.json`，从配置字段还原层数、参数量、缓存大小和一轮计算的大致数量级。
 
 ## 参考资料
 

@@ -60,6 +60,12 @@ Chat Template 会改变实际送入模型的 token 序列，因此会影响：
 
 所以，接口中的 `content` 不是模型的完整输入。分析上下文长度或比对两个推理后端时，应比较应用模板后的 Token IDs。
 
+### 2.2 Base 模型与对话模型
+
+Base 模型和对话模型在推理时都预测下一个 token，但后训练方式和预期输入不同。Base 模型主要学习续写文本，通常用于继续训练、研究或文本补全；对话模型又学习了角色、指令和回答格式，运行时应使用与训练相匹配的 Chat Template。
+
+Chat Template 只负责整理输入格式，不会把 Base 模型自动变成会遵循指令的对话模型。Qwen3.5-9B-Base 为后续微调保留了对话控制 token，官方模型卡仍明确说明它不是面向直接对话的版本。本课的聊天案例使用 post-trained Qwen3.5-9B。
+
 ## 3. Tokenizer：从文本到 Token ID
 
 模型只能处理有限维度的数字张量，而自然语言可以不断出现新句子。Tokenizer 通过一个有限词表，把任意文本切成模型能够编号的片段。
@@ -487,7 +493,36 @@ token 尚未确定，第二步就缺少输入。因此，不能把同一个请�
 
 停止 token 可能由模型和生成配置共同决定，不应假设所有模型都只有同一个 EOS ID。
 
-## 9. Tokenizer Decode：从 Token ID 回到文本
+## 9. 训练时为何能同时计算多个位置
+
+自回归生成必须逐个确定未来 token，但训练一个因果语言模型时，整段正确文本已经给出。以四个 token 为例：
+
+```text
+[我, 喜欢, 学习, <eos>]
+```
+
+模型在每个位置预测紧接着出现的 token：
+
+| 正在计算的位置 | 该位置允许读取的内容 | 训练目标 |
+| ---: | --- | --- |
+| 0 | `我` | `喜欢` |
+| 1 | `我, 喜欢` | `学习` |
+| 2 | `我, 喜欢, 学习` | `<eos>` |
+
+代码中常把输入和标签写成同一条序列，再在计算损失时错开一位：位置 `t` 的 Logits 与真实的 `t+1` token 比较。因果遮罩保证位置 `t` 看不到右侧答案，所以没有泄漏未来信息。
+
+训练时，前三个位置所需的输入 token 全都已知，可以放进一次前向计算。每个位置能读取的范围不同，但不必等位置 0 先“生成”出 `喜欢`，因为正确的 `喜欢` 已经在训练样本里。这种使用真实历史 token 计算各位置预测的方式通常称为 Teacher Forcing。
+
+推理时没有真实的未来 token。第一个输出尚未确定，第二步就缺少输入，因此仍要把模型刚选出的 token 加回序列，再计算下一步：
+
+```text
+训练：未来答案已知，多个位置的预测损失可以在一次前向中计算
+推理：未来答案未知，必须先确定上一个 token，才能开始下一步
+```
+
+这里说的“同时计算”只针对一层中多个已知位置的批量计算。Decoder Layer 之间仍有先后依赖；Gated DeltaNet 的状态更新也仍有数学上的递归关系，只是可以用 Chunk Kernel 改写执行方式。
+
+## 10. Tokenizer Decode：从 Token ID 回到文本
 
 假设模型连续生成：
 
@@ -513,7 +548,7 @@ Embedding：Token IDs → 初始向量
 
 Embedding 向量是训练得到的一组连续数值，不能可靠地反查为文字。把向量找最近邻也不等于 Tokenizer Decode。
 
-## 10. 生成链路中的 shape 变化
+## 11. 生成链路中的 shape 变化
 
 以 Qwen3.5-9B 文本路径为例：
 
@@ -528,9 +563,9 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 实际 runtime 可能保留 `[B,1,V]`，也可能压缩成 `[B,V]`；可能计算全部位置的 Logits，也可能只计算需要的位置。这些实现差异不改变张量的语义。
 
-## 11. Embedding、LM Head 与采样算子
+## 12. Embedding、LM Head 与采样算子
 
-### 11.1 Embedding / Gather
+### 12.1 Embedding / Gather
 
 | 项目 | 内容 |
 | --- | --- |
@@ -541,7 +576,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 | 不变量 | batch 和 token 位置不变 |
 | 长期数据 | Embedding 权重 |
 
-### 11.2 Linear / LM Head
+### 12.2 Linear / LM Head
 
 | 项目 | 内容 |
 | --- | --- |
@@ -552,7 +587,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 | 不变量 | batch 不变 |
 | 长期数据 | LM Head 权重 |
 
-### 11.3 Softmax
+### 12.3 Softmax
 
 | 项目 | 内容 |
 | --- | --- |
@@ -563,7 +598,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 | 不变量 | shape 和候选排序不变 |
 | 长期数据 | 无可学习权重 |
 
-### 11.4 Argmax / Top-K / Sampling
+### 12.4 Argmax / Top-K / Sampling
 
 | 项目 | 内容 |
 | --- | --- |
@@ -574,7 +609,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 | 不变量 | 不改变模型词表中 ID 的含义 |
 | 长期数据 | 无模型权重 |
 
-## 12. 按生成阶段定位工程问题
+## 13. 按生成阶段定位工程问题
 
 有了这条链路，已经可以避免几类常见误判：
 
@@ -590,7 +625,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 以后再看到一种优化，可以先问清它改的是 Tokenizer、Linear、Cache、采样还是调度，再去核对相应的框架参数和指标。
 
-## 13. 常见概念辨析
+## 14. 常见概念辨析
 
 ### 汉字与 Token 的非一一对应关系
 
@@ -624,7 +659,7 @@ Embedding 的方向是 ID 到向量；Tokenizer Decode 才负责 ID 到文字。
 
 缓存复用已经发生的历史计算，不能提前知道尚未生成的 token。
 
-## 14. 练习
+## 15. 练习
 
 先自己回答，再阅读参考答案。
 
@@ -637,9 +672,10 @@ Embedding 的方向是 ID 到向量；Tokenizer Decode 才负责 ID 到文字。
 7. 给定 `logits=[-1,0,3,1]`，贪心选择哪个位置？必须计算 Softmax 吗？
 8. Logit 为 0 时，Softmax 概率一定为 0 吗？为什么？
 9. 采样时，概率为 83.1% 的 token 是否一定被选中？
-10. 为什么普通自回归模型不能把同一请求未来未知的 100 个 token 一次并行生成？
-11. Tokenizer 输出什么？Embedding 输出什么？
-12. 用自己的话复述：用户消息怎样变成下一个 token，再变成用户看到的文字？
+10. 训练时为什么能同时计算多个位置的预测，而普通生成仍要逐 token 进行？
+11. 为什么因果遮罩仍然不可缺少？
+12. Tokenizer 输出什么？Embedding 输出什么？
+13. 用自己的话复述：用户消息怎样变成下一个 token，再变成用户看到的文字？
 
 <details>
 <summary>查看参考答案</summary>
@@ -654,16 +690,17 @@ Embedding 的方向是 ID 到向量；Tokenizer Decode 才负责 ID 到文字。
 7. 选择第三个位置的最大 Logit `3`，0-based 索引为 2；贪心不必计算 Softmax。
 8. 不一定为 0；对有限 Logit 而言实际大于 0。因为 $e^0=1$，最终概率还取决于所有候选的分母。
 9. 不一定。采样是随机过程，83.1% 仍有 16.9% 的概率不被选中。Temperature、Top-K 和 Top-P 还可能先改变分布。
-10. 后一个未来 token 的条件分布依赖前一个 token 实际生成了什么。缓存可以复用历史计算，但不能消除这个逻辑依赖。
-11. Tokenizer 将文字转换为 Token IDs；Embedding 将 Token IDs 转换为 `[H]` 维初始向量。
-12. 用户消息先经 Chat Template 组织格式，再由 Tokenizer 转成 IDs；Embedding
+10. 训练样本已经给出真实的后续 token，各位置可用真实历史 token 在一次前向中计算；生成时未来 token 未知，下一步必须等待上一步的实际选择。
+11. 它阻止位置 `t` 读取右侧真实答案。没有因果遮罩，训练得到的预测建立在推理时不存在的信息上。
+12. Tokenizer 将文字转换为 Token IDs；Embedding 将 Token IDs 转换为 `[H]` 维初始向量。
+13. 用户消息先经 Chat Template 组织格式，再由 Tokenizer 转成 IDs；Embedding
     把 IDs 变成向量；Decoder 计算上下文 Hidden State；LM Head 得到全词表
     Logits；贪心或采样选出下一个 ID；Tokenizer Decode 把生成的 IDs 还原成
     文字。生成完整回答时重复这个过程。
 
 </details>
 
-## 15. 综合练习：复述下一个 Token 的生成过程
+## 16. 综合练习：复述下一个 Token 的生成过程
 
 不看正文，画出并解释下面这条链路：
 
@@ -697,6 +734,7 @@ Hidden State → 全词表分数：LM Head
 以下事实于 2026-08-08 按官方配置与实现复核：
 
 - [Qwen3.5-9B 官方模型说明，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/README.md)
+- [Qwen3.5-9B-Base 官方模型说明，revision 68c46c4](https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/68c46c4b3498877f3ef123c856ecfde50c39f404/README.md)
 - [Qwen3.5-9B `config.json`，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/config.json)
 - [Qwen3.5-9B `tokenizer_config.json`，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/tokenizer_config.json)
 - [Transformers：Qwen2 Byte-level BPE Tokenizer 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen2/tokenization_qwen2.py)
@@ -704,4 +742,5 @@ Hidden State → 全词表分数：LM Head
 - [Transformers：生成实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/generation/utils.py)
 - [Transformers：Top-P Logits Processor，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/generation/logits_process.py#L473-L539)
 - [Hugging Face：Causal Language Modeling](https://huggingface.co/docs/transformers/tasks/language_modeling)
+- [Attention Is All You Need：Decoder 遮罩与错位预测](https://arxiv.org/abs/1706.03762)
 - [PyTorch：Softmax](https://docs.pytorch.org/docs/stable/generated/torch.nn.Softmax.html)

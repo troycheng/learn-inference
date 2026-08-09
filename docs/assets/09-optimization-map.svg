@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 880" width="1200" height="880" role="img" aria-labelledby="optimization-map-title optimization-map-desc">
   <title id="optimization-map-title">常见优化分别改了什么</title>
-  <desc id="optimization-map-desc">按权重、全注意力、专家计算、服务调度和目标模型验证五类，列出常见优化直接减少的工作以及新增开销。</desc>
+  <desc id="optimization-map-desc">按权重与模型切分、全注意力、专家计算、服务调度和目标模型验证五类，标出常见优化直接改变的工作。</desc>
   <style>
     text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei','Microsoft JhengHei','SimHei',sans-serif;fill:#111827}
     .title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.row-title{font-size:19px;font-weight:700}.method{font-size:16px;font-weight:700}.detail{font-size:14px;fill:#4b5563}.footer{font-size:17px;font-weight:600;fill:#fff;text-anchor:middle}
@@ -11,11 +11,13 @@
     <text x="48" y="90" class="sub">先写清直接改动，再计算整个请求能快多少。</text>
   </g>
 
-  <g data-graph-role="node" aria-label="权重与 Linear">
+  <g data-graph-role="node" aria-label="权重与模型切分">
     <rect x="48" y="130" width="1104" height="112" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
-    <text x="78" y="167" class="row-title">权重与 Linear</text>
-    <text x="78" y="203" class="method">权重量化</text><text x="205" y="203" class="detail">减少权重字节</text>
-    <text x="520" y="203" class="method">TP</text><text x="565" y="203" class="detail">切分同一层矩阵，增加集合通信</text>
+    <text x="78" y="167" class="row-title">权重与模型切分</text>
+    <text x="78" y="203" class="method">权重量化</text><text x="175" y="203" class="detail">减少权重字节</text>
+    <text x="360" y="203" class="method">TP</text><text x="400" y="203" class="detail">切分同一层</text>
+    <text x="610" y="203" class="method">DP</text><text x="650" y="203" class="detail">复制模型，分配请求</text>
+    <text x="860" y="203" class="method">PP</text><text x="900" y="203" class="detail">按层切分阶段</text>
   </g>
 
   <g data-graph-role="node" aria-label="Full Attention">
@@ -31,7 +33,7 @@
     <text x="78" y="431" class="row-title">MoE Expert</text>
     <text x="78" y="467" class="method">EP</text><text x="120" y="467" class="detail">按 Expert ID 分布权重</text>
     <text x="430" y="467" class="method">Dispatch / Combine</text><text x="610" y="467" class="detail">分发 token，再收回结果</text>
-    <text x="880" y="467" class="method">Grouped GEMM</text><text x="1015" y="467" class="detail">组织多组 Expert 计算</text>
+    <text x="820" y="467" class="method">Grouped GEMM</text><text x="955" y="467" class="detail">组织 Expert 计算</text>
   </g>
 
   <g data-graph-role="node" aria-label="服务调度">

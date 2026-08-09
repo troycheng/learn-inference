@@ -1,15 +1,16 @@
 # 第 8 课：模型配置与资源估算
 
-拿到一个新模型，名称只能告诉我们大致规模。要判断它能否放进显存、每个 token 要经过多少计算、长上下文会增加多少状态，还得读 `config.json`。先回答四个问题：
+拿到一个新模型，名称只能告诉我们大致规模。要判断它能否放进显存、每个 token 要经过多少计算、长上下文会增加多少状态，还得读 `config.json`。先回答五个问题：
 
 1. 模型由哪些层组成？
-2. 权重为什么占这么多空间？
-3. 一个 token 实际经过多少计算？
-4. 一个请求还要保存多少运行状态？
+2. 权重和状态用什么 dtype 保存？
+3. 计算和累加又使用什么 dtype？
+4. 一个 token 实际经过多少计算？
+5. 一个请求还要保存多少运行状态？
 
-这四个问题不能只靠模型名称回答。“9B”“35B”“A3B”都是便于交流的取整名，不是完整的显存和计算说明。
+这五个问题都不能只靠模型名称回答。“9B”“35B”“A3B”都是便于交流的取整名，不是完整的显存和计算说明。
 
-这一课用两个真实检查点对账：
+后面的计算使用两个真实检查点：
 
 ```text
 Qwen3.5-9B：       Dense FFN，32 个语言 Decoder Layer
@@ -51,7 +52,7 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 | `K` | `num_experts_per_tok` | 每 token 选几个 Routed Experts |
 | `Imoe` | `moe_intermediate_size` | 每个 Expert 的中间宽度 |
 
-![从配置字段回答四类工程问题](../assets/08-config-to-questions.svg)
+![从配置字段推导权重、计算、请求状态和并行切分](../assets/08-config-to-questions.svg?rev=20260809-1)
 
 下面是两个模型的主配置：
 
@@ -103,9 +104,36 @@ FLOPs：这次前向做了多少次浮点运算
 
 这些数字回答的是不同问题，不能互相替代。
 
-## 3. Qwen3.5-9B 参数量计算
+## 3. 保存、计算与累加使用的 dtype
 
-### 3.1 Embedding 表与 LM Head
+`dtype` 表示一个数采用什么数据格式。工程讨论中说“这个模型是 BF16”仍不够精确，因为保存权重、送入算子和累加部分和可能使用不同格式。
+
+| 口径 | 问的是什么 | 直接影响 |
+| --- | --- | --- |
+| 保存 dtype | 权重、KV Cache 或状态在显存中怎样编码 | 容量和读取字节数 |
+| 计算 dtype | Kernel 乘法两侧实际使用什么格式 | 可用硬件单元、吞吐和精度 |
+| 累加 dtype | 点积中的许多乘积用什么格式求和 | 数值范围、误差和部分性能 |
+| 输出 dtype | 算子结果最终以什么格式写回 | 后续算子的输入和显存流量 |
+
+常见格式的理想存储大小如下：
+
+| 格式 | 每个元素 | 浮点范围与精度的直观区别 |
+| --- | ---: | --- |
+| FP32 | 4 Byte | 8 位指数、23 位尾数，范围和精度都较高 |
+| BF16 | 2 Byte | 8 位指数、7 位尾数，范围接近 FP32，精细程度较低 |
+| FP16 | 2 Byte | 5 位指数、10 位尾数，精细程度高于 BF16，但可表示范围更窄 |
+| INT8 | 1 Byte | 整数编码，需要 Scale 把整数映射回实数范围 |
+| INT4 | 理想 0.5 Byte | 低比特整数编码，通常还要分组 Scale、打包和对齐 |
+
+BF16 和 FP16 都占 2 Byte，却不能只按容量判断谁更合适。FP16 的最大有限值是 65,504，较大的中间值更容易溢出；BF16 保留了与 FP32 相同的指数位数，范围更大，但尾数更短。
+
+一个常见的 BF16 Linear 可以是：权重和激活以 BF16 输入，乘法使用低精度硬件路径，许多乘积用 FP32 累加，最后再把结果写成 BF16。具体行为取决于 GPU、Kernel 和框架设置，不能从检查点 dtype 直接推出。
+
+Weight-only INT4 也不表示整条链路都在做 INT4 整数运算。权重可以用 INT4 保存，激活仍是 BF16；Kernel 读取打包权重和 Scale，在片上完成反量化或低比特乘法，再按实现选择累加格式。讨论量化时至少要把这四个 dtype 口径写清楚。
+
+## 4. Qwen3.5-9B 参数量计算
+
+### 4.1 Embedding 表与 LM Head
 
 输入 Embedding 表的 shape 是 `[V,H]`：
 
@@ -130,7 +158,7 @@ LM Head：        Hidden State 与完整词表矩阵相乘，得到 V 个 Logits
 
 这已经说明“参数数相同”不代表“每 token 计算量相同”。
 
-### 3.2 Dense SwiGLU FFN
+### 4.2 Dense SwiGLU FFN
 
 每层 FFN 有三张矩阵：
 
@@ -154,7 +182,7 @@ $$
 
 32 层合计约 4.832B。Dense 模型的大部分 Decoder 参数在 FFN，不在 RMSNorm 或残差连接。
 
-### 3.3 Full Attention 投影
+### 4.3 Full Attention 投影
 
 普通 GQA 通常会数 Q、K、V 和输出投影。Qwen3.5 还为 Attention 输出生成一组门控，因此 `q_proj` 的输出宽度是普通 Q 宽度的两倍：
 
@@ -166,7 +194,7 @@ $$
 
 如果照搬普通 Transformer 的 `q_proj:[H,H]` 公式，会少算 Qwen3.5 的 Attention 输出门控。
 
-### 3.4 Gated DeltaNet 投影
+### 4.4 Gated DeltaNet 投影
 
 第 5 课已经拆过一个 Gated DeltaNet 层。9B 中：
 
@@ -178,7 +206,7 @@ Q/K/V 卷积通道：2048+2048+4096 = 8192
 
 再加输出门控、状态更新系数、输出投影和深度卷积，按官方实现逐项相加，每层约 67.40M 参数，24 层约 1.618B。
 
-### 3.5 检查点参数对账
+### 4.5 检查点参数对账
 
 MTP 是多 Token 预测（Multi-Token Prediction）辅助模块。检查点会保存它的权重；普通单 token 自回归生成可以不执行它，runtime 只有在启用相应推测路径时才把它作为 Drafter。这里把 MTP 列入总数，是因为它属于检查点，不表示每个 token 都会经过它。
 
@@ -210,7 +238,7 @@ $$
 
 Qwen3.5-9B 的实际检查点约有 9.653B 参数，不是刚好 9,000,000,000。直接把总字节数除以 2，会把每个 FP32 参数误算成两个 BF16 参数。
 
-## 4. Qwen3.5-35B-A3B 的总参数与激活参数
+## 5. Qwen3.5-35B-A3B 的总参数与激活参数
 
 Qwen3.5-35B-A3B 的 `H=2048`，单个 SwiGLU Expert 中间宽度为 512：
 
@@ -255,7 +283,7 @@ $$
 
 它描述的是每 token 激活参数的取整口径。
 
-## 5. 权重容量估算
+## 6. 权重容量估算
 
 若所有参数使用同一种 dtype，理想权重有效载荷为：
 
@@ -283,7 +311,7 @@ Kernel Workspace
 
 还要确认运行时是否加载视觉塔和 MTP 辅助层。检查点总大小、进程加载权重、单 token 激活权重，是三个不同口径。
 
-## 6. KV Cache 容量估算
+## 7. KV Cache 容量估算
 
 等长 Batch 的逻辑 KV 有效载荷为：
 
@@ -346,7 +374,7 @@ $$
 
 35B-A3B 的每 Rank KV 是 `2×10×1×256×2=10 KiB`，不是 `20 KiB÷8=2.5 KiB`。复制后的跨 Rank 合计可以大于模型逻辑有效载荷。部署时还要核对 runtime 的 Cache 布局、TP 兼容条件和 KV dtype，不能只按设备数平均分配。
 
-## 7. Gated DeltaNet 请求状态估算
+## 8. Gated DeltaNet 请求状态估算
 
 每个 Gated DeltaNet 层保存：
 
@@ -374,7 +402,7 @@ Transformers 参考实现中，递归状态用 FP32，卷积状态沿用模型�
 
 KV 随每个请求的长度 `T` 线性增长；Gated DeltaNet 状态 shape 固定，但两者都随并发请求数增长。高性能 runtime 可能使用不同 dtype、布局或内存复用，部署前仍要检查真实分配。
 
-## 8. Linear FLOPs 估算
+## 9. Linear FLOPs 估算
 
 输入 `[M,K]` 乘权重 `[K,N]`：
 
@@ -415,7 +443,7 @@ Qwen3.5-35B-A3B： 约 5.9 GFLOPs/token
 
 这两个数没有包括 Full Attention 读取历史 K/V 的长度项、Gated DeltaNet 状态计算中的非 Linear 运算、采样、通信和 Kernel 调度。
 
-## 9. Attention 的上下文长度项
+## 10. Attention 的上下文长度项
 
 Decode 时，一个 Query 需要读取长度为 `T` 的历史 K/V。单个 Full Attention 层的 QK 和 AV 约为：
 
@@ -445,7 +473,7 @@ $$
 
 Prefill 中，Linear 和 FFN 主要随 `T` 线性增加；标准 Full Attention 的 QK/AV 总运算随 `T²` 增加。FlashAttention 可以减少中间数据读写，不会把 Full Attention 的数学长度依赖改成常数。
 
-## 10. 算术强度与 Roofline
+## 11. 算术强度与 Roofline
 
 FLOPs 只描述计算量，不能单独判断延迟。一个算子至少有两个硬件下界：
 
@@ -489,7 +517,7 @@ $$
 
 这个例子只给出数量级。TP 下应换成每 Rank 的物理 KV 字节；最终判断还要看实际 Kernel 时间、有效带宽和端到端指标。
 
-## 11. “两倍参数量”估算法的适用范围
+## 12. “两倍参数量”估算法的适用范围
 
 “单 token 前向约等于两倍参数量 FLOPs”只在大多数活跃 Linear 权重恰好使用一次时，适合作为粗略估算。Qwen3.5 有多个例外：
 
@@ -510,7 +538,7 @@ $$
 → 再结合 Batch、通信和 Kernel 判断时间
 ```
 
-## 12. 从配置推导工程约束
+## 13. 从配置推导工程约束
 
 ### 单卡权重容量
 
@@ -528,49 +556,37 @@ $$
 
 Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV 和 KV 读取随上下文长度增长。两者的优化方向不同。
 
-## 13. 练习
+## 14. 练习
 
-1. `H=4096` 表示什么？它是否等于 Attention 头宽度？
-2. 为什么要从 `layer_types` 数 Full Attention 层？
-3. `V=248320,H=4096` 时，Embedding 参数数是多少？
-4. `tie_word_embeddings=false` 对参数量有什么影响？
-5. Dense SwiGLU 为什么是 `3HI` 个主要参数？
-6. 为什么输入 Embedding 与同大小 LM Head 的 FLOPs 不同？
-7. 35B-A3B 的 3B Active 是否表示只需保存 3B 权重？
-8. INT4 理想容量为什么通常小于或等于实际量化模型占用？
-9. 9B 为什么每缓存一个位置需要 32 KiB KV？
-10. 35B-A3B 权重更大，为什么每位置 KV 反而更小？
-11. 35B-A3B 在 vLLM TP=8 下，为什么每 Rank 的 BF16 KV 是 10 KiB，而不是 20 KiB 除以 8？
-12. Gated DeltaNet 状态怎样随序列长度和并发数变化？
-13. Linear `[M,K]×[K,N]` 的 FLOPs 近似是多少？
-14. 为什么 Attention 长度项不适合用模型参数量估算？
-15. 在本节的简化假设下，Batch=1 的 BF16 Linear 为什么接近 1 FLOP/Byte？Batch 增大会怎样改变它？
-16. FLOPs 更少是否必然表示延迟按同样比例下降？
+1. “BF16 模型”为什么不足以说明一层 Linear 的实际数值路径？至少还要确认哪几种 dtype？
+2. `V=248320,H=4096` 时，Embedding 有多少参数？若全部按 BF16 保存，理想有效载荷是多少？
+3. `tie_word_embeddings=false` 会怎样改变参数量？为什么同样大小的 Embedding 和 LM Head 计算量不同？
+4. 35B-A3B 的 3B Active 是否表示只需保存 3B 权重？
+5. 根据 `Lfull=8,Nkv=4,D=256`，推导 9B 的 BF16 KV 为什么是 32 KiB/位置。
+6. 35B-A3B 在 vLLM TP=8 下，为什么每 Rank 的 BF16 KV 是 10 KiB，而不是 20 KiB 除以 8？
+7. Gated DeltaNet 状态怎样随序列长度和并发数变化？
+8. Linear `[M,K]×[K,N]` 的 FLOPs 近似是多少？Batch 从 1 增大时，为什么算术强度通常会上升？
+9. 为什么 Attention 的上下文长度项不能由参数量推出？
+10. 如果一个新检查点总参数较少，是否足以断定它显存更低、Decode 更快？还缺哪些信息？
 
 <details>
 <summary>查看参考答案</summary>
 
 
-1. 每个语言位置的 Hidden State 宽度；不等于，Qwen3.5 的头宽度 `D=256`。
-2. 混合模型只有部分层保存 KV；间隔字段不能直接当作层数。
-3. `248320×4096=1,017,118,720`。
-4. LM Head 另有一份独立的 `[V,H]` 权重。
-5. gate、up、down 三张矩阵分别是 `I×H`、`I×H`、`H×I`。
-6. 输入 Embedding 只查当前 Token ID 的行；LM Head 要计算完整词表 Logits。
-7. 不是。全部专家仍需由设备保存，3B 是每 token 激活参数的取整口径。
-8. 实际还有 Scale、元数据、对齐、未量化层和 Workspace。
-9. `2×8×4×256×2=32768 Byte`。
-10. 它的 `Nkv=2`，而 9B 的 `Nkv=4`。
-11. `Nkv=2<TP=8`，vLLM 会复制 K/V 头，让每 Rank 至少保存一个；所以是 `2×10×1×256×2=10 KiB`。
-12. shape 不随长度增长，但随并发请求数增长。
-13. 约 `2MKN`。
-14. QK/AV 会随历史长度 `T` 增长，但没有新增模型参数。
-15. 一次读入约 `2KN` Byte 权重并完成约 `2KN` FLOPs；Batch 增大后，同一份权重可以服务更多 token，算术强度通常上升。
-16. 不必然。还要看权重和状态读写、Batch、Kernel 效率、通信与硬件利用率。
+1. 检查点 dtype 只说明保存格式。还要确认权重和激活的计算 dtype、累加 dtype，以及结果写回 dtype。
+2. 参数数是 `248320×4096=1,017,118,720`；BF16 理想有效载荷为 `2,034,237,440 Byte`，约 1.89 GiB。
+3. LM Head 另有一份独立的 `[V,H]` 权重。Embedding 只查当前 ID 对应的行；LM Head 要计算完整词表的 Logits。
+4. 不是。全部专家仍要保存，3B 是每 token 激活参数的取整口径。
+5. `2×8×4×256×2=32768 Byte=32 KiB`，最前面的 2 表示 K 和 V 两份，最后的 2 是 BF16 每元素字节数。
+6. `Nkv=2<TP=8`，固定版本 vLLM 会复制 K/V 头，让每 Rank 至少保存一个，所以是 `2×10×1×256×2=10 KiB`。
+7. 每个请求的状态 shape 不随序列长度增长，但总量随并发请求数增长。
+8. 约 `2MKN`。Batch 增大后，同一份权重有机会服务更多输入，FLOPs 随 `M` 增长，而权重读取可以复用。
+9. QK/AV 和 KV 读取随历史长度 `T` 增长，却没有新增模型参数。
+10. 不足。还要看 dtype、实际加载模块、Dense 或 MoE 的激活路径、KV 和固定状态、上下文长度、Batch、Kernel 与通信。
 
 </details>
 
-## 14. 综合练习：建立模型资源清单
+## 15. 综合练习：建立模型资源清单
 
 拿到一个新模型配置，先完成下面这张表：
 
@@ -579,6 +595,7 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 | Dense 还是 MoE | `intermediate_size`、`num_experts`、`num_experts_per_tok` |
 | 层如何排列 | `layer_types` |
 | 权重数量级 | `V×H`、每层 Linear、层数、全部 Expert |
+| 数值格式 | 权重、激活、累加、输出和 Cache 各自的 dtype |
 | 单 token 激活量 | 实际执行的 Dense 或 Top-K 加 Shared Expert |
 | KV 每位置大小 | `Lfull`、`Nkv`、`D`、缓存 dtype |
 | TP 后每 Rank KV | `Nkv,rank`、KV 头复制与 runtime 布局 |
@@ -586,7 +603,7 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 | 长上下文计算 | Full Attention 层的 `4LfullNqDT` |
 | 带宽还是计算限制 | FLOPs、搬运字节、算术强度与硬件 Machine Balance |
 
-[第 9 课](09-optimization-judgment.md)会逐项分析量化、FlashAttention、Prefix Cache、Batching、TP、EP 和推测解码：它们减少了哪些计算或数据搬运，又增加了哪些成本，以及应当用什么指标验证。
+[第 9 课](09-optimization-judgment.md)会分析量化、FlashAttention、Prefix Cache、Batching、DP、TP、PP、EP 和推测解码：它们减少了哪些工作，又增加了哪些成本，以及怎样估算端到端收益上限。
 
 ## 参考资料
 
@@ -604,4 +621,6 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 - [Transformers：Qwen3.5 MoE 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5_moe/modeling_qwen3_5_moe.py)
 - [Transformers：Cache 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/cache_utils.py)
 - [vLLM：TP 下每 Rank 的 K/V 头数，revision 653ebb5](https://github.com/vllm-project/vllm/blob/653ebb52dffd8b4653b430302473c771117529f1/vllm/config/model.py#L1501-L1516)
+- [NVIDIA TensorRT：FP32、FP16 与 BF16 的数值范围](https://docs.nvidia.com/deeplearning/tensorrt/latest/inference-library/accuracy-considerations.html)
+- [PyTorch：FP16/BF16 GEMM 的累加精度](https://docs.pytorch.org/docs/stable/notes/numerical_accuracy.html#reduced-precision-reduction-for-fp16-and-bf16-gemms)
 - [Roofline：算术强度与硬件上界](https://dl.acm.org/doi/10.1145/1498765.1498785)

@@ -42,6 +42,8 @@
 | 正文用词 | 英文或代码名 | 简短含义 |
 | --- | --- | --- |
 | 对话模板 | Chat Template | 把角色、消息边界和生成起点组织成模型格式 |
+| Base 模型 | Base Model | 只经过预训练、主要用于续写、研究或继续训练的基础模型 |
+| 对话模型 | Chat / Post-trained Model | 经过指令或偏好后训练、按指定对话格式响应的模型 |
 | 分词器 | Tokenizer | 在文字与 Token ID 之间转换 |
 | token | Token | Tokenizer 使用的文本片段或特殊符号 |
 | Token ID | Token ID / `input_ids` | token 在词表中的整数编号 |
@@ -56,6 +58,7 @@
 | 温度 | Temperature | 缩放 Logit 差距，改变概率分布的集中程度 |
 | 最高 K 项 | Top-K | 只保留分数最高的 K 个候选 |
 | 累计概率筛选 | Top-P | 保留累计概率达到阈值所需的最小候选集合 |
+| 教师强制 | Teacher Forcing | 训练时使用样本中的真实历史 token 计算后续位置预测，而不是把模型自己的错误输出继续喂回去 |
 
 ## Decoder Layer
 
@@ -89,6 +92,8 @@
 | 激活参数 | Active Parameters | 一个 token 本次前向实际使用的参数口径 |
 | 专家并行 | Expert Parallelism / EP | 按 Expert ID 把专家权重和计算分到不同设备 |
 | 张量并行 | Tensor Parallelism / TP | 切分一个 Linear 或 Expert 内部的权重矩阵并行计算 |
+| 数据并行 | Data Parallelism / DP | 在不同设备上复制完整模型，并把独立请求或 Batch 分给不同副本 |
+| 流水线并行 | Pipeline Parallelism / PP | 按模型深度把连续 Decoder Layer 分到不同设备阶段 |
 
 ## Attention
 
@@ -157,6 +162,9 @@
 | --- | --- | --- |
 | 参数数量 | Parameter Count | 模型中可学习数字的总数，不包含请求运行状态 |
 | 权重有效载荷 | Weight Payload | 参数按指定 dtype 编码后的理想数据字节数 |
+| 保存 dtype | Storage dtype | 权重、Cache 或状态写入显存时使用的数据格式 |
+| 计算 dtype | Compute dtype | Kernel 乘法等主要计算实际使用的数据格式 |
+| 累加 dtype | Accumulation dtype | 点积中许多乘积求和时使用的数据格式 |
 | 浮点运算次数 | Floating-Point Operations / FLOPs | 一次计算执行的浮点加、乘等运算数量 |
 | 每秒浮点运算次数 | FLOPs per Second / FLOPS | 硬件或程序每秒完成浮点运算的速率 |
 | 临时激活 | Temporary Activations | 算子执行期间产生、随后可以释放或复用的中间张量 |
@@ -182,6 +190,7 @@
 | 接受长度 | Acceptance Length | 一轮推测解码中被目标模型连续接受的候选 token 数 |
 | 服务等级目标 | Service Level Objective / SLO | 对延迟、吞吐或可用性等指标设定的目标边界 |
 | 回退路径 | Fallback | 预期优化 Kernel 不可用时转而执行的通用或较慢实现 |
+| Amdahl 定律 | Amdahl's Law | 根据被优化部分的耗时占比，估算局部加速能够带来的端到端上限 |
 | 输入 token 吞吐 | Input Token Throughput | 测量窗口内完成请求的 Prompt token 总数除以窗口时间 |
 | 输出 token 吞吐 | Output Token Throughput | 测量窗口内完成请求的输出 token 总数除以窗口时间 |
 | 有效请求吞吐 | Goodput | 测量窗口内满足预先指定 SLO 的完成请求数除以窗口时间；若工具采用其他口径必须注明 |
