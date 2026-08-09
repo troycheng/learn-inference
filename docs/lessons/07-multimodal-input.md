@@ -240,6 +240,8 @@ position_ids shape = [3,B,T]
 向下一格：time=0, height=1, width=0
 ```
 
+![一条视觉向量在 MRoPE 中有时间、高度和宽度三组位置编号](../assets/07-mrope-grid.svg)
+
 处理器还会把这组局部坐标接到前面的文本位置之后，因此完整 `position_ids` 中的绝对编号可能带有偏移；图中 `0` 只用于说明图片内部三个轴怎样变化。
 
 这些编号作用到 Attention 的 Q/K RoPE 上。第 3 课已经说明：RoPE 让 Q/K 点积中的位置影响依赖两个位置的相对距离。MRoPE 沿用这个思路，只是把旋转维度分给时间、高度和宽度三个轴。

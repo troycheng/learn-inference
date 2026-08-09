@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 760" width="1400" height="760" role="img" aria-labelledby="title desc">
+  <title id="title">视觉位置在 MRoPE 中有时间、高度和宽度三组编号</title>
+  <desc id="desc">一个简化的三乘三视觉网格。每个格子仍是一条视觉向量，但同时带有时间、高度和宽度三组位置编号，供语言 Decoder 的 Q 和 K 使用。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
+  </defs>
+  <style>
+    text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}
+    .title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.panel{font-size:22px;font-weight:700;text-anchor:middle}.h{font-size:18px;font-weight:700;text-anchor:middle}.t{font-size:15px;text-anchor:middle}.s{font-size:14px;fill:#6b7280;text-anchor:middle}.coord{font-size:14px;text-anchor:middle;font-family:Menlo,Consolas,monospace}.line{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#arrow)}
+  </style>
+  <rect width="1400" height="760" fill="#ffffff"/>
+  <text x="55" y="58" class="title">一个视觉位置，三组位置编号</text>
+  <text x="55" y="92" class="sub">MRoPE 没有复制视觉向量；时间、高度和宽度编号共同作用在同一位置的 Q/K 上。</text>
+
+  <rect x="55" y="135" width="610" height="500" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="360" y="180" class="panel">合并后的视觉网格（3×3 示意）</text>
+  <text x="360" y="215" class="s">静态图片的 time 不变；向下 height 增加，向右 width 增加</text>
+
+  <path d="M180 270 H520" class="line"/><text x="350" y="255" class="s">width 增加</text>
+  <path d="M145 300 V540" class="line"/><text x="105" y="420" class="s" transform="rotate(-90 105 420)">height 增加</text>
+
+  <g>
+    <rect x="180" y="285" width="110" height="85" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="235" y="333" class="coord">(0,0,0)</text>
+    <rect x="290" y="285" width="110" height="85" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="345" y="333" class="coord">(0,0,1)</text>
+    <rect x="400" y="285" width="110" height="85" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="455" y="333" class="coord">(0,0,2)</text>
+    <rect x="180" y="370" width="110" height="85" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="235" y="418" class="coord">(0,1,0)</text>
+    <rect x="290" y="370" width="110" height="85" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="345" y="418" class="coord">(0,1,1)</text>
+    <rect x="400" y="370" width="110" height="85" fill="#ffedd5" stroke="#f97316" stroke-width="3"/><text x="455" y="410" class="coord">(0,1,2)</text><text x="455" y="435" class="s">当前格</text>
+    <rect x="180" y="455" width="110" height="85" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="235" y="503" class="coord">(0,2,0)</text>
+    <rect x="290" y="455" width="110" height="85" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="345" y="503" class="coord">(0,2,1)</text>
+    <rect x="400" y="455" width="110" height="85" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="455" y="503" class="coord">(0,2,2)</text>
+  </g>
+  <text x="345" y="585" class="s">括号依次是 (time, height, width)</text>
+
+  <path d="M510 412 H745" class="line"/>
+  <rect x="745" y="160" width="600" height="475" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="1045" y="205" class="panel">同一个序列位置怎样进入 Decoder</text>
+
+  <rect x="810" y="250" width="470" height="80" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="1045" y="282" class="h">一条视觉向量 [H]</text><text x="1045" y="311" class="s">没有因为三个坐标复制成三条向量</text>
+  <path d="M1045 330 V380" class="line"/>
+  <rect x="810" y="380" width="470" height="145" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="1045" y="416" class="h">这条向量对应的位置编号</text>
+  <text x="905" y="463" class="t">time = 0</text><text x="1045" y="463" class="t">height = 1</text><text x="1190" y="463" class="t">width = 2</text>
+  <text x="1045" y="500" class="s">三组编号分配到 Q/K 的不同旋转频率槽</text>
+  <path d="M1045 525 V565" class="line"/>
+  <rect x="865" y="565" width="360" height="50" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+  <text x="1045" y="597" class="h">仍然只占一个 Decoder 位置</text>
+
+  <rect x="55" y="675" width="1290" height="45" rx="10" fill="#f1f5f9"/>
+  <text x="700" y="704" class="sub" text-anchor="middle">position_ids 的 shape 是 [3,B,T]：三组编号，作用于同一批 T 个序列位置。</text>
+</svg>
