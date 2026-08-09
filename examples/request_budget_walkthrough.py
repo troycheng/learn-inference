@@ -10,6 +10,7 @@ current_max_output_tokens = 1024
 target_prompt_tokens = 65536
 target_max_output_tokens = 4096
 concurrency = 32
+replica_count = 2
 full_attention_layers = 8
 global_kv_heads = 4
 head_dimension = 256
@@ -49,6 +50,9 @@ current_rank_kv_per_request = current_context_tokens * kv_bytes_per_rank_per_pos
 target_rank_kv_per_request = target_context_tokens * kv_bytes_per_rank_per_position
 current_rank_kv_for_concurrency = concurrency * current_rank_kv_per_request
 target_rank_kv_for_concurrency = concurrency * target_rank_kv_per_request
+target_rank_kv_with_two_replicas = (
+    concurrency // replica_count * target_rank_kv_per_request
+)
 
 print(f"现网上下文上限：       {current_context_tokens} 个位置")
 print(f"目标上下文上限：       {target_context_tokens} 个位置")
@@ -70,6 +74,10 @@ print(
     f"目标并发 {concurrency} 的每 Rank KV： "
     f"{target_rank_kv_for_concurrency / GIB:.2f} GiB"
 )
+print(
+    f"两个 TP=8 副本平均分流后的每 Rank KV： "
+    f"{target_rank_kv_with_two_replicas / GIB:.2f} GiB"
+)
 
 assert current_context_tokens == 9216
 assert target_context_tokens == 69632
@@ -85,3 +93,4 @@ assert current_rank_kv_per_request == 72 * MIB
 assert target_rank_kv_per_request == 544 * MIB
 assert current_rank_kv_for_concurrency == int(2.25 * GIB)
 assert target_rank_kv_for_concurrency == 17 * GIB
+assert target_rank_kv_with_two_replicas == int(8.5 * GIB)

@@ -3,9 +3,13 @@
 [![Course checks](https://github.com/troycheng/learn-inference/actions/workflows/course-checks.yml/badge.svg)](https://github.com/troycheng/learn-inference/actions/workflows/course-checks.yml)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](LICENSE)
 
-这门课面向已经参与大模型推理系统研发、希望补齐模型原理的工程师。课程不从框架参数讲起，而是沿一次生成过程解释文字怎样变成 token、token 怎样经过 Decoder、模型怎样读取前文，以及自回归生成为何逐 token 推进。
+这门课面向已经参与大模型推理系统研发、希望补齐模型原理的工程师。课程沿一次生成过程展开，解释文字怎样变成 token、token 怎样经过 Decoder、模型怎样读取前文，以及自回归生成为何逐 token 推进。配置字段和框架行为会在对应的模型计算讲清以后引入。
 
-QKV、RoPE、KV Cache、MoE 等概念会先放回模型计算，再用于分析显存、吞吐和首 token 延迟。学完后，你应该能指出一项优化改变了哪些模型层、张量或请求状态，并判断它在当前工作负载下是否值得验证。
+课程先说明 QKV、RoPE、KV Cache、MoE 在模型哪一步出现、怎样计算、会留下哪些状态，再用这些结论分析显存、吞吐和首 token 延迟。学完后，你应该能指出一项优化改变了哪些模型层、张量或请求状态，并判断它在当前工作负载下是否值得验证。
+
+![课程分为计算主线、现代模型结构、资源与优化评估三个阶段](docs/assets/course-roadmap.svg)
+
+对张量和矩阵运算还不熟悉，可以从[第 0 课](docs/lessons/00-math-and-tensors.md)开始；已经能根据算子推导 shape，可以直接阅读[第 1 课](docs/lessons/01-text-to-next-token.md)。
 
 ## 学习目标
 
@@ -22,11 +26,7 @@ QKV、RoPE、KV Cache、MoE 等概念会先放回模型计算，再用于分析�
 
 ## 课程主线
 
-```text
-用户输入 → 模型输入向量 → 多层 Decoder → Logits → 下一个 token → 下一轮 Decode
-```
-
-前几课先讲文字生成，第 7 课再加入图片和视频。两类输入最终都会变成与语言模型 Hidden Size 对齐的向量，进入同一个 Decoder 主干。
+第 1 至第 4 课沿着“用户输入 → 模型输入向量 → 多层 Decoder → Logits → 下一个 token → 下一轮 Decode”展开。第 7 课再加入图片和视频。两类输入最终都会变成与语言模型 Hidden Size 对齐的向量，进入同一个 Decoder 主干。
 
 需要复习完整数据流、Decoder Layer 内部结构和两类请求状态时，可以打开带图的[大模型推理链路速查](docs/inference-map.md)。
 

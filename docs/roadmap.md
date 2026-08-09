@@ -17,7 +17,7 @@
 
 ## 课程依赖关系
 
-推理系统里的很多概念互相依赖。还没分清 Token ID、Embedding 和 Hidden State，就很难理解 Q、K、V 从哪里来；没算过 Attention，也无法真正理解 KV Cache 保存了什么；不知道 Dense 和 MoE 的结构差异，就无法判断 TP、EP 或量化改变了哪部分成本。
+推理系统里的很多概念互相依赖。还没分清 Token ID、Embedding 和 Hidden State，就很难理解 Q、K、V 从哪里来；没算过 Attention，也很难说明 KV Cache 保存了什么；不知道 Dense 和 MoE 的结构差异，就无法判断 TP、EP 或量化改变了哪部分成本。
 
 因此，第 0 至第 4 课是一条连续主线：
 

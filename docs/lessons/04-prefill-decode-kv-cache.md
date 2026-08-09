@@ -18,8 +18,6 @@ y1  y2  y3
 
 ![一次请求中的 Prefill 和 Decode](../assets/04-generation-timeline.svg)
 
-理解这条生成链路，需要弄清四件事：Prefill 做了什么，Decode 为什么只能逐 token 推进，KV Cache 省掉了哪些重复计算，以及多个请求怎样进入同一轮执行。
-
 ## 1. Prefill 与 Decode 的阶段划分
 
 一次普通自回归生成通常分成 Prefill 和 Decode 两个阶段。
