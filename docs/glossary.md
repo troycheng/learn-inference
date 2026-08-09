@@ -14,7 +14,9 @@
 | `Nq` | 查询头数 | Number of Query Heads | Attention 中查询头的数量 |
 | `Nkv` | 键值头数 | Number of Key/Value Heads | Attention 中键头和值头的数量 |
 | `D` | 头维度 | Head Dimension | 每个 Attention 头包含的特征数 |
+| `L_full` | Full Attention 层数 | Number of Full-Attention Layers | 模型中使用 Full Attention 的 Decoder Layer 数量 |
 | `N` | 状态头数 | Number of State Heads | Gated DeltaNet 中并行维护的状态头数量；正文第一次使用时会重新说明 |
+| `s` | 单元素字节数 | Bytes per Element | 指定 dtype 下，一个缓存或状态元素占用的字节数 |
 
 ## 数学与张量
 
@@ -49,7 +51,8 @@
 | Token ID | Token ID / `input_ids` | token 在词表中的整数编号 |
 | 嵌入 | Embedding | 根据 Token ID 取得的初始向量 |
 | 隐藏状态 | Hidden State | 当前 token 位置经过模型层后的上下文表示 |
-| 解码器层 | Decoder Layer | 反复更新 Hidden States 的模型层 |
+| Decoder-only 语言模型 | Decoder-only Language Model | 语言主干使用因果约束，根据已有 token 预测下一个 token 的模型架构 |
+| 解码器层 | Decoder Layer | 反复更新 Hidden States 的模型层；Prefill 和 Decode 都会执行 |
 | 语言模型输出层 | Language Model Head / LM Head | 把 Hidden State 变成全词表分数 |
 | 未归一化分数 | Logit | LM Head 对一个候选 token 给出的原始分数 |
 | 概率归一化 | Softmax | 把一组 Logits 转成总和为 1 的概率 |
@@ -59,6 +62,7 @@
 | 最高 K 项 | Top-K | 只保留分数最高的 K 个候选 |
 | 累计概率筛选 | Top-P | 保留累计概率达到阈值所需的最小候选集合 |
 | 教师强制 | Teacher Forcing | 训练时使用样本中的真实历史 token 计算后续位置预测，而不是把模型自己的错误输出继续喂回去 |
+| 交叉熵损失 | Cross-Entropy Loss | 用正确 token 的负对数概率衡量预测误差；概率越高，损失越低 |
 
 ## Decoder Layer
 

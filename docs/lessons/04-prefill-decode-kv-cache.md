@@ -228,7 +228,7 @@ $$
 
 $$
 KV\ Cache\ Bytes
-=2\times L_{full}\times B\times T\times N_{kv}\times D\times S
+=2\times L_{full}\times B\times T\times N_{kv}\times D\times s
 $$
 
 | 符号 | 含义 |
@@ -239,7 +239,7 @@ $$
 | `T` | 当前已缓存的 token 位置数 |
 | `Nkv` | 每层 K/V 头数 |
 | `D` | 每个头的维度 |
-| `S` | 每个缓存元素占用的字节数 |
+| `s` | 每个缓存元素占用的字节数 |
 
 ### 小模型计算示例
 
@@ -271,7 +271,7 @@ Qwen3.5-9B 共 32 层，每 4 层中只有 1 层 Full Attention，因此：
 L_full = 8
 Nkv    = 4
 D      = 256
-S      = 2 Bytes（按 BF16 KV Cache 计算）
+s      = 2 Bytes（按 BF16 KV Cache 计算）
 ```
 
 单个请求每增加一个缓存 token，8 个 Full Attention 层合计增加：
@@ -292,7 +292,7 @@ $$
 
 这里的 `T` 包括 Prompt 和已经追加进缓存的输出 token。若同时保存多个请求或 Beam，容量还要乘以对应序列数。
 
-这只是 Full Attention 的 K/V 数值容量，不等于 runtime 实际申请的显存，也不等于 Qwen3.5 一个请求的全部状态。分块分配会产生预留和碎片；TP 可能把头分到不同设备；KV 量化会改变 `S`。更重要的是，Qwen3.5 的 24 个 Gated DeltaNet 层还保存 recurrent state 和卷积状态，第 5 课会单独解释。
+这只是 Full Attention 的 K/V 数值容量，不等于 runtime 实际申请的显存，也不等于 Qwen3.5 一个请求的全部状态。分块分配会产生预留和碎片；TP 可能把头分到不同设备；KV 量化会改变 `s`。更重要的是，Qwen3.5 的 24 个 Gated DeltaNet 层还保存 recurrent state 和卷积状态，第 5 课会单独解释。
 
 `partial_rotary_factor=0.25` 也不会把 KV Cache 缩小到四分之一。RoPE 只旋转 K 的部分维度，缓存仍然保存完整的 `D=256` 维 K 和 V。
 

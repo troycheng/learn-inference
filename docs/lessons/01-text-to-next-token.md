@@ -520,6 +520,44 @@ token 尚未确定，第二步就缺少输入。因此，不能把同一个请�
 推理：未来答案未知，必须先确定上一个 token，才能开始下一步
 ```
 
+### 9.1 正确答案怎样变成训练损失
+
+训练不只需要模型给每个候选打分，还要衡量它给正确 token 的分数是否足够高。仍用第 7 节的四个教学候选：
+
+```text
+logits = [-1, 0, 3, 1]
+```
+
+经过 Softmax 后，第三个候选“从”的概率约为 `0.831`。如果它就是这个位置的正确答案，该位置的交叉熵损失是：
+
+$$
+Loss=-\log(0.831)\approx0.185
+$$
+
+模型给正确答案的概率越接近 1，损失越接近 0。若正确答案其实是第四个候选“哪”，它的概率只有 `0.112`，损失约为：
+
+$$
+Loss=-\log(0.112)\approx2.19
+$$
+
+一段训练文本会产生多个位置的损失，训练程序通常对有效位置求平均。Padding 或不参与训练的位置可以用 `ignore_index` 排除。
+
+从张量看，关系是：
+
+```text
+模型输出的 Logits：       [B,T,V]
+错位后的 Logits：         [B,T-1,V]
+错位后的正确 Token IDs： [B,T-1]
+每个有效位置：            一个损失值
+整批 Loss：               对有效位置汇总
+```
+
+实际代码还会把前两轴展平，让每一行对应一个位置、最后的 `V` 维对应词表候选。PyTorch 的 `CrossEntropyLoss` 接收这些原始 Logits 和正确 Token ID，在内部完成 Log Softmax 与负对数似然计算，训练代码不必先手工调用 Softmax。
+
+因果语言模型的训练目标可以概括为：每个位置只能读取左侧和自己，再尽量提高下一个真实 token 的概率。反向传播怎样根据 Loss 更新权重，不属于本课程范围。
+
+仓库中的[因果语言模型 Loss 复算程序](../../examples/causal_lm_loss_walkthrough.py)会算出上述两个损失，并验证概率越高时交叉熵越低。
+
 这里说的“同时计算”只针对一层中多个已知位置的批量计算。Decoder Layer 之间仍有先后依赖；Gated DeltaNet 的状态更新也仍有数学上的递归关系，只是可以用 Chunk Kernel 改写执行方式。
 
 ## 10. Tokenizer Decode：从 Token ID 回到文本
@@ -613,7 +651,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 有了这条链路，已经可以避免几类常见误判：
 
-| 现象或方案 | 首先定位到哪里 |
+| 现象或方案 | 先查哪里 |
 | --- | --- |
 | 两个框架回答风格不同 | Chat Template、Tokenizer、Sampling 配置是否一致 |
 | 同一句话的 token 数与字符数不同 | Tokenizer 切分规则 |
@@ -674,8 +712,10 @@ Embedding 的方向是 ID 到向量；Tokenizer Decode 才负责 ID 到文字。
 9. 采样时，概率为 83.1% 的 token 是否一定被选中？
 10. 训练时为什么能同时计算多个位置的预测，而普通生成仍要逐 token 进行？
 11. 为什么因果遮罩仍然不可缺少？
-12. Tokenizer 输出什么？Embedding 输出什么？
-13. 用自己的话复述：用户消息怎样变成下一个 token，再变成用户看到的文字？
+12. 某位置给正确 token 的概率从 `0.2` 提高到 `0.8` 时，交叉熵损失会升高还是降低？
+13. 训练代码把原始 Logits 交给 `CrossEntropyLoss` 前，是否必须手工执行 Softmax？
+14. Tokenizer 输出什么？Embedding 输出什么？
+15. 用自己的话复述：用户消息怎样变成下一个 token，再变成用户看到的文字？
 
 <details>
 <summary>查看参考答案</summary>
@@ -692,8 +732,10 @@ Embedding 的方向是 ID 到向量；Tokenizer Decode 才负责 ID 到文字。
 9. 不一定。采样是随机过程，83.1% 仍有 16.9% 的概率不被选中。Temperature、Top-K 和 Top-P 还可能先改变分布。
 10. 训练样本已经给出真实的后续 token，各位置可用真实历史 token 在一次前向中计算；生成时未来 token 未知，下一步必须等待上一步的实际选择。
 11. 它阻止位置 `t` 读取右侧真实答案。没有因果遮罩，训练得到的预测建立在推理时不存在的信息上。
-12. Tokenizer 将文字转换为 Token IDs；Embedding 将 Token IDs 转换为 `[H]` 维初始向量。
-13. 用户消息先经 Chat Template 组织格式，再由 Tokenizer 转成 IDs；Embedding
+12. 降低。该位置的损失是正确 token 概率的负对数，正确答案概率越高，损失越小。
+13. 不必。`CrossEntropyLoss` 直接接收原始 Logits，并在内部完成 Log Softmax 和负对数似然计算。
+14. Tokenizer 将文字转换为 Token IDs；Embedding 将 Token IDs 转换为 `[H]` 维初始向量。
+15. 用户消息先经 Chat Template 组织格式，再由 Tokenizer 转成 IDs；Embedding
     把 IDs 变成向量；Decoder 计算上下文 Hidden State；LM Head 得到全词表
     Logits；贪心或采样选出下一个 ID；Tokenizer Decode 把生成的 IDs 还原成
     文字。生成完整回答时重复这个过程。
@@ -742,5 +784,6 @@ Hidden State → 全词表分数：LM Head
 - [Transformers：生成实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/generation/utils.py)
 - [Transformers：Top-P Logits Processor，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/generation/logits_process.py#L473-L539)
 - [Hugging Face：Causal Language Modeling](https://huggingface.co/docs/transformers/tasks/language_modeling)
+- [PyTorch：`CrossEntropyLoss`](https://docs.pytorch.org/docs/stable/generated/torch.nn.CrossEntropyLoss.html)
 - [Attention Is All You Need：Decoder 遮罩与错位预测](https://arxiv.org/abs/1706.03762)
 - [PyTorch：Softmax](https://docs.pytorch.org/docs/stable/generated/torch.nn.Softmax.html)

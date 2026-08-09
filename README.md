@@ -1,8 +1,8 @@
 # 看懂大模型推理
 
-这套课写给已经在维护推理系统，却还没有把模型内部计算系统串起来的工程师。你可能处理过显存不足、吞吐下降或首 token 变慢，但讨论到 QKV、RoPE、KV Cache 或 MoE 时，只知道它们的名字，无法继续往下判断。
+这套课写给正在维护推理系统、希望补齐模型原理的工程师。你可能已经处理过显存不足、吞吐下降或首 token 变慢，但碰到 QKV、RoPE、KV Cache 或 MoE 时，还很难从模型计算解释原因。
 
-课程从一次生成开始：文字怎样变成 token，token 怎样经过 Decoder，模型怎样读取前文，为什么回答只能逐个 token 产生。Prefill、Decode、KV Cache、Dense、MoE 和常见优化都放回这条链路中解释。
+课程从一条输入开始，沿生成过程解释文字怎样变成 token、token 怎样经过 Decoder、模型怎样读取前文，以及回答为什么只能逐个 token 产生。学完后，你应该能把 Prefill、Decode、KV Cache、Dense、MoE 和常见优化放回具体的模型层、张量与请求状态中分析。
 
 ## 学习目标
 
@@ -46,19 +46,24 @@ flowchart LR
 
 ## 课程目录
 
-1. [第 0 课：张量与模型计算基础](docs/lessons/00-math-and-tensors.md)
-2. [第 1 课：大模型生成下一个 Token 的过程](docs/lessons/01-text-to-next-token.md)
-3. [第 2 课：Decoder Layer 的结构与计算](docs/lessons/02-inside-a-decoder-layer.md)
-4. [第 3 课：Attention 的计算原理](docs/lessons/03-attention.md)
-5. [第 4 课：Prefill、Decode 与 KV Cache](docs/lessons/04-prefill-decode-kv-cache.md)
-6. [第 5 课：Gated DeltaNet 的状态更新机制](docs/lessons/05-gated-deltanet.md)
-7. [第 6 课：Dense FFN 与 MoE 的结构差异](docs/lessons/06-dense-and-moe.md)
-8. [第 7 课：多模态输入与视觉编码](docs/lessons/07-multimodal-input.md)
-9. [第 8 课：模型配置与资源估算](docs/lessons/08-config-and-sizing.md)
-10. [第 9 课：推理优化的分析与评估](docs/lessons/09-optimization-judgment.md)
-11. [完整课程路线](docs/roadmap.md)
-12. [课程术语与符号表](docs/glossary.md)
-13. [课程讲解原则](docs/teaching-method.md)
+| 课次 | 内容 | 读完后能做什么 |
+| ---: | --- | --- |
+| 0 | [第 0 课：张量与模型计算基础](docs/lessons/00-math-and-tensors.md) | 根据轴和运算推导 shape |
+| 1 | [第 1 课：大模型生成下一个 Token 的过程](docs/lessons/01-text-to-next-token.md) | 区分文本、Token ID、向量、Logit 和概率，解释因果训练目标 |
+| 2 | [第 2 课：Decoder Layer 的结构与计算](docs/lessons/02-inside-a-decoder-layer.md) | 解释 RMSNorm、残差连接和 SwiGLU FFN |
+| 3 | [第 3 课：Attention 的计算原理](docs/lessons/03-attention.md) | 手算一次 Attention 并解释 RoPE、GQA |
+| 4 | [第 4 课：Prefill、Decode 与 KV Cache](docs/lessons/04-prefill-decode-kv-cache.md) | 解释生成阶段、缓存复用和批处理 |
+| 5 | [第 5 课：Gated DeltaNet 的状态更新机制](docs/lessons/05-gated-deltanet.md) | 区分固定状态与随长度增长的 KV Cache |
+| 6 | [第 6 课：Dense FFN 与 MoE 的结构差异](docs/lessons/06-dense-and-moe.md) | 解释 Router、Top-K、共享专家和激活参数 |
+| 7 | [第 7 课：多模态输入与视觉编码](docs/lessons/07-multimodal-input.md) | 从像素和 Patch 推导到 Decoder 输入 |
+| 8 | [第 8 课：模型配置与资源估算](docs/lessons/08-config-and-sizing.md) | 估算权重、请求状态和主要计算量 |
+| 9 | [第 9 课：推理优化的分析与评估](docs/lessons/09-optimization-judgment.md) | 判断优化改了什么、何时有效、怎样验证 |
+
+配套资料：
+
+- [完整课程路线](docs/roadmap.md)
+- [课程术语与符号表](docs/glossary.md)
+- [课程编写与讲解规范](docs/teaching-method.md)
 
 ## 学习顺序
 
@@ -68,15 +73,15 @@ flowchart LR
 
 ## 可运行示例
 
-第 2、3、5、8 课提供了只依赖 Python 标准库的[复算程序](examples/README.md)。脚本与正文使用同一组数字，运行后会打印中间结果，并检查关键数值。它们适合在读完公式后自己算一遍，不要求安装 PyTorch 或下载模型权重。
+第 1、2、3、5、6、8、9 课提供了只依赖 Python 标准库的[复算程序](examples/README.md)。脚本与正文使用同一组数字，运行后会打印中间结果，并检查关键数值。它们适合在读完公式后自己算一遍，不要求安装 PyTorch 或下载模型权重。
 
 提交前可以运行 `bash scripts/check-course.sh`，检查 Markdown 结构、本地链接、SVG 渲染和可运行示例。GitHub Actions 也会执行同一组检查。
 
-旧内容保存在 [`docs/archive`](docs/archive) 中，只用于记录学习过程，不再作为主课材料。
+早期草稿保存在[历史草稿目录](docs/archive/README.md)，只记录课程的迭代过程，不再作为主课材料。
 
 ## 当前状态
 
-第 0～9 课已经形成完整主线。旧稿保存在 [`docs/archive`](docs/archive)，主课只保留经过资料核对、手算校验和图文检查的版本。
+第 0～9 课已经形成完整主线。主课只保留经过资料核对、手算校验和图文检查的版本。
 
 ## 许可
 

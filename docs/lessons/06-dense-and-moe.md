@@ -70,7 +70,7 @@ router_logits = [0.2, -0.8, 1.4, 0.0]
 这些分数经过 Softmax 后约为：
 
 ```text
-router_probs = [0.18, 0.07, 0.61, 0.14]
+router_probs = [0.18, 0.07, 0.60, 0.15]
 ```
 
 若使用 Top-2，选择概率最大的 Expert 2 和 Expert 0。只保留这两个概率并重新归一化：
@@ -169,6 +169,8 @@ $$
 $$
 [1.54,0.69]+[0.2,0.2]=[1.74,0.89]
 $$
+
+仓库中的 [MoE 路由复算程序](../../examples/moe_routing_walkthrough.py) 使用同一组 Router Logits、Expert 输出和 Shared Expert 门控值，并保留完整精度计算。
 
 Shared Expert 不属于 Top-2，也不与 Routed Experts 共用那组和为 1 的 Routing Weights。可以说它为每个 token 提供一条固定执行的 FFN 路径，但不能未经分析就断言它一定保存“通用知识”。
 

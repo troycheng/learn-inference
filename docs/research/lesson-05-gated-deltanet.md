@@ -2,7 +2,7 @@
 
 这份笔记为第 5 课核实 Gated DeltaNet 的原理、Qwen3.5-9B-Base 的具体结构和推理状态。资料只取自 Gated DeltaNet 与 DeltaNet 原论文、Qwen3.5 官方模型文件、Hugging Face Transformers 固定 revision 实现，以及论文作者维护的官方 Kernel 实现。
 
-## 先说结论
+## 核心结论
 
 Gated DeltaNet 不会像 Full Attention 那样保留每个历史 token 的 K/V，再让当前 Q 与全部历史 K 比较。它为每个头维护一张固定大小的状态矩阵。每读入一个 token，模型会：
 

@@ -2,7 +2,7 @@
 
 这份笔记只解决一个问题：怎样向数学基础不强的推理工程师解释 RoPE，同时不牺牲准确性。资料只取自 RoFormer 原论文、Transformer 原论文，以及 Qwen3.5-9B-Base 的官方配置和 Hugging Face Transformers 实现。
 
-## 先说结论
+## 核心结论
 
 RoPE 的重点不是“把向量转了一下”，而是利用旋转矩阵的组合规律，把两个 token 的绝对位置变成它们在 Attention 分数中的相对距离。
 

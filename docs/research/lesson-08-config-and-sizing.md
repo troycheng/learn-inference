@@ -8,7 +8,7 @@
 - MoE：[Qwen3.5-35B-A3B，revision `59d61f3`](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/tree/59d61f3ce65a6d9863b86d2e96597125219dc754)
 - 实现：[Transformers，revision `9436284`](https://github.com/huggingface/transformers/tree/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models)
 
-## 1. 先统一符号和口径
+## 1. 符号和统计口径
 
 | 符号 | 配置字段 | 含义 |
 | --- | --- | --- |
@@ -16,7 +16,7 @@
 | `H` | `hidden_size` | 每个语言模型位置的向量宽度 |
 | `I` | `intermediate_size` | Dense FFN 的中间宽度 |
 | `L` | `num_hidden_layers` | Decoder Layer 数量 |
-| `Lfull` | 从 `layer_types` 计数 | Full Attention 层数 |
+| `L_full` | 从 `layer_types` 计数 | Full Attention 层数 |
 | `Nq` | `num_attention_heads` | Query 头数 |
 | `Nkv` | `num_key_value_heads` | K/V 头数 |
 | `D` | `head_dim` | 每个 Attention 头的宽度 |
@@ -45,7 +45,7 @@ FLOPs：本轮进行了多少次浮点运算
 | `H` | 4096 | 2048 |
 | `L` | 32 | 40 |
 | Gated DeltaNet 层 | 24 | 30 |
-| Full Attention 层 `Lfull` | 8 | 10 |
+| Full Attention 层 `L_full` | 8 | 10 |
 | `Nq` | 16 | 16 |
 | `Nkv` | 4 | 2 |
 | `D` | 256 | 256 |
@@ -339,7 +339,7 @@ $$
 | 4,096 | 0.54 GFLOPs | 0.67 GFLOPs |
 | 131,072 | 17.18 GFLOPs | 21.47 GFLOPs |
 
-长上下文下，Attention 的长度项可以超过其余单 token 线性投影。Qwen3.5 只有四分之一层是 Full Attention，所以上式必须使用 `Lfull`，不能直接用全部 Decoder Layer 数。
+长上下文下，Attention 的长度项可以超过其余单 token 线性投影。Qwen3.5 只有四分之一层是 Full Attention，所以上式必须使用 `L_full`，不能直接用全部 Decoder Layer 数。
 
 Prefill 中，Linear/FFN 主要随 token 数 `T` 线性增长；Full Attention 的 QK/AV 总运算随 `T^2` 增长。因果遮罩和具体 Kernel 会改变常数，但不会让标准 Full Attention 的长度依赖消失。
 

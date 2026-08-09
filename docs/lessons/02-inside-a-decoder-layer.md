@@ -605,6 +605,21 @@ SwiGLU 的门控值是连续数，可以压低、放大或改变对应中间特�
 
 Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的信息交换由 Token Mixer 负责。
 
+### Decoder-only、Decoder Layer 与 Decode 阶段
+
+这三个名称说的不是同一件事：
+
+| 名称 | 指什么 | 所属层面 |
+| --- | --- | --- |
+| Decoder-only 语言模型 | 语言主干采用因果模型，按已有 token 预测下一个 token | 模型架构 |
+| Decoder Layer | 反复更新 Hidden States 的一层模型计算，Prefill 和 Decode 都会执行 | 模型计算 |
+| Decode 阶段 | Prefill 之后，逐步生成新 token 的运行阶段 | 请求执行 |
+| Tokenizer Decode | 把生成的 Token IDs 还原成文字 | 输出处理 |
+
+Qwen3.5 整体还包含视觉编码器，所以不能把“Decoder-only 语言主干”理解为整个多模态模型没有任何 Encoder。对纯文本请求，Token IDs 经过 Embedding 后直接进入语言 Decoder；不存在一套单独的文本 Encoder，再让语言 Decoder 通过交叉注意力读取它。
+
+Decoder Layer 并不只在 Decode 阶段运行。Prompt 的 Prefill 同样会经过全部 Decoder Layer，只是本轮处理的位置数和历史状态不同。
+
 ## 15. 练习
 
 1. `[B,T,H]` 中的一行和一列分别应怎样理解？
@@ -620,7 +635,8 @@ Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的�
 11. 两个 Linear 中间没有非线性时，为什么可以合并？使用交换律还是结合律？
 12. 当 `B=2,T=8,H=4096,I=12288` 时，`gate_proj`、逐元素乘法和 `down_proj` 的输出 shape 分别是什么？
 13. Dense FFN 是否直接混合不同 token？
-14. 用自己的话完整复述一个 Decoder Layer 的八个步骤。
+14. Decoder Layer 是否只在 Decode 阶段执行？Decoder-only 又描述什么？
+15. 用自己的话完整复述一个 Decoder Layer 的八个步骤。
 
 <details>
 <summary>查看参考答案</summary>
@@ -639,7 +655,8 @@ Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的�
 11. 中间只有线性变换时，可以利用矩阵乘法结合律把权重预先组合；不是交换律。
 12. 分别为 `[2,8,12288]`、`[2,8,12288]`、`[2,8,4096]`。
 13. 不直接混合。每个 token 独立使用同一套 FFN；跨 token 混合由 Token Mixer 完成。
-14. 保存输入、RMSNorm、Token Mixer、残差相加；再保存中间结果、RMSNorm、Dense SwiGLU FFN、残差相加。
+14. 不是。Prefill 和 Decode 都会执行同一组 Decoder Layer。Decoder-only 描述语言模型主干采用因果生成架构，不是请求的某个运行阶段。
+15. 保存输入、RMSNorm、Token Mixer、残差相加；再保存中间结果、RMSNorm、Dense SwiGLU FFN、残差相加。
 
 </details>
 

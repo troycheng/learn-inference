@@ -1,10 +1,10 @@
 # LLMs-from-scratch 的图解方法：对本课程的改进建议
 
-用户写的 `llms-from-stratch` 应该是 `scratch` 的拼写误差。最可能指 Sebastian Raschka 的 [`rasbt/LLMs-from-scratch`](https://github.com/rasbt/LLMs-from-scratch)。仓库 README 明确说明，它是《Build a Large Language Model (From Scratch)》的官方代码仓库，教学方式是从零实现一个 GPT 风格模型，并配合文字、图和小例子逐步展开。[官方仓库 README](https://github.com/rasbt/LLMs-from-scratch/blob/f77106d3c66dc249e6b16e4b056534b4ca1820e6/README.md)
+本文参考 Sebastian Raschka 的 [`rasbt/LLMs-from-scratch`](https://github.com/rasbt/LLMs-from-scratch)。它是《Build a Large Language Model (From Scratch)》的官方代码仓库，从零实现一个 GPT 风格模型，并配合文字、图和小例子逐步展开。[官方仓库 README](https://github.com/rasbt/LLMs-from-scratch/blob/f77106d3c66dc249e6b16e4b056534b4ca1820e6/README.md)
 
 本次研究以仓库快照 [`f77106d`](https://github.com/rasbt/LLMs-from-scratch/tree/f77106d3c66dc249e6b16e4b056534b4ca1820e6) 为准，只查看官方仓库、作者官网和书籍配套材料。
 
-## 先说判断
+## 主要判断
 
 本次重构开始前，第 0 至第 9 课已有 42 张 SVG，其中 Attention 一课有 8 张。问题不是图少。与 LLMs-from-scratch 相比，更值得改的是图和正文的衔接方式：
 

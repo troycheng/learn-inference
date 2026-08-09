@@ -19,7 +19,7 @@
 
 推理系统里的很多概念互相依赖。还没分清 Token ID、Embedding 和 Hidden State，就很难理解 Q、K、V 从哪里来；没算过 Attention，也无法真正理解 KV Cache 保存了什么；不知道 Dense 和 MoE 的结构差异，就无法判断 TP、EP 或量化改变了哪部分成本。
 
-因此前四课是一条连续主线：
+因此，第 0 至第 4 课是一条连续主线：
 
 ```text
 第 0 课  张量、shape 与基础计算
@@ -46,7 +46,7 @@
 | 课次 | 主题 | 学习目标 |
 | ---: | --- | --- |
 | [0](lessons/00-math-and-tensors.md) | 张量与模型计算基础 | 根据输入、运算和输出推导 shape |
-| [1](lessons/01-text-to-next-token.md) | 下一个 Token 的生成过程 | 区分文本、Token ID、向量、Logit 和概率，解释训练与生成的数据依赖 |
+| [1](lessons/01-text-to-next-token.md) | 下一个 Token 的生成过程 | 区分文本、Token ID、向量、Logit 和概率，解释因果训练目标以及训练与生成的数据依赖 |
 | [2](lessons/02-inside-a-decoder-layer.md) | Decoder Layer 的结构与计算 | 解释 RMSNorm、Token Mixer、残差和 SwiGLU FFN |
 | [3](lessons/03-attention.md) | Attention 的计算原理 | 手算 QK 点积、因果遮罩、Softmax 和 V 的加权求和 |
 | [4](lessons/04-prefill-decode-kv-cache.md) | Prefill、Decode 与 KV Cache | 解释生成阶段、缓存复用和服务端批处理 |

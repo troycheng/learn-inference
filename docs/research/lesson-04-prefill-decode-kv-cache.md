@@ -2,7 +2,7 @@
 
 这份笔记为第 4 课核实模型行为和系统行为。资料只取自 Qwen3.5-9B-Base 官方配置、Hugging Face Transformers 官方实现与文档、vLLM 官方源码，以及 Orca、PagedAttention、Sarathi-Serve 原论文。
 
-## 先说结论
+## 核心结论
 
 第 4 课应当沿一条请求时间线展开，而不是分别解释几个术语：
 
@@ -126,7 +126,7 @@ Transformers 的 `DynamicLayer` 也把缓存 shape 定义为 `[batch_size,num_he
 
 ### 3.2 元素数和字节数
 
-设 Full Attention 层数为 `Lfull`，一个元素占 `s` 字节，则等长 Batch 的逻辑 KV 数据量为：
+设 Full Attention 层数为 `L_full`，一个元素占 `s` 字节，则等长 Batch 的逻辑 KV 数据量为：
 
 $$
 \text{KV bytes}

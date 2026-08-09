@@ -36,7 +36,7 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 | `Nq` | `num_attention_heads` | Query 头数 |
 | `Nkv` | `num_key_value_heads` | K/V 头数 |
 | `D` | `head_dim` | 每个头的宽度 |
-| `Lfull` | 从 `layer_types` 计数 | Full Attention 层数 |
+| `L_full` | 从 `layer_types` 计数 | Full Attention 层数 |
 
 ### Dense FFN 配置
 
@@ -50,7 +50,7 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 | --- | --- | --- |
 | `E` | `num_experts` | Routed Expert 总数 |
 | `K` | `num_experts_per_tok` | 每 token 选几个 Routed Experts |
-| `Imoe` | `moe_intermediate_size` | 每个 Expert 的中间宽度 |
+| `I_moe` | `moe_intermediate_size` | 每个 Expert 的中间宽度 |
 
 ![从配置字段推导权重、计算、请求状态和并行切分](../assets/08-config-to-questions.svg?rev=20260809-1)
 
@@ -62,14 +62,14 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 | `H` | 4,096 | 2,048 |
 | `L` | 32 | 40 |
 | Gated DeltaNet 层 | 24 | 30 |
-| Full Attention 层 `Lfull` | 8 | 10 |
+| Full Attention 层 `L_full` | 8 | 10 |
 | `Nq` | 16 | 16 |
 | `Nkv` | 4 | 2 |
 | `D` | 256 | 256 |
 | Dense `I` | 12,288 | 不适用 |
 | `E` | 不适用 | 256 |
 | `K` | 不适用 | 8 |
-| `Imoe` | 不适用 | 512 |
+| `I_moe` | 不适用 | 512 |
 
 `full_attention_interval=4` 表示每四层出现一次 Full Attention，不表示一共有四个 Full Attention 层。最可靠的做法是直接查看 `layer_types`：
 
@@ -367,7 +367,7 @@ $$
 
 以 TP=8 为例：
 
-| 模型 | 模型逻辑 KV | `Nkv,rank` | 每 Rank KV | 8 个 Rank 合计 |
+| 模型 | 模型逻辑 KV | 每 Rank K/V 头数 | 每 Rank KV | 8 个 Rank 合计 |
 | --- | ---: | ---: | ---: | ---: |
 | 9B | 32 KiB | 1 | 8 KiB | 64 KiB |
 | 35B-A3B | 20 KiB | 1 | 10 KiB | 80 KiB |
@@ -546,7 +546,7 @@ $$
 
 ### 长上下文状态容量
 
-按 `Lfull`、`Nkv`、`D` 和 KV dtype 算每个位置的 KV，再加每请求固定的 Gated DeltaNet 状态。不要把全部 Decoder Layer 都代入 KV 公式。
+按 `L_full`、`Nkv`、`D` 和 KV dtype 算每个位置的 KV，再加每请求固定的 Gated DeltaNet 状态。不要把全部 Decoder Layer 都代入 KV 公式。
 
 ### Dense 与 MoE 的成本差异
 
@@ -562,7 +562,7 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 2. `V=248320,H=4096` 时，Embedding 有多少参数？若全部按 BF16 保存，理想有效载荷是多少？
 3. `tie_word_embeddings=false` 会怎样改变参数量？为什么同样大小的 Embedding 和 LM Head 计算量不同？
 4. 35B-A3B 的 3B Active 是否表示只需保存 3B 权重？
-5. 根据 `Lfull=8,Nkv=4,D=256`，推导 9B 的 BF16 KV 为什么是 32 KiB/位置。
+5. 根据 `L_full=8,Nkv=4,D=256`，推导 9B 的 BF16 KV 为什么是 32 KiB/位置。
 6. 35B-A3B 在 vLLM TP=8 下，为什么每 Rank 的 BF16 KV 是 10 KiB，而不是 20 KiB 除以 8？
 7. Gated DeltaNet 状态怎样随序列长度和并发数变化？
 8. Linear `[M,K]×[K,N]` 的 FLOPs 近似是多少？Batch 从 1 增大时，为什么算术强度通常会上升？
@@ -597,10 +597,10 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 | 权重数量级 | `V×H`、每层 Linear、层数、全部 Expert |
 | 数值格式 | 权重、激活、累加、输出和 Cache 各自的 dtype |
 | 单 token 激活量 | 实际执行的 Dense 或 Top-K 加 Shared Expert |
-| KV 每位置大小 | `Lfull`、`Nkv`、`D`、缓存 dtype |
-| TP 后每 Rank KV | `Nkv,rank`、KV 头复制与 runtime 布局 |
+| KV 每位置大小 | `L_full`、`Nkv`、`D`、缓存 dtype |
+| TP 后每 Rank KV | 每 Rank K/V 头数、KV 头复制与 runtime 布局 |
 | 固定请求状态 | Gated DeltaNet 层数及 conv/recurrent state shape |
-| 长上下文计算 | Full Attention 层的 `4LfullNqDT` |
+| 长上下文计算 | Full Attention 层的 `4×L_full×Nq×D×T` |
 | 带宽还是计算限制 | FLOPs、搬运字节、算术强度与硬件 Machine Balance |
 
 仓库中的 [`model_sizing_walkthrough.py`](../../examples/model_sizing_walkthrough.py) 使用本课公式复算两个示例模型的逻辑 KV、TP=8 时每 Rank KV、Gated DeltaNet 固定状态和 Attention 长度项。改动配置或上下文长度后，可以直接观察各项怎样变化。

@@ -12,6 +12,11 @@ end
 lesson_titles = {}
 referenced_assets = Hash.new { |hash, key| hash[key] = [] }
 
+(["README.md"] + Dir["docs/**/*.md"]).each do |file|
+  text = File.read(file)
+  errors << "#{file}: use L_full for the Full Attention layer count" if text.match?(/\bLfull\b/)
+end
+
 lesson_files.each do |file|
   text = File.read(file)
   lines = text.lines
@@ -45,6 +50,29 @@ lesson_files.each do |file|
   errors << "#{file}: lesson pages use SVG instead of Mermaid" if text.include?("```mermaid")
   errors << "#{file}: contains an unsupported GitHub math macro" if text.include?("\\operatorname")
   errors << "#{file}: contains a pasted GitHub math error" if text.include?("The following macros are not allowed")
+
+  exercise_index = lines.index { |line| line.match?(/\A## \d+\. 练习\s*\z/) }
+  details_index = lines.each_index.find do |index|
+    exercise_index && index > exercise_index && lines[index].start_with?("<details>")
+  end
+  details_close_index = lines.each_index.find do |index|
+    details_index && index > details_index && lines[index].start_with?("</details>")
+  end
+
+  if exercise_index.nil? || details_index.nil? || details_close_index.nil?
+    errors << "#{file}: expected a numbered exercise section with folded answers"
+  else
+    questions = lines[(exercise_index + 1)...details_index].map do |line|
+      line[/\A(\d+)\. /, 1]&.to_i
+    end.compact
+    answers = lines[(details_index + 1)...details_close_index].map do |line|
+      line[/\A(\d+)\. /, 1]&.to_i
+    end.compact
+
+    expected_questions = (1..questions.length).to_a
+    errors << "#{file}: exercise numbers must be consecutive; found #{questions.inspect}" if questions != expected_questions
+    errors << "#{file}: exercise answers must match questions; found #{answers.inspect}" if answers != questions
+  end
 
   lines.each_with_index do |line, index|
     next unless line.include?("$$")
