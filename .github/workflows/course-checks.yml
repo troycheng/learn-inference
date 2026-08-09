@@ -15,3 +15,8 @@ jobs:
 
       - name: Check course files
         run: bash scripts/check-course.sh
+
+      - name: Check GitHub Markdown rendering
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ruby scripts/check-github-render.rb

@@ -19,6 +19,11 @@ readme = File.read("README.md")
 errors << "README.md: course title does not match" unless readme.start_with?("# #{course_title}\n")
 errors << "docs/roadmap.md: course title does not match" unless roadmap.start_with?("# 《#{course_title}》课程路线\n")
 
+public_support_pages.each do |file|
+  text = File.read(file)
+  errors << "#{file}: legacy workbook name must not appear in public course material" if text.include?("model-analysis-workbook")
+end
+
 (["README.md"] + Dir["docs/**/*.md"]).each do |file|
   text = File.read(file)
   errors << "#{file}: use L_full for the Full Attention layer count" if text.match?(/\bLfull\b/)
