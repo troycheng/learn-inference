@@ -251,7 +251,7 @@ $$
 
 Decode 时，`conv_state` 保存卷积窗口需要的最近投影值。新 token 到来后，runtime 把新值推入窗口，移出最旧位置，再计算本轮卷积。它和 Delta Rule 使用的 `recurrent_state` 是两份不同的状态。
 
-## 7. 把各条支路接回完整模块
+## 7. Gated DeltaNet 的完整数据流
 
 现在再看完整数据流。输入仍是 Decoder Layer 传来的 Hidden States：
 
@@ -369,55 +369,74 @@ Gated DeltaNet 的 `conv_state` 和 `recurrent_state` shape 不随 token 数增�
 
 Gated Delta Rule 的 Chunk Kernel 是算子内部的并行算法。服务端 Chunked Prefill 是调度器把长 Prompt 分成多个执行轮次。两者都使用 Chunk 这个词，但切分层级不同。
 
-## 12. 练习
+## 12. 状态更新与容量变化
 
-1. Qwen3.5-9B 的 32 层中，多少层使用 Gated DeltaNet，多少层使用 Full Attention？
-2. recurrent state 与 KV Cache 在序列长度轴上有什么区别？
-3. 因果卷积处理位置 `p3` 时，能否读取 `p4`？
-4. 深度因果卷积是否在这一步混合不同通道？
-5. 状态 `S:[Dk,Dv]` 被 `q:[Dk]` 读取后，输出 shape 是什么？
-6. Delta Rule 为什么先计算 `v-kS`，而不是直接把 `k^T v` 加进状态？
-7. `alpha` 与 `beta` 分别控制什么？
-8. 输出门控 `z` 是否会修改 recurrent state？
-9. 当 `B=2,T=8` 时，Qwen3.5-9B 的混合 Q/K/V 输出 shape 是什么？
-10. Q/K 复制后的 shape 是什么？
-11. 单层 recurrent state 和 conv state 的 shape 分别是什么？
-12. 为什么 Gated DeltaNet 的固定状态不能被理解为无损保存无限上下文？
-13. Prefill 使用 Chunk Kernel，是否说明不同 token 的状态更新没有依赖？
-14. 复用 Qwen3.5 前缀时，为什么不能只复用 Full Attention 的 KV Cache？
+### 12.1 完成一次带门控的 Delta Rule
 
-<details>
-<summary>查看参考答案</summary>
+只看一个头，给定：
 
+$$
+S_{t-1}=
+\begin{bmatrix}
+2&1\\
+0&3
+\end{bmatrix},\quad
+\alpha=0.5,\quad \beta=0.5
+$$
 
-1. 24 层 Gated DeltaNet，8 层 Full Attention，按 3 比 1 重复。
-2. KV Cache 的 `T` 随历史 token 数增长；recurrent state 的 shape 不包含随 `T` 增长的轴，后续 token 原地更新其数值。
-3. 不能。因果卷积只能读取当前位置和左侧位置。
-4. 不混合。Depthwise 表示各通道分别卷积；Linear 负责通道间特征重组。
-5. `[Dv]`。
-6. 误差更新会修正状态当前对这个 Key 的记录，避免相同关联被反复盲目相加。
-7. `alpha` 衰减整张旧状态，`beta` 控制当前误差写入多少。
-8. 不会。`z` 只门控本次读出的输出。
-9. `[2,8,8192]`。
-10. `[2,8,32,128]`。
-11. recurrent state 是 `[B,32,128,128]`，conv state 是 `[B,8192,4]`。
-12. 所有历史共享同一张有限状态矩阵，信息会衰减、覆盖和互相干扰。
-13. 不是。Chunk Kernel 并行组织计算，数学结果仍包含前后状态依赖。
-14. 完整前缀状态还包括 24 个 Gated DeltaNet 层的 conv state 和 recurrent state。
+$$
+k=[1,0],\quad v=[4,2],\quad q=[1,0],\quad D_k=2
+$$
 
-</details>
+按 `衰减旧状态 → 读取旧记录 → 计算误差 → 写回状态 → Query 读取` 的顺序，算出 $S'_t$、$\hat v_t$、$\Delta_t$、$S_t$ 和缩放后的输出 $o_t$。
 
-## 13. 实践：比较上下文增长前后的请求状态
+### 12.2 上下文翻倍后，哪些状态会增长
 
-Qwen3.5-9B 的 BF16 Full Attention KV 每缓存位置占 32 KiB。按本课核对的 Transformers 参考实现，`conv_state` 沿用 BF16，`recurrent_state` 使用 FP32；24 个 Gated DeltaNet 层的两类状态合计约 49.5 MiB/请求。分别考虑 4096 和 8192 个缓存位置：
+Qwen3.5-9B 的 BF16 Full Attention KV 每缓存位置占 32 KiB。按本课核对的 Transformers 参考实现，`conv_state` 沿用 BF16，`recurrent_state` 使用 FP32；24 个 Gated DeltaNet 层的两类状态合计约 49.5 MiB/请求。
 
-1. 两种长度下，Full Attention KV 各占多少？
-2. Gated DeltaNet 状态各占多少？
-3. 两类状态合计各是多少？
-4. 为什么不能据此说“Qwen3.5 的请求状态与上下文长度无关”？
+分别计算 4096 和 8192 个缓存位置时的 Full Attention KV、Gated DeltaNet 固定状态与总量，并说明为什么“固定状态”不等于“模型请求状态与上下文长度无关”。
 
 <details>
-<summary>查看计算结果</summary>
+<summary>查看推导与计算结果</summary>
+
+
+旧状态先衰减：
+
+$$
+S'_t=0.5S_{t-1}=
+\begin{bmatrix}
+1&0.5\\
+0&1.5
+\end{bmatrix}
+$$
+
+Key 读出的旧记录与误差为：
+
+$$
+\hat v_t=kS'_t=[1,0.5]
+$$
+
+$$
+\Delta_t=v-\hat v_t=[3,1.5]
+$$
+
+写入一半误差后：
+
+$$
+S_t=S'_t+0.5k^T\Delta_t=
+\begin{bmatrix}
+2.5&1.25\\
+0&1.5
+\end{bmatrix}
+$$
+
+Query 读取并按 $\sqrt{D_k}$ 缩放：
+
+$$
+o_t=\frac{qS_t}{\sqrt{2}}
+=\frac{[2.5,1.25]}{\sqrt{2}}
+\approx[1.768,0.884]
+$$
 
 
 | 缓存位置数 | Full Attention KV | Gated DeltaNet 固定状态 | 合计 |

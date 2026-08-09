@@ -334,45 +334,7 @@ TP 可以继续切分单个 Expert 的 gate/up/down 矩阵。一个部署也可�
 
 因此，MoE 性能分析不能只用 `M×K/E` 的平均值代替真实分布，也不能只看卡数推断通信代价。
 
-## 12. 练习
-
-1. MoE 替换 Decoder Layer 的哪个子层？哪些公共结构仍然存在？
-2. Dense FFN 中的 Dense 是否表示不同 token 彼此全连接？
-3. Router Logits `[M,256]` 和 Selected Expert IDs `[M,8]` 各是什么数据？
-4. Routing Weights 为什么每个 token 有 8 个？它们的和是多少？
-5. 一个 Routed Expert 内部怎样完成 `H → I → H`？
-6. 一个 token 的 Top-8 是否包含 Shared Expert？
-7. Qwen3.5-35B-A3B 的 MoE 输入是 `[B,T,2048]`，Router Logits 的 shape 是什么？
-8. 若 `B=2,T=4`，Selected Expert IDs 的 shape 是什么？
-9. Expert `e` 收到的 token 数 `n_e` 是否在每批固定？
-10. 为什么 Expert 执行完成后还要恢复原 token 顺序？
-11. 35B Total / 3B Active 分别说明什么？
-12. 为什么 Decode 小 Batch 可能让 MoE 的 GEMM 很碎？
-13. EP 与 TP 分别切分什么？
-14. 为什么不能只根据 `EP=8` 断言系统一定使用 All-to-All？
-
-<details>
-<summary>查看参考答案</summary>
-
-
-1. 替换语言 Decoder Layer 的 FFN 子层。Token Mixer、RMSNorm、残差连接和层间接口仍然存在。
-2. 不是。Dense 表示每个 token 都使用同一套完整 FFN 参数；FFN 仍逐 token 处理。
-3. Logits 是每个 token 对全部 256 个 Routed Experts 的原始分数；IDs 是 Top-8 选出的整数 Expert 编号。
-4. 因为每 token 选择 8 个 Routed Experts。选中分支重新归一化后，每行和为 1。
-5. 它执行自己的 gate/up Linear、SiLU、逐元素乘法和 down Linear，shape 为 `[n_e,H] → [n_e,I] → [n_e,H]`。
-6. 不包含。Shared Expert 在 Top-8 之外固定执行。
-7. `[B×T,256]`。
-8. `M=8`，所以是 `[8,8]`。
-9. 不固定。它由本批每个 token 的路由结果决定。
-10. 后续残差和 Decoder Layer 按原序列位置工作，每个 Expert 的结果必须加回对应 token。
-11. 35B 是需要保存的整模型总参数；3B 是官方每 token 实际参与前向的参数口径。
-12. 一轮 assignment 很少且分散在许多 Expert 上，每个 Expert 的 `n_e` 很小，难以形成高效的大矩阵计算。
-13. EP 按 Expert ID 分布权重和工作；TP 切一个 Linear 或 Expert 内部的矩阵维度。
-14. 不同 runtime 的 Dispatch/Combine 可以采用不同 Collective。EP 的语义不能唯一确定通信实现。
-
-</details>
-
-## 13. 实践：根据路由结果组织 Expert Batch
+## 12. 路由执行：从 Expert 分组到输出合并
 
 一个教学用 MoE 有 4 个 Routed Experts，每个 token 选择 2 个。Router 给出：
 
@@ -383,9 +345,10 @@ TP 可以继续切分单个 Expert 的 gate/up/down 矩阵。一个部署也可�
 | `t2` | `[1,2]` | `[0.8,0.2]` |
 
 1. 分别列出 Expert 0～3 收到哪些 token。
-2. 这批共有多少个 routed assignments？
+2. 写出 Router Logits、Selected Expert IDs 和 Routing Weights 的 shape，并计算 routed assignments 总数。
 3. 哪些 Expert 收到的 token 最多？Grouped GEMM 的各组大小是否相同？
-4. 若模型还有一个 Shared Expert，它要处理多少个 token？它是否包含在上面的 6 个 assignments 中？
+4. 对 `t0`，假设 Expert 1 输出 `[2,0]`，Expert 3 输出 `[0,4]`，计算 Routed Experts 的合并结果。
+5. 若模型还有一个 Shared Expert，它要处理多少个 token？它是否包含在上面的 routed assignments 中？
 
 <details>
 <summary>查看答案</summary>
@@ -398,7 +361,22 @@ Expert 2: t2
 Expert 3: t0, t1
 ```
 
-共有 `3×2=6` 个 routed assignments。Expert 1 和 3 各收到两个 token，Expert 0 和 2 各收到一个，组大小不同。Shared Expert 固定处理三个 token，不属于 Top-2 的六次路由分配。
+这批有 `M=3` 个 token、4 个 Routed Experts，每个 token 选择 2 个，因此：
+
+```text
+Router Logits:       [3,4]
+Selected Expert IDs: [3,2]
+Routing Weights:     [3,2]
+Routed assignments:  3×2=6
+```
+
+Expert 1 和 3 各收到两个 token，Expert 0 和 2 各收到一个，Grouped GEMM 的组大小不同。`t0` 的 Routed Expert 输出为：
+
+$$
+0.7[2,0]+0.3[0,4]=[1.4,1.2]
+$$
+
+Shared Expert 固定处理三个 token，不属于 Top-2 的六次路由分配。它的输出还要按模型中的 Shared Expert 门控加入最终结果。
 
 </details>
 

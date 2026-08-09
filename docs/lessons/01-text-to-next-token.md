@@ -621,71 +621,28 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 定位问题时，先确认差异出现在哪个阶段，再核对该阶段的输入、参数和配置。这样可以避免把采样问题归因于模型权重，或把模板差异误判为推理精度问题。
 
-## 13. 练习
+## 13. 生成链路的错误诊断
 
-建议先写出判断依据，再展开参考答案。
+某份设计文档这样描述本课使用的对话接口和训练过程：
 
-1. Qwen3.5 收到 `{"role":"user","content":"推理优化"}` 时，是否只处理这四个汉字？为什么？
-2. 当前 Qwen3.5 Tokenizer 会把“推理优化”切成哪两个 token？
-3. 为什么不能把 Token ID `111892` 当作“推理”的语义强度？
-4. 已知 `B=2`、`T=8`、`H=4096`，`input_ids` 和 Embedding 输出的 shape 分别是什么？
-5. Embedding 和 Hidden State 可以有相同 shape，为什么仍是不同概念？
-6. LM Head 的方向是哪一个？A. ID 到 H 维向量；B. H 维 Hidden State 到 V 个候选分数；C. V 个概率到 Token ID。
-7. 给定 `logits=[-1,0,3,1]`，贪心选择哪个位置？必须计算 Softmax 吗？
-8. Logit 为 0 时，Softmax 概率一定为 0 吗？为什么？
-9. 采样时，概率为 83.1% 的 token 是否一定被选中？
-10. 训练时为什么能同时计算多个位置的预测，而普通生成仍要逐 token 进行？
-11. 为什么因果遮罩仍然不可缺少？
-12. 某位置给正确 token 的概率从 `0.2` 提高到 `0.8` 时，交叉熵损失会升高还是降低？
-13. 训练代码把原始 Logits 交给 `CrossEntropyLoss` 前，是否必须手工执行 Softmax？
-14. Tokenizer 输出什么？Embedding 输出什么？
-15. 按执行顺序写出用户消息怎样变成下一个 token，再变成用户看到的文字。
+> 服务把当前例子中的四个汉字直接交给 Tokenizer。Tokenizer 查 Embedding 表得到 Token ID，Decoder 再把 ID 变成概率。LM Head 根据概率生成 Hidden State，执行 Softmax 后用 Argmax 选出文字。下一轮把这段文字直接送回 Decoder。
+>
+> 训练时也必须逐 token 调用模型，因为后一个位置依赖前一个位置。训练样本已经包含完整答案，所以不再需要因果遮罩。计算损失前，代码必须先手工对 Logits 执行 Softmax。
+
+请完成两件事：
+
+1. 按执行顺序改写第一段，并标出 Token IDs、Embedding、Hidden States 和 Logits 的主要 shape。
+2. 解释第二段为什么把“训练样本已知”和“生成结果未知”混在了一起，并改正因果遮罩与交叉熵的说法。
 
 <details>
-<summary>查看参考答案</summary>
+<summary>查看参考修改</summary>
 
 
-1. 不是。消息先经过 Chat Template，加入角色、消息边界和生成起点等内容，然后整体进行 Tokenize。
-2. `推理`、`优化`。
-3. Token ID 是词表编号，数值大小没有语义。它只用于指向对应 token，并索引 Embedding 的对应行。
-4. `input_ids=[2,8]`；Embedding 输出 `[2,8,4096]`。
-5. Embedding 是 token 的初始、静态表示；Hidden State 已经过模型层并结合当前上下文。
-6. B。
-7. 选择第三个位置的最大 Logit `3`，0-based 索引为 2；贪心不必计算 Softmax。
-8. 不一定为 0；对有限 Logit 而言实际大于 0。因为 $e^0=1$，最终概率还取决于所有候选的分母。
-9. 不一定。采样是随机过程，83.1% 仍有 16.9% 的概率不被选中。Temperature、Top-K 和 Top-P 还可能先改变分布。
-10. 训练样本已经给出真实的后续 token，各位置可用真实历史 token 在一次前向中计算；生成时未来 token 未知，下一步必须等待上一步的实际选择。
-11. 它阻止位置 `t` 读取右侧真实答案。没有因果遮罩，训练得到的预测建立在推理时不存在的信息上。
-12. 降低。该位置的损失是正确 token 概率的负对数，正确答案概率越高，损失越小。
-13. 不必。`CrossEntropyLoss` 直接接收原始 Logits，并在内部完成 Log Softmax 和负对数似然计算。
-14. Tokenizer 将文字转换为 Token IDs；Embedding 将 Token IDs 转换为 `[H]` 维初始向量。
-15. 用户消息先经 Chat Template 组织格式，再由 Tokenizer 转成 IDs；Embedding
-    把 IDs 变成向量；Decoder 计算上下文 Hidden State；LM Head 得到全词表
-    Logits；贪心或采样选出下一个 ID；Tokenizer Decode 把生成的 IDs 还原成
-    文字。生成完整回答时重复这个过程。
+对话消息先经过 Chat Template，加入角色、消息边界和生成起点。Tokenizer 把格式化后的文本切成 token，并输出 `input_ids:[B,T]`。Embedding 根据这些 ID 查表，得到初始向量 `[B,T,H]`。Decoder 把初始向量更新成包含上下文的 Hidden States，LM Head 再把需要预测的位置映射成词表 Logits；只保留最后位置时，shape 是 `[B,V]`。
 
-</details>
+贪心生成可以直接对 Logits 做 Argmax，选择结果是下一个 Token ID。下一轮把这个 ID 送入模型，由 Embedding 再次查表。Tokenizer Decode 负责把连续生成的 Token IDs 还原成用户看到的文字。
 
-## 14. 实践：找出生成链路中的错误
-
-某份设计文档写道：
-
-> 服务把用户输入的四个汉字直接交给 Tokenizer。Tokenizer 查 Embedding 表得到 Token ID，Decoder 再把 ID 变成概率。LM Head 根据概率生成 Hidden State，执行 Softmax 后用 Argmax 选出文字。下一轮把这段文字直接送回 Decoder。
-
-这段话至少有七处错误或缺失。请按真实执行顺序改写，并给每一步标出主要数据形式。
-
-<details>
-<summary>查看问题清单</summary>
-
-
-1. 对话消息通常先经过 Chat Template，模型输入不只有用户可见文字。
-2. Tokenizer 把格式化文本变成 Token IDs，不负责查 Embedding 表。
-3. Embedding 根据 Token ID 查表，输出 `[B,T,H]` 初始向量。
-4. Decoder 处理向量，输出结合上下文的 Hidden States，不直接输出概率。
-5. LM Head 把最后位置的 Hidden State 映射成 `[B,V]` Logits，方向写反了。
-6. 贪心可以直接对 Logits 做 Argmax；随机采样通常才需要概率归一化。
-7. 选择结果是下一个 Token ID。下一轮把这个 ID 送入模型，Embedding 再查表得到向量；系统不会先把可见文字直接塞进 Decoder。
-8. Tokenizer Decode 负责把连续生成的 Token IDs 还原成用户看到的文字。
+训练样本已经给出完整 token 序列，因此多个位置的输入可以组成一次模型前向，不需要像在线生成那样等待模型先选出前一个 token。因果遮罩仍然必须存在，否则位置 `t` 会读到右侧的真实答案。PyTorch 的 `CrossEntropyLoss` 直接接收原始 Logits，并在内部完成 Log Softmax 与负对数似然计算，训练代码不必先手工执行 Softmax。
 
 </details>
 

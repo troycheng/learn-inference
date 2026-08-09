@@ -480,53 +480,21 @@ Qwen3.5-9B 的 32 个 Decoder Layer 按下面的顺序重复：
 
 Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Full Attention 层更新 K/V，Gated DeltaNet 层更新卷积状态和 recurrent state。第 5 课会分析固定 shape 的状态怎样逐步吸收历史。
 
-## 14. 练习
+## 14. 生成时序与缓存核算
 
-1. Prefill 输入 4 个 Prompt token 后，哪一个位置的 Hidden State 用来预测 `y1`？
-2. 为什么 Prompt 的 4 个位置可以同层并行计算，而未来的 `y1` 到 `y4` 不能直接一起确定？
-3. Prefill 后缓存长度为 100。输入一个新 token 完成一步 Decode 后，缓存长度是多少？
-4. 为什么未来 token 会反复读取过去的 K/V，却不需要过去的 Q？
-5. Full Attention 的 `q_new:[B,Nq,1,D]` 与历史 `K:[B,Nkv,T,D]` 计算后，逻辑分数 shape 中的两个位置轴分别多长？
-6. 给定 `L_full=2`、`B=1`、`T=3`、`Nkv=2`、`D=4`、BF16，KV Cache 是多少字节？
-7. Qwen3.5-9B 为什么用 `L_full=8` 计算 KV Cache，而不是 32？
-8. Qwen3.5-9B 的 BF16 Full Attention KV Cache 每增加一个 token，为什么增加 32 KiB？
-9. 4096 个缓存 token 对应多少 Full Attention KV Cache？这个数字是否等于请求全部运行时状态？
-10. Continuous Batching 是否让一个请求同时确定多个未来 token？
-11. Chunked Prefill 的第二个 Chunk 需要读取第一个 Chunk 留下的状态吗？
-12. TTFT 是否等于 GPU 上 Prefill Kernel 的执行时间？
-13. TPOT 和 ITL 有什么区别？
-14. 按模型前向顺序说明：Prompt 为 4 个 token、输出为 3 个 token 时，输入和缓存怎样变化。
-
-<details>
-<summary>查看参考答案</summary>
-
-
-1. 最后一个 Prompt 位置 `p4` 的最终 Hidden State。它经过 LM Head 后得到预测 `y1` 的 Logits。
-2. Prompt token 的值在执行前已经全部知道，同层可以用因果遮罩限制各位置的读取范围，并把多个位置放进成批的张量计算。未来 token 的值取决于前一步实际选择结果，输入尚不存在。
-3. 101。新位置的 K/V 会追加到各 Full Attention 层缓存。
-4. Q 只服务于当前位置发起的一次查询；历史 K/V 会被每个未来位置的新 Q 读取。
-5. 查询位置轴是 1，键位置轴是 `T+1`。GQA 会让多个 Q 头映射到较少的 K/V 头，逻辑分数可写为 `[B,Nq,1,T+1]`。
-6. `2×2×1×3×2×4×2=192 Byte`。
-7. 32 层中每 4 层只有 1 个 Full Attention 层，共 8 层。其余 24 层使用 Gated DeltaNet 状态，不保存同样的逐 token K/V。
-8. `2×8×4×256×2=32768 Byte=32 KiB`。各因子依次代表 K/V、Full Attention 层数、K/V 头数、头维度和 BF16 字节数。
-9. `4096×32 KiB=128 MiB`。不是。它没有包含 DeltaNet 状态、分配器预留、元数据和其他运行时数据。
-10. 不会。它只是在每轮之间加入和移除请求，让不同请求的已知位置共享一次模型执行。
-11. 需要。第二段要接着第一段的逻辑前缀计算，必须使用已经建立的 KV Cache 或 recurrent state。
-12. 不是。端到端 TTFT 还可能包含网络、输入处理、排队、调度、采样和返回时间。
-13. ITL 是每一对相邻输出 token 的实际时间间隔；TPOT 通常是排除首 token 后的平均输出 token 时间。
-14. Prefill 一次处理 `p1` 到 `p4`，建立历史状态，并从 `p4` 的 Logits 选出 `y1`。第一轮 Decode 只输入 `y1`，读取历史状态、追加 `y1` 的状态并选出 `y2`；下一轮只输入 `y2`，追加状态并选出 `y3`。
-
-</details>
-
-## 15. 实践：补全生成时间线
-
-Prompt 有四个 token：`p1 p2 p3 p4`。模型最终生成 `y1 y2 y3`。请补全表中的两个空列：
+Prompt 有四个 token：`p1 p2 p3 p4`。模型最终生成 `y1 y2 y3`。请补全这张生成时间线：
 
 | 模型前向 | 本轮输入 | 前向结束后的 Cache | 本轮根据 Logits 选出的 token |
 | --- | --- | --- | --- |
 | Prefill | `p1 p2 p3 p4` |  |  |
 | Decode 第 1 轮 |  |  |  |
 | Decode 第 2 轮 |  |  |  |
+
+完成时间线后，再回答三个问题：
+
+1. 给定 `L_full=2`、`B=1`、`T=3`、`Nkv=2`、`D=4`，KV Cache 使用 BF16，一共需要多少字节？
+2. Continuous Batching 能否让同一个请求在一轮中直接确定 `y1`、`y2` 和 `y3`？
+3. 为什么 TTFT 不能直接等同于 GPU 上 Prefill Kernel 的时间？
 
 <details>
 <summary>查看答案</summary>
@@ -539,6 +507,17 @@ Prompt 有四个 token：`p1 p2 p3 p4`。模型最终生成 `y1 y2 y3`。请补�
 | Decode 第 2 轮 | `y2` | `p1 p2 p3 p4 y1 y2` 的层状态 | `y3` |
 
 `y1` 被选中时还没有经过下一次模型前向。它的 K/V 会在 Decode 第 1 轮逐层写入，而不是在 Prefill 结束的瞬间自动出现。
+
+这组教学配置的 KV 容量是：
+
+$$
+2\times1\times2\times2\times3\times4\times2
+=192\ Byte
+$$
+
+这些因子依次表示 K/V 两份、`B=1`、2 个 Full Attention 层、2 个 K/V 头、3 个缓存位置、每头 4 维，以及 BF16 每个元素 2 Byte。
+
+Continuous Batching 只改变不同请求怎样进入每轮执行，不会消除同一请求未来 token 的数据依赖。端到端 TTFT 除了模型 Prefill，还可能包含网络、输入处理、排队、调度、采样和返回时间。
 
 </details>
 

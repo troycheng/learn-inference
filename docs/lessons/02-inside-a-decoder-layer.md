@@ -566,47 +566,7 @@ Qwen3.5 整体还包含视觉编码器，所以“Decoder-only 语言主干”�
 
 Decoder Layer 并不只在 Decode 阶段运行。Prompt 的 Prefill 同样会经过全部 Decoder Layer，只是本轮处理的位置数和历史状态不同。
 
-## 14. 练习
-
-1. `[B,T,H]` 中的一行和一列分别应怎样理解？
-2. Qwen3.5 一个 Decoder Layer 中，Token Mixer 和 FFN 分别混合什么？
-3. 对 `[B,T,H]` 做 RMSNorm 时，`mean` 沿哪个轴计算？为什么中间 shape 是 `[B,T,1]`？
-4. 忽略 `epsilon` 和学习缩放，手算 `[3,4]` 的 RMSNorm 结果。
-5. 为什么 `[30,40]` 与 `[3,4]` 的归一化结果基本相同？
-6. RMSNorm 后每个元素是否必须位于 `[-1,1]`？
-7. 如果残差分支更新 `F(x)=0`，输出是什么？
-8. `gate_proj`、`up_proj`、`down_proj` 的方向和作用分别是什么？
-9. SwiGLU 中两条 `H→I` 分支怎样连接？
-10. 为什么 `down_proj` 必须回到 `H` 维？
-11. 两个 Linear 中间没有非线性时，为什么可以合并？使用交换律还是结合律？
-12. 当 `B=2,T=8,H=4096,I=12288` 时，`gate_proj`、逐元素乘法和 `down_proj` 的输出 shape 分别是什么？
-13. Dense FFN 是否直接混合不同 token？
-14. Decoder Layer 是否只在 Decode 阶段执行？Decoder-only 又描述什么？
-15. 按执行顺序列出一个 Decoder Layer 的八个步骤。
-
-<details>
-<summary>查看参考答案</summary>
-
-
-1. 一行是一个 token 位置的完整 `H` 维向量；一列是所有 token 在同一个特征坐标上的数值。表示通常由许多坐标共同构成。
-2. Token Mixer 混合不同 token 位置的信息；FFN 加工单个 token 内部的特征。
-3. 沿最后一个 `H` 轴。每个 token 的 `H` 个数归约成一个均方值，同时用 `keepdim=true` 保留长度为 1 的轴，所以得到 `[B,T,1]`。
-4. 均方根是 `sqrt((9+16)/2)=sqrt(12.5)≈3.536`，结果约为 `[0.849,1.131]`。
-5. 输入整体放大 10 倍，均方根也放大 10 倍，相除后尺度因子抵消。
-6. 不必须。RMSNorm 约束整条向量的均方根，不限制每个元素。
-7. `x`。
-8. `gate_proj` 沿 `H→I` 产生调节系数；`up_proj` 沿 `H→I` 产生候选中间特征；`down_proj` 沿 `I→H` 混合中间特征并回到层接口宽度。
-9. `gate_proj(y_norm)` 先经过 SiLU，再与 `up_proj(y_norm)` 的结果逐元素相乘，随后交给 `down_proj`。
-10. FFN 输出需要与 `[B,T,H]` 的残差输入逐元素相加，并作为下一层的 `[B,T,H]` 输入。
-11. 中间只有线性变换时，可以利用矩阵乘法结合律把权重预先组合；不是交换律。
-12. 分别为 `[2,8,12288]`、`[2,8,12288]`、`[2,8,4096]`。
-13. 不直接混合。每个 token 独立使用同一套 FFN；跨 token 混合由 Token Mixer 完成。
-14. 不是。Prefill 和 Decode 都会执行同一组 Decoder Layer。Decoder-only 描述语言模型主干采用因果生成架构，不是请求的某个运行阶段。
-15. 保存输入、RMSNorm、Token Mixer、残差相加；再保存中间结果、RMSNorm、Dense SwiGLU FFN、残差相加。
-
-</details>
-
-## 15. 实践：审查一张错误的 Decoder Layer
+## 14. 结构审查：修正 Decoder Layer 数据流
 
 下面的数据流有多处错误：
 
@@ -625,23 +585,27 @@ y
 → z [B,T,I]
 ```
 
-请把它改成 Qwen3.5 使用的预归一化 Decoder Layer，并说明每一处修改的理由。
+请把它改成 Qwen3.5 使用的预归一化 Decoder Layer。修改后的图需要明确：
+
+1. 两次 RMSNorm 的位置；
+2. 两条残差分别保留哪一个输入；
+3. SwiGLU 两条 `H→I` 分支的连接方式；
+4. 当输入为 `[2,8,4096]`、`I=12288` 时，门控乘法和 `down_proj` 的输出 shape。
 
 <details>
 <summary>查看修改结果</summary>
 
 
 ```text
-x ───────────────────────────────┐
-└→ RMSNorm → Token Mixer ────────┴→ 逐元素相加 → y [B,T,H]
+y = x + TokenMixer(RMSNorm(x))
 
-y ──────────────────────────────────────────────────┐
-└→ RMSNorm → gate_proj → SiLU ─┐                    │
-             up_proj ──────────┴→ 逐元素相乘        │
-                                → down_proj [B,T,H] ┴→ 逐元素相加 → z [B,T,H]
+u = RMSNorm(y)
+z = y + down_proj(SiLU(gate_proj(u)) ⊙ up_proj(u))
 ```
 
 RMSNorm 位于子层之前。残差保存的是未经归一化的 `x` 或 `y`。SwiGLU 的两条 `H→I` 分支做逐元素乘法，不是相加；门控分支还要经过 SiLU。`down_proj` 必须回到 `H` 维，才能与第二条残差相加。
+
+本例中，`gate_proj`、`up_proj` 和两者逐元素相乘的结果都是 `[2,8,12288]`；`down_proj` 输出 `[2,8,4096]`。Token Mixer 负责跨 token 交换信息，Dense FFN 对每个 token 分别执行同一套特征变换。
 
 </details>
 

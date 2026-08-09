@@ -593,39 +593,7 @@ $$
 
 配置可以给出资源下限和计算规模，不能代替目标 runtime 上的峰值显存与端到端性能测量。
 
-## 14. 练习
-
-1. “BF16 模型”为什么不足以说明一层 Linear 的实际数值路径？至少还要确认哪几种 dtype？
-2. `V=248320,H=4096` 时，Embedding 有多少参数？若全部按 BF16 保存，理想有效载荷是多少？
-3. `tie_word_embeddings=false` 会怎样改变参数量？为什么同样大小的 Embedding 和 LM Head 计算量不同？
-4. 35B-A3B 的 3B Active 是否表示只需保存 3B 权重？
-5. 根据 `L_full=8,Nkv=4,D=256`，推导 9B 的 BF16 KV 为什么是 32 KiB/位置。
-6. 35B-A3B 在 vLLM TP=8 下，为什么每 Rank 的 BF16 KV 是 10 KiB，而不是 20 KiB 除以 8？
-7. Gated DeltaNet 状态怎样随序列长度和并发数变化？
-8. Linear `[M,H_in]×[H_in,H_out]` 的 FLOPs 近似是多少？Batch 从 1 增大时，为什么算术强度通常会上升？
-9. 为什么 Attention 的上下文长度项不能由参数量推出？
-10. 如果一个新检查点总参数较少，是否足以断定它显存更低、Decode 更快？还缺哪些信息？
-11. 用公式算出的权重、KV 和 recurrent state 之和，为什么通常小于进程实测峰值显存？
-
-<details>
-<summary>查看参考答案</summary>
-
-
-1. 检查点 dtype 只说明保存格式。还要确认权重和激活的计算 dtype、累加 dtype，以及结果写回 dtype。
-2. 参数数是 `248320×4096=1,017,118,720`；BF16 理想有效载荷为 `2,034,237,440 Byte`，约 1.89 GiB。
-3. LM Head 另有一份独立的 `[V,H]` 权重。Embedding 只查当前 ID 对应的行；LM Head 要计算完整词表的 Logits。
-4. 不是。全部专家仍要保存，3B 是每 token 激活参数的取整口径。
-5. `2×8×4×256×2=32768 Byte=32 KiB`，最前面的 2 表示 K 和 V 两份，最后的 2 是 BF16 每元素字节数。
-6. `Nkv=2<TP=8`，固定版本 vLLM 会复制 K/V 头，让每 Rank 至少保存一个，所以是 `2×10×1×256×2=10 KiB`。
-7. 每个请求的状态 shape 不随序列长度增长，但总量随并发请求数增长。
-8. 约 `2×M×H_in×H_out`。Batch 增大后，同一份权重有机会服务更多输入，FLOPs 随 `M` 增长，而权重读取可以复用。
-9. QK/AV 和 KV 读取随历史长度 `T` 增长，却没有新增模型参数。
-10. 不足。还要看 dtype、实际加载模块、Dense 或 MoE 的激活路径、KV 和固定状态、上下文长度、Batch、Kernel 与通信。
-11. 进程还需要本轮临时激活、通信 Buffer、Kernel Workspace、CUDA Graph 和分配器预留。哪些中间张量被物化又取决于融合方式、Batched Tokens 与 runtime 实现。
-
-</details>
-
-## 15. 实践：从最小配置推导资源
+## 14. 容量推导：逻辑 KV 与每 Rank KV
 
 某模型配置给出：
 
@@ -637,14 +605,16 @@ num_key_value_heads     = 4
 head_dim                = 256
 Full Attention 层数      = 8
 KV Cache dtype          = BF16
+Tensor Parallel         = 8
 ```
 
 服务为每条请求预留 4096 个 Prompt 位置和 256 个输出位置，并发上限为 16。
 
 1. 计算每请求每新增位置的逻辑 KV。
-2. 计算单请求预留的逻辑 KV。
-3. 计算 16 个并发请求的逻辑 KV 总量。
-4. 仅凭这些字段，能否算出完整进程显存？还缺哪些主要对象？
+2. 固定版本 vLLM 在 `Nkv<TP` 时让每个 Rank 至少保存一个 K/V 头。计算每 Rank、每新增位置的物理 KV。
+3. 计算单请求与 16 并发的逻辑 KV；再计算每 Rank 对应的物理 KV。
+4. 为什么 8 个 Rank 的物理 KV 合计会大于模型逻辑 KV？
+5. 仅凭这些字段，能否算出完整进程显存？还缺哪些主要对象和 dtype 信息？
 
 <details>
 <summary>查看计算结果</summary>
@@ -662,7 +632,22 @@ $$
 4352\times32\ KiB=136\ MiB
 $$
 
-16 个并发请求合计 `2176 MiB=2.125 GiB`。这只是 Full Attention 的逻辑 KV。完整进程显存还需要权重、Gated DeltaNet 或其他固定请求状态、临时激活、分页与对齐、通信 Buffer、CUDA Graph、Kernel Workspace 和内存池。
+TP=8 大于 `Nkv=4`，每 Rank 保存一个 K/V 头，因此每 Rank、每位置为：
+
+$$
+2\times8\times1\times256\times2=8192\ Byte=8\ KiB
+$$
+
+容量对比如下：
+
+| 口径 | 单请求 | 16 并发 |
+| --- | ---: | ---: |
+| 模型逻辑 KV | 136 MiB | 2176 MiB，也就是 2.125 GiB |
+| 每 Rank 物理 KV | 34 MiB | 544 MiB |
+
+8 个 Rank 合计保存 8 个物理 K/V 头副本，而模型逻辑上只有 4 个头，所以跨 Rank 的物理 KV 合计是逻辑 KV 的两倍。不能先算逻辑 KV 再机械除以 TP。
+
+这些字段仍不足以得到完整进程显存。还缺权重及其保存 dtype、Gated DeltaNet 固定状态及其 dtype、临时激活、分页与对齐、通信 Buffer、CUDA Graph、Kernel Workspace 和内存池。计算 dtype 与累加 dtype 还会影响 Kernel 行为和部分临时空间。
 
 </details>
 

@@ -461,69 +461,40 @@ Token ID 只决定取哪一行。ID 的数值大小没有语义强弱关系。
 
 这些模块的作用会在后续课程中展开。现在只要能说清谁和谁计算、沿哪个轴，以及输出 shape 为什么变化。
 
-## 14. 练习
+## 14. 生成链路中的 shape 推导
 
-建议先独立写出结果和理由，再展开答案核对。
-
-1. `X.shape=[2,8,4096]` 中的 `2`、`8`、`4096` 分别表示什么？
-2. `X[1,3,10]` 取出的是什么？结果 shape 是什么？
-3. 对 shape 为 `[B,T,H]` 的张量沿 `H` 轴求平均，`keepdim=false` 和 `true` 的输出 shape 分别是什么？
-4. 对矩阵 `[[1,2,3],[4,5,6]]`，沿 `axis=0` 和 `axis=1` 求和分别得到什么？
-5. `[1,2] * [3,4]` 与 `[1,2] · [3,4]` 的结果有什么区别？
-6. 给定 `x=[1,2]`、`W=[[1,0],[0,1],[1,1]]`，`xW^T` 是多少？
-7. 若 `X:[B,T,H]`、`W:[I,H]`，Linear 输出 shape 是什么？它是否改变 token 位置数？
-8. 为什么 Token ID `1000` 不能解释为比 Token ID `10` 语义更强？
-9. 两个 Linear 中间没有非线性操作时，合并它们依赖矩阵乘法的交换律还是结合律？
-10. Token IDs、Hidden States、Logits、KV Cache 属于模型参数还是运行时数据？
-
-<details>
-<summary>查看参考答案</summary>
-
-
-1. 一批有 2 条序列；每条有 8 个 token 位置；每个位置由 4096 个数表示。
-2. 第 2 条序列、第 4 个 token 的第 11 个特征坐标，是一个标量 Tensor，shape 为 `[]`。
-3. 分别为 `[B,T]` 和 `[B,T,1]`。
-4. `axis=0` 得到 `[5,7,9]`；`axis=1` 得到 `[6,15]`。
-5. 前者是逐元素乘法，得到 `[3,8]`；后者是点积，得到标量 `11`。
-6. `[1,2,3]`。
-7. `[B,T,I]`；不改变 `B` 和 `T`，因此不改变 token 位置数。
-8. Token ID 是词表索引，只用于定位 token 和 Embedding 表中的行，编号大小没有语义。
-9. 结合律。
-10. 都是当前请求产生的运行时数据。
-
-</details>
-
-## 15. 实践：检查一段 shape 推导
-
-下面是一段简化的模型计算：
+下面保留一条真实生成路径，只把维度缩小。`Decoder(X)` 暂时作为一个整体，它接收并输出 `[B,T,H]`；后面的课程会打开它的内部计算。
 
 ```text
-X: [2,8,4]
-W: [6,4]
-c: [6]
+ids: [2,8]
+E:   [100,4]
+gamma: [4]
+W_lm: [100,4]
 
-Y      = X W^T
-m      = mean(Y², axis=-1, keepdim=true)
-Z      = Y * rsqrt(m + epsilon)
-scores[b,t] = Z[b,t,:] · c
-best   = argmax(scores, axis=1)
+X        = E[ids]
+H_states = Decoder(X)
+m        = mean(H_states², axis=-1, keepdim=true)
+Z        = H_states * rsqrt(m + epsilon) * gamma
+h_last   = Z[:, -1, :]
+logits   = h_last W_lm^T
+next_ids = argmax(logits, axis=-1)
 ```
 
-不运行代码，先完成下面的推导：
-
-1. 写出 `Y`、`m`、`Z`、`scores` 和 `best` 的 shape。
-2. 标出哪一步是矩阵乘法，哪一步是归约，哪一步使用广播。
-3. 哪一步改变了每个 token 的特征宽度？哪一步合并了 token 轴？
-4. `W` 和 `c` 是模型参数，还是当前请求的数据？`Y` 和 `scores` 呢？
+1. 写出 `X`、`H_states`、`m`、`Z`、`h_last`、`logits` 和 `next_ids` 的 shape。
+2. 标出查表、归约、广播、切片、矩阵乘法和 Argmax 分别发生在哪里。
+3. 哪一步去掉了 token 位置轴？哪一步把 Hidden Size 映射成词表大小？
+4. `E`、`gamma`、`W_lm` 与 `ids`、`H_states`、`logits` 分别属于模型参数还是运行时数据？
+5. `ids` 中编号较大的 token 是否语义更强？`next_ids:[2]` 中的数字表示什么？
 
 <details>
 <summary>查看推导</summary>
 
 
-1. `Y:[2,8,6]`，`m:[2,8,1]`，`Z:[2,8,6]`，`scores:[2,8]`，`best:[2]`。
-2. `XW^T` 是矩阵乘法；`mean` 和 `argmax` 是归约；`m:[2,8,1]` 在 `H=6` 的最后一维上广播。
-3. `XW^T` 把每个 token 的宽度从 4 改为 6；`argmax(axis=1)` 合并长度为 8 的 token 轴。
-4. `W` 和 `c` 是模型参数；`Y` 和 `scores` 是当前请求产生的运行时数据。
+1. `X:[2,8,4]`，`H_states:[2,8,4]`，`m:[2,8,1]`，`Z:[2,8,4]`，`h_last:[2,4]`，`logits:[2,100]`，`next_ids:[2]`。
+2. `E[ids]` 是查表；`mean` 和 `argmax` 是归约；`m:[2,8,1]` 与 `gamma:[4]` 都沿最后一维广播；`Z[:,-1,:]` 是切片；`h_last W_lm^T` 是矩阵乘法。矩阵乘法内部，每条 Hidden State 会与 `W_lm` 的每一行做点积。
+3. `Z[:,-1,:]` 只保留每条序列的最后位置，因此去掉了长度为 8 的位置轴。LM Head 使用 `W_lm` 把宽度 4 映射成 100 个词表 Logit。
+4. `E`、`gamma` 和 `W_lm` 是模型参数；`ids`、`H_states` 和 `logits` 是当前请求产生的运行时数据。
+5. Token ID 是词表索引，编号大小没有语义强弱。`next_ids` 中的每个数字都是该序列选出的下一个 Token ID。
 
 </details>
 

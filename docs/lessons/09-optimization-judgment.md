@@ -90,7 +90,7 @@ $$
 - 自动量化 Gated DeltaNet 的 `conv_state` 和 `recurrent_state`；
 - 保证长上下文质量不变。
 
-对 Qwen3.5，只有 8 或 10 个 Full Attention 层使用随长度增长的 KV。若服务容量主要受每请求几十 MiB 的 Gated DeltaNet 固定状态限制，只量化 KV 的收益可能小于纯 Transformer 模型。
+Qwen3.5-9B 有 8 个 Full Attention 层，Qwen3.5-35B-A3B 有 10 个；只有这些层使用随长度增长的 KV。若服务容量主要受每请求几十 MiB 的 Gated DeltaNet 固定状态限制，只量化 KV 的收益可能小于纯 Transformer 模型。
 
 验证时还要确认 Scale 的粒度、静态或动态计算方式，以及 Attention Kernel 是否能直接读取量化 Cache。若先把 KV 还原成 BF16 再执行，节省的存储字节不一定能完全转成读取加速。
 

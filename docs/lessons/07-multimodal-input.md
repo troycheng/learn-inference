@@ -2,7 +2,7 @@
 
 文本先经过 Tokenizer，再查询 Embedding 表，进入 Decoder 时已经是一组 `H` 维向量。图片也要到达同一个入口，只是走的是另一条前处理路径。
 
-图片没有 Token ID，也不能拿像素值查询文本 Embedding 表。Qwen3.5 先用视觉编码器处理图片，再把结果投影到语言模型的 Hidden Size。到 Decoder 入口时，文字和图片都已经变成一串 `H` 维向量。
+图片内容没有可供文本 Embedding 直接查表的 Token ID，像素值也不能当作词表编号。Qwen3.5 先用视觉编码器处理图片，再把结果投影到语言模型的 Hidden Size。到 Decoder 入口时，文字和图片都已经变成一串 `H` 维向量。
 
 ![文本和图片在 Decoder 前汇合](../assets/07-two-input-paths.svg)
 
@@ -316,52 +316,16 @@ deepstack_visual_indexes = []
 
 </details>
 
-## 11. 练习
-
-1. 图片是否先被识别成文字，再进入语言模型？
-2. 文本 Embedding 与视觉编码结果在进入 Decoder 前必须满足什么 shape 条件？
-3. `512×512` 图片按 `16×16` 切块，会产生多少个空间 Patch？
-4. 为什么最终视觉位置只有 256 个？
-5. Patch Embedding 与文本 Embedding 的输入分别是什么？
-6. 视觉 Attention 和视觉 MLP 分别混合什么？位置 Embedding 和 Vision RoPE 在哪里工作？
-7. Merger 对四条 1152 维特征做了什么？GELU 是否会再次减少视觉位置数？
-8. Qwen3.5-9B 的 Merger 最终输出宽度是多少？为什么？
-9. 图片占位 Token ID 和视觉编码器输出的向量有什么区别？
-10. 混合序列进入 Decoder 时为什么仍能写成 `[B,T,H]`？
-11. MRoPE 的三组位置编号分别表示什么？它会把 token 数变成三倍吗？
-12. 为什么不能说视频 MRoPE 的时间编号就是秒数？
-13. 图片高和宽都扩大一倍，视觉位置数约变成多少倍？
-14. 图片主要增加 TTFT 还是每一步 Decode 都重跑一次视觉塔？
-
-<details>
-<summary>查看参考答案</summary>
-
-
-1. 不是。图片像素经视觉编码器变成向量，直接放入语言模型输入序列。
-2. 最后一维都必须等于语言模型的 Hidden Size `H`。
-3. `(512/16)×(512/16)=1024`。
-4. Merger 每 `2×2` 个相邻特征合成一个，位置数除以 4。
-5. 文本 Embedding 输入是 Token ID；Patch Embedding 输入是局部像素值。
-6. 视觉 Attention 让不同 Patch 位置交换信息；视觉 MLP 加工每个位置内部的特征。位置 Embedding 和 Vision RoPE 都在视觉塔内部、Merger 之前工作。
-7. 先拼成 4608 维，再经 Linear、GELU、Linear 投影。GELU 只做逐元素激活，不会再次减少视觉位置数。
-8. 4096，因为要与 9B 语言模型的 Hidden Size 对齐。
-9. 占位 Token ID 标记视觉向量应放的位置；描述图片内容的是视觉编码器输出。
-10. 文本和视觉位置最后一维都已经对齐为 `H`。
-11. 时间、高度、宽度。不会，三组编号作用在同一批位置上。
-12. 真实时间主要通过文本时间戳表达，且依赖 FPS 和采样信息。
-13. 约 4 倍。
-14. 主要增加视觉编码和语言模型 Prefill，通常不会在每个 Decode step 重跑视觉塔。
-
-</details>
-
-## 12. 实践：估算一张图片增加的 Decoder 工作
+## 11. 图像输入的计算与状态增量
 
 一张图片经过预处理后的尺寸为 `768×512`。Qwen3.5 使用 `16×16` 空间 Patch 和 `2×2` Patch Merger。以 Qwen3.5-9B 为例，语言侧每增加一个缓存位置会增加 32 KiB 逻辑 KV。
 
 1. 视觉塔最初得到多少个空间 Patch？
 2. Merger 后有多少个视觉位置进入语言 Decoder？
 3. 只计算 384 个视觉位置本身，它们会增加多少逻辑 KV？
-4. 这三个数字能否直接推出 TTFT 增加多少毫秒？还缺哪些测量？
+4. 为什么完整请求的序列增量不一定恰好是 384？
+5. 这些数字能否直接推出 TTFT 增加多少毫秒？还缺哪些测量？
+6. 这 384 个视觉位置各有时间、高度、宽度三组 MRoPE 位置编号。它们会因此变成 1152 个序列位置吗？生成后续 token 时，视觉塔是否每步重跑？
 
 <details>
 <summary>查看计算结果</summary>
@@ -376,6 +340,8 @@ deepstack_visual_indexes = []
 12 MiB 只计算视觉向量占据的 384 个位置。若要比较“没有图片”和“加入图片”两条完整请求，还要以 Processor 最终产生的 `input_ids` 为准，把 `<|vision_start|>`、`<|vision_end|>` 等新增特殊 token 一并计入。
 
 这些数字只能说明视觉位置数量和逻辑 KV 增量。TTFT 还取决于视觉塔、Merger、语言模型 Prefill、Batch、Kernel 和排队时间，需要在目标 runtime 上分段测量。
+
+MRoPE 的三组编号作用在同一批视觉位置上，不会把序列长度变成三倍。视觉塔通常只在请求的输入阶段执行一次，后续 Decode 通过语言模型的 KV Cache 和 Gated DeltaNet 状态继续使用已经写入的视觉信息。
 
 </details>
 
