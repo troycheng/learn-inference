@@ -605,27 +605,50 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 
 </details>
 
-## 15. 综合练习：建立模型资源清单
+## 15. 实践：从最小配置推导资源
 
-拿到一个新模型配置，先完成下面这张表：
+某模型配置给出：
 
-| 问题 | 要看的字段或 shape |
-| --- | --- |
-| Dense 还是 MoE | `intermediate_size`、`num_experts`、`num_experts_per_tok` |
-| 层如何排列 | `layer_types` |
-| 权重数量级 | `V×H`、每层 Linear、层数、全部 Expert |
-| 数值格式 | 权重、激活、累加、输出和 Cache 各自的 dtype |
-| 单 token 激活量 | 实际执行的 Dense 或 Top-K 加 Shared Expert |
-| KV 每位置大小 | `L_full`、`Nkv`、`D`、缓存 dtype |
-| TP 后每 Rank KV | 每 Rank K/V 头数、KV 头复制与 runtime 布局 |
-| 固定请求状态 | Gated DeltaNet 层数及 conv/recurrent state shape |
-| 峰值执行显存 | 本轮 Batched Tokens、临时激活、通信 Buffer、Kernel Workspace 与 runtime 预留 |
-| 长上下文计算 | Full Attention 层的 `4×L_full×Nq×D×T` |
-| 带宽还是计算限制 | FLOPs、搬运字节、算术强度与硬件 Machine Balance |
+```text
+num_hidden_layers       = 32
+hidden_size             = 4096
+num_attention_heads     = 16
+num_key_value_heads     = 4
+head_dim                = 256
+Full Attention 层数      = 8
+KV Cache dtype          = BF16
+```
 
-仓库中的 [`model_sizing_walkthrough.py`](../../examples/model_sizing_walkthrough.py) 使用本课公式复算两个示例模型的逻辑 KV、TP=8 时每 Rank KV、Gated DeltaNet 固定状态和 Attention 长度项。改动配置或上下文长度后，可以直接观察各项怎样变化。
+服务为每条请求预留 4096 个 Prompt 位置和 256 个输出位置，并发上限为 16。
 
-[第 9 课](09-optimization-judgment.md)会分析量化、FlashAttention、Prefix Cache、Batching、DP、TP、PP、EP 和推测解码：它们减少了哪些工作，又增加了哪些成本，以及怎样估算端到端收益上限。
+1. 计算每请求每新增位置的逻辑 KV。
+2. 计算单请求预留的逻辑 KV。
+3. 计算 16 个并发请求的逻辑 KV 总量。
+4. 仅凭这些字段，能否算出完整进程显存？还缺哪些主要对象？
+
+<details>
+<summary>查看计算结果</summary>
+
+
+每位置 KV 为：
+
+$$
+2\times8\times4\times256\times2=32768\ Byte=32\ KiB
+$$
+
+每请求共有 `4096+256=4352` 个位置：
+
+$$
+4352\times32\ KiB=136\ MiB
+$$
+
+16 个并发请求合计 `2176 MiB=2.125 GiB`。这只是 Full Attention 的逻辑 KV。完整进程显存还需要权重、Gated DeltaNet 或其他固定请求状态、临时激活、分页与对齐、通信 Buffer、CUDA Graph、Kernel Workspace 和内存池。
+
+</details>
+
+仓库中的 [`model_sizing_walkthrough.py`](../../examples/model_sizing_walkthrough.py) 可以复算两个示例模型的逻辑 KV、TP 后每 Rank KV、Gated DeltaNet 固定状态和 Attention 长度项。
+
+[第 9 课](09-optimization-judgment.md)会继续分析这些资源分别能被哪些优化改变，以及怎样判断端到端收益。
 
 ## 参考资料
 

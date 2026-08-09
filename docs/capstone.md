@@ -2,7 +2,7 @@
 
 读完 0～9 课后，应该能独立完成一次模型分析。下面给出一份接近线上评审的问题，不再按课程顺序提示该用哪个公式。
 
-建议先在纸上或[模型分析工作表](model-analysis-workbook.md)中作答，再展开参考分析。
+建议先独立作答，再展开参考分析。需要把结果整理成技术评审时，可以使用[模型推理分析方法与模板](model-analysis-workbook.md)。
 
 ## 1. 已知条件
 
@@ -242,4 +242,4 @@ Gated DeltaNet 的状态 shape 不会因此扩大，但 Prefill 计算、临时�
 
 ---
 
-[返回课程路线](roadmap.md) · [打开模型分析工作表](model-analysis-workbook.md)
+[返回课程路线](roadmap.md) · [打开模型推理分析方法与模板](model-analysis-workbook.md)

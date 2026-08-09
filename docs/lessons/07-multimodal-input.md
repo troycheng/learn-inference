@@ -353,23 +353,30 @@ deepstack_visual_indexes = []
 
 </details>
 
-## 13. 综合练习：推导视觉输入的 shape
+## 13. 实践：估算一张图片增加的 Decoder 工作
 
-不看正文，写出一张图片的 shape 变化：
+一张图片经过预处理后的尺寸为 `768×512`。Qwen3.5 使用 `16×16` 空间 Patch 和 `2×2` Patch Merger。以 Qwen3.5-9B 为例，语言侧每增加一个缓存位置会增加 32 KiB 逻辑 KV。
+
+1. 视觉塔最初得到多少个空间 Patch？
+2. Merger 后有多少个视觉位置进入语言 Decoder？
+3. 如果原来的 Prompt 长度不包含图片，这张图会增加多少逻辑 KV？
+4. 这三个数字能否直接推出 TTFT 增加多少毫秒？还缺哪些测量？
+
+<details>
+<summary>查看计算结果</summary>
+
 
 ```text
-512×512 RGB 图片
-→ 32×32 = 1024 个空间 Patch
-→ 1024 条 1152 维视觉特征
-→ 加位置 Embedding，视觉 Attention 使用 Vision RoPE
-→ 2×2 Merger
-→ 256 条 H 维视觉向量
-→ 替换 256 个图片占位位置
-→ 与文本向量组成 [B,T,H]
-→ 使用语言侧 MRoPE 进入 Decoder
+空间 Patch： (768/16) × (512/16) = 48 × 32 = 1536
+视觉位置：   1536 / 4 = 384
+逻辑 KV：    384 × 32 KiB = 12 MiB
 ```
 
-[第 8 课](08-config-and-sizing.md)开始阅读 `config.json`，从配置字段还原层数、参数量、缓存大小和一轮计算的大致数量级。
+这些数字只说明位置数量和逻辑 KV 增量。TTFT 还取决于视觉塔、Merger、语言模型 Prefill、Batch、Kernel 和排队时间，需要在目标 runtime 上分段测量。
+
+</details>
+
+[第 8 课](08-config-and-sizing.md)会从 `config.json` 还原模型结构，并计算权重、请求状态和主要计算量。
 
 ## 参考资料
 

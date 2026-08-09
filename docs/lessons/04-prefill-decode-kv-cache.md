@@ -519,25 +519,31 @@ Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Ful
 
 </details>
 
-## 16. 综合练习：还原一次生成的时间线
+## 16. 实践：补全生成时间线
 
-不看正文，画出下面这条时间线：
+Prompt 有四个 token：`p1 p2 p3 p4`。模型最终生成 `y1 y2 y3`。请补全表中的两个空列：
 
-```text
-Prompt → Prefill → y1 → Decode(y1) → y2 → Decode(y2) → y3
-                  │                   │
-                  └─ 建立 Cache       └─ Cache 持续增长
-```
+| 模型前向 | 本轮输入 | 前向结束后的 Cache | 本轮根据 Logits 选出的 token |
+| --- | --- | --- | --- |
+| Prefill | `p1 p2 p3 p4` |  |  |
+| Decode 第 1 轮 |  |  |  |
+| Decode 第 2 轮 |  |  |  |
 
-还要能够从下面的 shape 推出一次 Decode 的读写关系：
+<details>
+<summary>查看答案</summary>
 
-```text
-q_new  [B,Nq,1,D]
-K_past [B,Nkv,T,D]
-V_past [B,Nkv,T,D]
-```
 
-[第 5 课](05-gated-deltanet.md)会打开 Qwen3.5 中占多数的 Gated DeltaNet 层。它不会保留随 `T` 增长的 K/V，而是把历史更新进固定 shape 的 recurrent state。理解那套更新前，先把本课的“逐 token K/V 历史”与“固定 shape 状态”分开。
+| 模型前向 | 本轮输入 | 前向结束后的 Cache | 本轮根据 Logits 选出的 token |
+| --- | --- | --- | --- |
+| Prefill | `p1 p2 p3 p4` | `p1 p2 p3 p4` 的层状态 | `y1` |
+| Decode 第 1 轮 | `y1` | `p1 p2 p3 p4 y1` 的层状态 | `y2` |
+| Decode 第 2 轮 | `y2` | `p1 p2 p3 p4 y1 y2` 的层状态 | `y3` |
+
+`y1` 被选中时还没有经过下一次模型前向。它的 K/V 会在 Decode 第 1 轮逐层写入，而不是在 Prefill 结束的瞬间自动出现。
+
+</details>
+
+[第 5 课](05-gated-deltanet.md)会继续分析 Qwen3.5 中占多数的 Gated DeltaNet 层。它用固定 shape 的状态记录历史，与这里逐位置增长的 KV Cache 不同。
 
 ## 参考资料
 

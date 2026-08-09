@@ -379,24 +379,37 @@ Shared Expert 可能复制、做 TP，或与 Routed Expert 计算重叠。模型
 
 </details>
 
-## 14. 综合练习：还原一层 MoE 数据流
+## 14. 实践：根据路由结果组织 Expert Batch
 
-不看正文，画出一层 MoE 的数据流：
+一个教学用 MoE 有 4 个 Routed Experts，每个 token 选择 2 个。Router 给出：
+
+| token | Expert IDs | Routing Weights |
+| --- | --- | --- |
+| `t0` | `[1,3]` | `[0.7,0.3]` |
+| `t1` | `[0,3]` | `[0.6,0.4]` |
+| `t2` | `[1,2]` | `[0.8,0.2]` |
+
+1. 分别列出 Expert 0～3 收到哪些 token。
+2. 这批共有多少个 routed assignments？
+3. 哪些 Expert 收到的 token 最多？Grouped GEMM 的各组大小是否相同？
+4. 若模型还有一个 Shared Expert，它要处理多少个 token？它是否包含在上面的 6 个 assignments 中？
+
+<details>
+<summary>查看答案</summary>
+
 
 ```text
-Hidden States [B,T,H]
-→ 展平 [N,H]
-→ Router [N,E]
-→ Top-K IDs 与 Weights [N,K]
-→ 按 Expert 分组
-→ K 个 Routed Expert 输出加权求和
-→ 加上门控后的 Shared Expert 输出
-→ 恢复 [B,T,H]
+Expert 0: t1
+Expert 1: t0, t2
+Expert 2: t2
+Expert 3: t0, t1
 ```
 
-还要能解释为什么 Sparse Activation 主要减少每个 token 使用的 Expert 参数，却没有让未激活的权重从模型存储中消失。
+共有 `3×2=6` 个 routed assignments。Expert 1 和 3 各收到两个 token，Expert 0 和 2 各收到一个，组大小不同。Shared Expert 固定处理三个 token，不属于 Top-2 的六次路由分配。
 
-[第 7 课](07-multimodal-input.md)会把图片和视频接入目前只处理文字的链路，解释视觉输入怎样变成语言 Decoder 可以接收的向量。
+</details>
+
+[第 7 课](07-multimodal-input.md)会把图片和视频接入语言模型，解释像素怎样变成 Decoder 可以接收的向量。
 
 ## 参考资料
 

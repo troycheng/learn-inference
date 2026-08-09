@@ -643,24 +643,44 @@ Decoder Layer 并不只在 Decode 阶段运行。Prompt 的 Prefill 同样会经
 
 </details>
 
-## 16. 综合练习：还原 Decoder Layer 数据流
+## 16. 实践：审查一张错误的 Decoder Layer
 
-不看正文，画出并解释下面两行：
-
-```text
-x → RMSNorm → Token Mixer → 加回 x → y
-y → RMSNorm → SwiGLU FFN  → 加回 y → z
-```
-
-还应能把 SwiGLU 展开：
+下面的数据流有多处错误：
 
 ```text
-门控投影 → SiLU ─┐
-                  ├→ 逐元素相乘 → 回收投影
-扩展投影 ─────────┘
+x [B,T,H]
+→ Token Mixer
+→ RMSNorm
+→ 与 RMSNorm(x) 相加
+→ y [B,T,H]
+
+y
+→ gate_proj [B,T,I]
+→ up_proj   [B,T,I]
+→ 两条分支相加
+→ down_proj
+→ z [B,T,I]
 ```
 
-并明确说出：Token Mixer 负责跨 token，FFN 负责单 token 内部特征；RMSNorm 调整尺度；Residual 保留旧表示并叠加更新。
+请把它改成 Qwen3.5 使用的预归一化 Decoder Layer，并说明每一处修改的理由。
+
+<details>
+<summary>查看修改结果</summary>
+
+
+```text
+x ───────────────────────────────┐
+└→ RMSNorm → Token Mixer ────────┴→ 逐元素相加 → y [B,T,H]
+
+y ──────────────────────────────────────────────────┐
+└→ RMSNorm → gate_proj → SiLU ─┐                    │
+             up_proj ──────────┴→ 逐元素相乘        │
+                                → down_proj [B,T,H] ┴→ 逐元素相加 → z [B,T,H]
+```
+
+RMSNorm 位于子层之前。残差保存的是未经归一化的 `x` 或 `y`。SwiGLU 的两条 `H→I` 分支做逐元素乘法，不是相加；门控分支还要经过 SiLU。`down_proj` 必须回到 `H` 维，才能与第二条残差相加。
+
+</details>
 
 ## 参考资料
 

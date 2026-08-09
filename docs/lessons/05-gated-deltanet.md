@@ -44,7 +44,7 @@ Query 用相似的特征从 S 中读取结果
 X：[B,T,H]
 ```
 
-输入 `X` 会分成几条支路：一条产生 Q、K、V，另外三条产生状态衰减、修正幅度和输出门控。旧状态先衰减，再根据当前 K 和 V 修正，最后由 Q 读出结果。下图把这些支路放回同一条数据流：
+输入 `X` 会分成几条支路：一条产生 Q、K、V，另外三条产生状态衰减、修正幅度和输出门控。旧状态先衰减，再根据当前 K 和 V 修正，最后由 Q 读出结果。下图画出了各条支路及其汇合位置：
 
 ![Gated DeltaNet 的完整数据流](../assets/05-gated-deltanet-flow.svg)
 
@@ -421,25 +421,29 @@ Gated Delta Rule 的 Chunk Kernel 是算子内部的并行算法。服务端 Chu
 
 </details>
 
-## 14. 综合练习：比较两类请求状态
+## 14. 实践：比较上下文增长前后的请求状态
 
-不看正文，复述一个新 token 进入 Gated DeltaNet 后发生的动作：
+Qwen3.5-9B 的 BF16 Full Attention KV 每缓存位置占 32 KiB；24 个 Gated DeltaNet 层的卷积状态和递归状态合计约 49.5 MiB/请求。分别考虑 4096 和 8192 个缓存位置：
 
-```text
-Hidden State
-→ 生成 Q/K/V 和三个门控分支
-→ 因果卷积补入局部顺序
-→ 衰减旧状态
-→ 用 K 检查旧记录
-→ 用 Value 误差修正状态
-→ 用 Q 读取结果
-→ 输出门控与 out_proj
-→ 回到 H 维
-```
+1. 两种长度下，Full Attention KV 各占多少？
+2. Gated DeltaNet 状态各占多少？
+3. 两类状态合计各是多少？
+4. 为什么不能据此说“Qwen3.5 的请求状态与上下文长度无关”？
 
-还要能解释 Qwen3.5 为什么同时存在两种请求状态：8 个 Full Attention 层保存随长度增长的 K/V；24 个 Gated DeltaNet 层保存固定 shape 的卷积状态和 recurrent state。
+<details>
+<summary>查看计算结果</summary>
 
-[第 6 课](06-dense-and-moe.md)会转到 Decoder Layer 的另一个子层。Dense 与 MoE 的差异主要发生在 FFN，而不是刚刚讲完的 Token Mixer。
+
+| 缓存位置数 | Full Attention KV | Gated DeltaNet 固定状态 | 合计 |
+| ---: | ---: | ---: | ---: |
+| 4096 | 128 MiB | 49.5 MiB | 177.5 MiB |
+| 8192 | 256 MiB | 49.5 MiB | 305.5 MiB |
+
+Gated DeltaNet 状态的 shape 不随长度增长，但模型仍有 8 个 Full Attention 层保存逐位置 K/V。整个请求状态因此仍会随上下文增长。
+
+</details>
+
+[第 6 课](06-dense-and-moe.md)会转到 Decoder Layer 的另一个子层。Dense 与 MoE 的差异发生在 FFN，不在这里讲的 Token Mixer。
 
 ## 参考资料
 

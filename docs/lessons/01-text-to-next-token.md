@@ -721,34 +721,28 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 </details>
 
-## 16. 综合练习：复述下一个 token 的生成过程
+## 16. 实践：找出生成链路中的错误
 
-不看正文，画出并解释下面这条链路：
+某份设计文档写道：
 
-```text
-对话消息
-→ Chat Template
-→ Tokenizer
-→ Token IDs
-→ Embedding
-→ 初始向量
-→ Decoder
-→ 最后位置 Hidden State
-→ LM Head
-→ Logits
-→ 贪心或采样
-→ 下一个 Token ID
-→ Tokenizer Decode
-→ 可见文字
-```
+> 服务把用户输入的四个汉字直接交给 Tokenizer。Tokenizer 查 Embedding 表得到 Token ID，Decoder 再把 ID 变成概率。LM Head 根据概率生成 Hidden State，执行 Softmax 后用 Argmax 选出文字。下一轮把这段文字直接送回 Decoder。
 
-还要能明确回答三组容易混淆的方向：
+这段话至少有七处错误或缺失。请按真实执行顺序改写，并给每一步标出主要数据形式。
 
-```text
-文字 ↔ Token IDs：Tokenizer
-Token IDs → 初始向量：Embedding
-Hidden State → 全词表分数：LM Head
-```
+<details>
+<summary>查看问题清单</summary>
+
+
+1. 对话消息通常先经过 Chat Template，模型输入不只有用户可见文字。
+2. Tokenizer 把格式化文本变成 Token IDs，不负责查 Embedding 表。
+3. Embedding 根据 Token ID 查表，输出 `[B,T,H]` 初始向量。
+4. Decoder 处理向量，输出结合上下文的 Hidden States，不直接输出概率。
+5. LM Head 把最后位置的 Hidden State 映射成 `[B,V]` Logits，方向写反了。
+6. 贪心可以直接对 Logits 做 Argmax；随机采样通常才需要概率归一化。
+7. 选择结果是下一个 Token ID。下一轮把这个 ID 送入模型，Embedding 再查表得到向量；系统不会先把可见文字直接塞进 Decoder。
+8. Tokenizer Decode 负责把连续生成的 Token IDs 还原成用户看到的文字。
+
+</details>
 
 ## 参考资料
 
