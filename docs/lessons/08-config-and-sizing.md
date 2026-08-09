@@ -1,4 +1,4 @@
-# 第 8 课：从 config.json 看懂模型
+# 第 8 课：模型配置与资源估算
 
 拿到一个新模型，名称只能告诉我们大致规模。要判断它能否放进显存、每个 token 要经过多少计算、长上下文会增加多少状态，还得读 `config.json`。先回答四个问题：
 
@@ -16,11 +16,11 @@ Qwen3.5-9B：       Dense FFN，32 个语言 Decoder Layer
 Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 ```
 
-## 1. 把配置字段翻译成模型结构
+## 1. 从 `config.json` 还原模型结构
 
 第一次打开 `config.json`，不用逐行读。先找下面四组字段。
 
-### 模型接口
+### 模型接口配置
 
 | 符号 | 配置字段 | 含义 |
 | --- | --- | --- |
@@ -28,7 +28,7 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 | `H` | `hidden_size` | 每个语言位置用多少个数表示 |
 | `L` | `num_hidden_layers` | 语言 Decoder Layer 数 |
 
-### Attention
+### Attention 配置
 
 | 符号 | 配置字段 | 含义 |
 | --- | --- | --- |
@@ -37,13 +37,13 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 | `D` | `head_dim` | 每个头的宽度 |
 | `Lfull` | 从 `layer_types` 计数 | Full Attention 层数 |
 
-### Dense FFN
+### Dense FFN 配置
 
 | 符号 | 配置字段 | 含义 |
 | --- | --- | --- |
 | `I` | `intermediate_size` | Dense FFN 中间宽度 |
 
-### MoE
+### MoE 配置
 
 | 符号 | 配置字段 | 含义 |
 | --- | --- | --- |
@@ -81,7 +81,7 @@ Full Attention
 
 9B 重复 8 组，所以是 24 加 8；35B-A3B 重复 10 组，所以是 30 加 10。
 
-## 2. 六个经常被混为一谈的量
+## 2. 参数、权重、激活与状态的统计口径
 
 ```text
 参数数量：模型一共有多少个可学习数字
@@ -103,7 +103,7 @@ FLOPs：这次前向做了多少次浮点运算
 
 这些数字回答的是不同问题，不能互相替代。
 
-## 3. 先数 Qwen3.5-9B 的主要参数
+## 3. Qwen3.5-9B 参数量计算
 
 ### 3.1 Embedding 表与 LM Head
 
@@ -178,7 +178,7 @@ Q/K/V 卷积通道：2048+2048+4096 = 8192
 
 再加输出门控、状态更新系数、输出投影和深度卷积，按官方实现逐项相加，每层约 67.40M 参数，24 层约 1.618B。
 
-### 3.5 与真实检查点对账
+### 3.5 检查点参数对账
 
 MTP 是多 Token 预测（Multi-Token Prediction）辅助模块。检查点会保存它的权重；普通单 token 自回归生成可以不执行它，runtime 只有在启用相应推测路径时才把它作为 Drafter。这里把 MTP 列入总数，是因为它属于检查点，不表示每个 token 都会经过它。
 
@@ -210,7 +210,7 @@ $$
 
 Qwen3.5-9B 的实际检查点约有 9.653B 参数，不是刚好 9,000,000,000。直接把总字节数除以 2，会把每个 FP32 参数误算成两个 BF16 参数。
 
-## 4. 35B-A3B：保存全部专家，只计算一部分
+## 4. Qwen3.5-35B-A3B 的总参数与激活参数
 
 Qwen3.5-35B-A3B 的 `H=2048`，单个 SwiGLU Expert 中间宽度为 512：
 
@@ -255,7 +255,7 @@ $$
 
 它描述的是每 token 激活参数的取整口径。
 
-## 5. 参数数量怎样换算成权重容量
+## 5. 权重容量估算
 
 若所有参数使用同一种 dtype，理想权重有效载荷为：
 
@@ -283,7 +283,7 @@ Kernel Workspace
 
 还要确认运行时是否加载视觉塔和 MTP 辅助层。检查点总大小、进程加载权重、单 token 激活权重，是三个不同口径。
 
-## 6. KV Cache 只按 Full Attention 层计算
+## 6. KV Cache 容量估算
 
 等长 Batch 的逻辑 KV 有效载荷为：
 
@@ -300,7 +300,7 @@ T：每个请求已缓存的长度
 s：每个缓存元素的字节数
 ```
 
-### 9B 的 BF16 KV
+### Qwen3.5-9B 的 BF16 KV Cache
 
 每个请求每增加一个位置：
 
@@ -308,7 +308,7 @@ $$
 2\times8\times4\times256\times2=32768\ Byte=32\ KiB
 $$
 
-### 35B-A3B 的 BF16 KV
+### Qwen3.5-35B-A3B 的 BF16 KV Cache
 
 $$
 2\times10\times2\times256\times2=20480\ Byte=20\ KiB
@@ -323,7 +323,7 @@ $$
 
 这些数字不包括块尾空余、预分配、页表、对齐、跨设备布局和临时 Workspace。
 
-### TP 下不能把逻辑 KV 直接除以设备数
+### Tensor Parallel 下的 KV 头复制
 
 上面的 32 KiB 和 20 KiB 是整个模型的逻辑有效载荷。Tensor Parallelism（TP）还要决定每个 Rank 实际保存几个 K/V 头。vLLM 的固定版本使用：
 
@@ -346,7 +346,7 @@ $$
 
 35B-A3B 的每 Rank KV 是 `2×10×1×256×2=10 KiB`，不是 `20 KiB÷8=2.5 KiB`。复制后的跨 Rank 合计可以大于模型逻辑有效载荷。部署时还要核对 runtime 的 Cache 布局、TP 兼容条件和 KV dtype，不能只按设备数平均分配。
 
-## 7. Gated DeltaNet 状态按请求增长，不按长度增长
+## 7. Gated DeltaNet 请求状态估算
 
 每个 Gated DeltaNet 层保存：
 
@@ -374,7 +374,7 @@ Transformers 参考实现中，递归状态用 FP32，卷积状态沿用模型�
 
 KV 随每个请求的长度 `T` 线性增长；Gated DeltaNet 状态 shape 固定，但两者都随并发请求数增长。高性能 runtime 可能使用不同 dtype、布局或内存复用，部署前仍要检查真实分配。
 
-## 8. Linear 的 FLOPs 从矩阵 shape 算
+## 8. Linear FLOPs 估算
 
 输入 `[M,K]` 乘权重 `[K,N]`：
 
@@ -384,7 +384,7 @@ $$
 
 一个输出元素需要 K 次乘法和约 K 次加法，所以近似记为 `2K` 次浮点运算。
 
-### Dense FFN
+### Dense FFN FLOPs
 
 单层、单 token：
 
@@ -394,7 +394,7 @@ $$
 
 Qwen3.5-9B 每层约 0.302 GFLOPs，32 层 FFN 合计约 9.66 GFLOPs/token。
 
-### MoE FFN
+### MoE FFN FLOPs
 
 35B-A3B 每 token 计算 8 个 Routed Experts 加 1 个 Shared Expert：
 
@@ -404,7 +404,7 @@ $$
 
 这里跟 9 条实际执行的 Expert 路径相关，不跟 256 个 Expert 总数成正比。权重容量则必须包含全部 256 个 Expert。
 
-### 主要 Linear 的单 token 数量级
+### 单 Token 的主要 Linear 计算量
 
 把文本 Decode 本步使用的主要 Linear 和卷积权重按每个权重一次乘加估算，并加入 LM Head：
 
@@ -415,7 +415,7 @@ Qwen3.5-35B-A3B： 约 5.9 GFLOPs/token
 
 这两个数没有包括 Full Attention 读取历史 K/V 的长度项、Gated DeltaNet 状态计算中的非 Linear 运算、采样、通信和 Kernel 调度。
 
-## 9. Attention 还有一个随上下文增长的计算项
+## 9. Attention 的上下文长度项
 
 Decode 时，一个 Query 需要读取长度为 `T` 的历史 K/V。单个 Full Attention 层的 QK 和 AV 约为：
 
@@ -445,7 +445,7 @@ $$
 
 Prefill 中，Linear 和 FFN 主要随 `T` 线性增加；标准 Full Attention 的 QK/AV 总运算随 `T²` 增加。FlashAttention 可以减少中间数据读写，不会把 Full Attention 的数学长度依赖改成常数。
 
-## 10. FLOPs 还要和搬运字节一起看
+## 10. 算术强度与 Roofline
 
 FLOPs 只描述计算量，不能单独判断延迟。一个算子至少有两个硬件下界：
 
@@ -489,7 +489,7 @@ $$
 
 这个例子只给出数量级。TP 下应换成每 Rank 的物理 KV 字节；最终判断还要看实际 Kernel 时间、有效带宽和端到端指标。
 
-## 11. “2 倍参数量”只适用于一部分计算
+## 11. “两倍参数量”估算法的适用范围
 
 “单 token 前向约等于两倍参数量 FLOPs”只在大多数活跃 Linear 权重恰好使用一次时，适合作为粗略估算。Qwen3.5 有多个例外：
 
@@ -510,21 +510,21 @@ $$
 → 再结合 Batch、通信和 Kernel 判断时间
 ```
 
-## 12. 用配置做工程判断
+## 12. 从配置推导工程约束
 
-### 判断能否放入单卡
+### 单卡权重容量
 
 先算实际加载权重，再留出请求状态、临时激活、通信 Buffer 和 runtime 预留。不能只拿“模型名 × dtype”与显存容量比较。
 
-### 判断长上下文容量
+### 长上下文状态容量
 
 按 `Lfull`、`Nkv`、`D` 和 KV dtype 算每个位置的 KV，再加每请求固定的 Gated DeltaNet 状态。不要把全部 Decoder Layer 都代入 KV 公式。
 
-### 比较 Dense 与 MoE
+### Dense 与 MoE 的成本差异
 
 至少同时列出 Total Parameters、Active Parameters、Expert 分布和通信。Active 少不代表权重显存少，也不保证延迟按比例下降。
 
-### 判断是固定成本还是长度成本
+### 固定成本与长度相关成本
 
 Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV 和 KV 读取随上下文长度增长。两者的优化方向不同。
 
@@ -570,7 +570,7 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 
 </details>
 
-## 14. 自测：用配置填写模型清单
+## 14. 综合练习：建立模型资源清单
 
 拿到一个新模型配置，先完成下面这张表：
 
@@ -588,7 +588,7 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 
 [第 9 课](09-optimization-judgment.md)会逐项分析量化、FlashAttention、Prefix Cache、Batching、TP、EP 和推测解码：它们减少了哪些计算或数据搬运，又增加了哪些成本，以及应当用什么指标验证。
 
-## 资料来源
+## 参考资料
 
 以下配置、权重索引和实现于 2026-08-08 按固定 revision 复核：
 

@@ -113,7 +113,7 @@ LLMs-from-scratch 的第 2 章主 notebook 有 20 个 `<img>`，扣除书籍封�
 
 ## 对第 0 至第 9 课的具体改法
 
-### 第 0 课：看懂模型里的数字和 shape
+### 第 0 课：张量与模型计算基础
 
 现有三张图已经覆盖张量轴、归约和 Linear，但索引、广播、点积之间仍要靠读者在脑中换图。
 
@@ -127,7 +127,7 @@ LLMs-from-scratch 的第 2 章主 notebook 有 20 个 `<img>`，扣除书籍封�
 
 这里不需要增加完整线性代数章节。需要补的是读者无法仅靠文字在脑中完成的 shape 变化。
 
-### 第 1 课：模型怎样生成下一个 token
+### 第 1 课：大模型生成下一个 Token 的过程
 
 现有总览图把全链路列出来了，但后面的 Chat Template、Tokenizer、Embedding 和生成循环没有一直使用同一条输入。
 
@@ -139,7 +139,7 @@ LLMs-from-scratch 的第 2 章主 notebook 有 20 个 `<img>`，扣除书籍封�
 4. 再画三帧小图：第一次输入、选出一个 token、把它追加后开始下一轮。这样“为什么一次不能生成未来 100 个 token”会比一段文字更直观。
 5. Chat Template 的示例应来自实际 tokenizer 输出或明确标注为示意，不能把用户输入的四个汉字直接当成最终模型输入。
 
-### 第 2 课：一个 Decoder Layer 里发生了什么
+### 第 2 课：Decoder Layer 的结构与计算
 
 这一课的模块图目前使用 Mermaid，后面 RMSNorm、SwiGLU 和 SiLU 又各用不同例子。模块本身已经解释得比较完整，下一步应减少读者在这些图之间重新对应变量的成本。
 
@@ -151,7 +151,7 @@ LLMs-from-scratch 的第 2 章主 notebook 有 20 个 `<img>`，扣除书籍封�
 4. 在完整层图每条主箭头上保留 `[B,T,H]`，只在 FFN 内部改成 `[B,T,I]`，让读者直接看到 token 数没有变化。
 5. 章末回到同一张图，增加 Qwen3.5 中 Token Mixer 的两种实现标签，不再重新画另一套骨架。
 
-### 第 3 课：Attention 怎样从前文取回信息
+### 第 3 课：Attention 的计算原理
 
 这是最值得重排的一课。现在已经有 8 张图，短板不是数量，而是第一张就出现 Q、K、V、因果遮罩和完整流程，入口仍然偏陡。
 
@@ -165,7 +165,7 @@ LLMs-from-scratch 的第 2 章主 notebook 有 20 个 `<img>`，扣除书籍封�
 6. RoPE 先画同一对 Q/K 在不同相对距离下点积分数怎样改变，再给旋转公式。需要回答的是“旋转为什么能把相对位置写进点积”，不只是“向量发生了旋转”。
 7. 多头、GQA 和真实 shape 放在主计算已经完整走通以后，分别只回答“为什么分头”和“哪些头共享 K/V”。
 
-### 第 4 课：模型读完 Prompt 后怎样逐个生成 token
+### 第 4 课：Prefill、Decode 与 KV Cache
 
 现有生成时间线已经清楚，最需要补的是“缓存到底省掉了哪次重复计算”。Raschka 的官方 KV Cache 材料也是先用相邻两轮生成比较重复的 K/V，再进入缓存代码。[官方 KV Cache 说明](https://github.com/rasbt/LLMs-from-scratch/blob/f77106d3c66dc249e6b16e4b056534b4ca1820e6/ch04/03_kv-cache/README.md)
 
@@ -177,7 +177,7 @@ LLMs-from-scratch 的第 2 章主 notebook 有 20 个 `<img>`，扣除书籍封�
 4. KV 容量计算继续使用正文公式，但在公式旁画一个 `[Layer,Nkv,T,D]` 的堆叠块，标出只有 `T` 随生成增长。
 5. Mixed Batch 图保留，增加每个请求本轮贡献多少个 token 的明确标记，把“请求内串行”和“请求间可批处理”放在同一张时间切片里。
 
-### 第 5 课：Gated DeltaNet 怎样记住前文
+### 第 5 课：Gated DeltaNet 的状态更新机制
 
 这一课概念多，当前完整数据流图会让读者同时面对卷积、Q/K/V、状态矩阵和三个门。更适合先跟踪一次读和写。
 
@@ -192,7 +192,7 @@ LLMs-from-scratch 的第 2 章主 notebook 有 20 个 `<img>`，扣除书籍封�
 
 作者的 Gated DeltaNet 配套材料也先画固定状态和门，再展开循环更新；它适合参考拆图顺序，但其中是为 Qwen3-Next 写的简化实现，不能直接替代我们已经核实过的 Qwen3.5 事实。[官方 Gated DeltaNet 材料](https://github.com/rasbt/LLMs-from-scratch/blob/f77106d3c66dc249e6b16e4b056534b4ca1820e6/ch04/08_deltanet/README.md)
 
-### 第 6 课：Dense 和 MoE 有什么区别
+### 第 6 课：Dense FFN 与 MoE 的结构差异
 
 现有图已经覆盖“替换 FFN”“单 token 路由”“完整 MoE”“EP 与 TP”。可以继续采用从单 token 推广到 batch 的顺序，重点补齐图之间的连续性。
 
@@ -204,7 +204,7 @@ LLMs-from-scratch 的第 2 章主 notebook 有 20 个 `<img>`，扣除书籍封�
 4. Shared Expert 始终用单独颜色并贯穿所有图，避免它看起来像 Top-K 里的另一个 Expert。
 5. `35B Total / 3B Active` 用两层视觉表达：整机必须保存的全部权重，以及一个 token 本轮实际经过的彩色路径。不要只用数字框解释。
 
-### 第 7 课：图片怎样送进语言模型
+### 第 7 课：多模态输入与视觉编码
 
 现有四张图分别解释双输入路径、Patch 与 Merger、占位替换和成本，主线已经比较顺。最直接的改进是让同一张图片贯穿所有步骤。
 
@@ -216,7 +216,7 @@ LLMs-from-scratch 的第 2 章主 notebook 有 20 个 `<img>`，扣除书籍封�
 4. 占位替换图保留相同的 Patch 颜色，让读者看出视觉向量写进了语言序列中的哪些位置。
 5. 成本图沿用前面的网格，直接比较分辨率增加后 Patch 数、Merger 后视觉位置数和 Decoder 序列长度怎样变化。
 
-### 第 8 课：从 config.json 看懂模型
+### 第 8 课：模型配置与资源估算
 
 这一课的主要难点是把字段名转成结构，再从结构算容量和计算量。现有第一张图按问题分类字段，但读者仍需在 JSON 和模型结构间来回对应。
 
@@ -228,7 +228,7 @@ LLMs-from-scratch 的第 2 章主 notebook 有 20 个 `<img>`，扣除书籍封�
 4. 状态容量图继续使用第 4、5 课的颜色：KV Cache 随 `T` 增长，Gated DeltaNet 状态不随 `T` 增长。
 5. 章末的配置检查表改成可直接复制的填写模板，读者拿到一个新模型后可以照表写出 shape、权重容量和请求状态。
 
-### 第 9 课：一种优化到底有没有用
+### 第 9 课：推理优化的分析与评估
 
 本课已经有多张前后对比图，但不同优化各自使用一套画法。读者更需要一套稳定的判断坐标。
 

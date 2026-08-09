@@ -5,33 +5,33 @@
 课程从用户输入出发，最后回到推理优化：
 
 ```text
-文字怎样变成模型输入
-→ 一个 Decoder Layer 怎样处理 token
-→ token 怎样读取前文
-→ Prompt 和生成 token 怎样分阶段执行
-→ Dense、MoE 和 Gated DeltaNet 改变了哪部分结构
-→ 图片怎样进入同一个 Decoder
-→ 配置字段怎样变成权重、计算和请求状态
-→ 一种优化到底减少了什么，又增加了什么
+文本输入与模型向量
+→ Decoder Layer 的结构与计算
+→ Attention 与上下文信息
+→ Prefill、Decode 与请求状态
+→ Dense、MoE 与 Gated DeltaNet
+→ 多模态输入与视觉编码
+→ 配置字段与资源估算
+→ 推理优化的收益、成本与验证
 ```
 
-## 为什么按这个顺序学
+## 课程依赖关系
 
 推理系统里的很多概念互相依赖。还没分清 Token ID、Embedding 和 Hidden State，就很难理解 Q、K、V 从哪里来；没算过 Attention，也无法真正理解 KV Cache 保存了什么；不知道 Dense 和 MoE 的结构差异，就无法判断 TP、EP 或量化改变了哪部分成本。
 
 因此前四课是一条连续主线：
 
 ```text
-第 0 课  看懂 shape 和基本计算
-第 1 课  从消息走到下一个 token
-第 2 课  打开一个 Decoder Layer
-第 3 课  算清 Full Attention
-第 4 课  把静态计算放进 Prefill 和 Decode 时间线
+第 0 课  张量、shape 与基础计算
+第 1 课  下一个 Token 的生成过程
+第 2 课  Decoder Layer 的结构与计算
+第 3 课  Full Attention 的计算原理
+第 4 课  Prefill、Decode 与 KV Cache
 ```
 
 第 5 至第 7 课加入 Qwen3.5 的混合结构、MoE 和图片输入。第 8、9 课不再堆新模块，而是练习估算和判断。
 
-## 三个贯穿问题
+## 贯穿课程的三个分析维度
 
 遇到任何新算子或模型结构，都可以先问三件事：
 
@@ -41,22 +41,22 @@
 | 信息怎样混合？ | Token Mixer 跨 token；FFN 在单个 token 内加工特征 | 找到模型计算和能力来自哪里 |
 | 哪些历史结果要保留？ | KV Cache、卷积状态、recurrent state | 判断显存、并发和逐 token 延迟 |
 
-## 十课分别解决什么问题
+## 课程目录与学习目标
 
-| 课次 | 问题 | 读完以后应当能做什么 |
+| 课次 | 主题 | 学习目标 |
 | ---: | --- | --- |
-| [0](lessons/00-math-and-tensors.md) | 模型里的 shape、轴和矩阵乘法怎样读？ | 沿着输入输出推导基本 shape |
-| [1](lessons/01-text-to-next-token.md) | 一条消息怎样变成下一个 token？ | 区分文字、ID、向量、Logit 和概率 |
-| [2](lessons/02-inside-a-decoder-layer.md) | 一个 Decoder Layer 里发生了什么？ | 解释 RMSNorm、Token Mixer、残差和 SwiGLU FFN |
-| [3](lessons/03-attention.md) | Full Attention 怎样读取前文？ | 手算 Q/K 打分、遮罩、Softmax 和 V 的加权求和 |
-| [4](lessons/04-prefill-decode-kv-cache.md) | Prompt 为什么能批量处理，回答却要逐 token 生成？ | 解释 Prefill、Decode、KV Cache 和服务端批处理 |
-| [5](lessons/05-gated-deltanet.md) | Gated DeltaNet 怎样保存历史？ | 区分固定状态、因果卷积和 Full Attention KV |
-| [6](lessons/06-dense-and-moe.md) | Dense 和 MoE 差在哪里？ | 解释 Router、Top-K、共享专家、总参数和激活参数 |
-| [7](lessons/07-multimodal-input.md) | 图片怎样进入语言模型？ | 从像素、Patch 和视觉编码器走到 `[B,T,H]` |
-| [8](lessons/08-config-and-sizing.md) | 怎样从 `config.json` 估算模型？ | 估算参数、权重容量、KV、固定状态和主要计算量 |
-| [9](lessons/09-optimization-judgment.md) | 一种优化到底有没有用？ | 说明它改了什么、少了什么、新增什么，以及怎样验证 |
+| [0](lessons/00-math-and-tensors.md) | 张量与模型计算基础 | 根据输入、运算和输出推导 shape |
+| [1](lessons/01-text-to-next-token.md) | 下一个 Token 的生成过程 | 区分文本、Token ID、向量、Logit 和概率 |
+| [2](lessons/02-inside-a-decoder-layer.md) | Decoder Layer 的结构与计算 | 解释 RMSNorm、Token Mixer、残差和 SwiGLU FFN |
+| [3](lessons/03-attention.md) | Attention 的计算原理 | 手算 QK 点积、因果遮罩、Softmax 和 V 的加权求和 |
+| [4](lessons/04-prefill-decode-kv-cache.md) | Prefill、Decode 与 KV Cache | 解释生成阶段、缓存复用和服务端批处理 |
+| [5](lessons/05-gated-deltanet.md) | Gated DeltaNet 的状态更新 | 区分固定状态、因果卷积和 Full Attention KV |
+| [6](lessons/06-dense-and-moe.md) | Dense FFN 与 MoE | 解释 Router、Top-K、共享专家、总参数和激活参数 |
+| [7](lessons/07-multimodal-input.md) | 多模态输入与视觉编码 | 从像素、Patch 和视觉编码器推导到 `[B,T,H]` |
+| [8](lessons/08-config-and-sizing.md) | 模型配置与资源估算 | 估算参数、权重容量、KV、固定状态和主要计算量 |
+| [9](lessons/09-optimization-judgment.md) | 推理优化的分析与评估 | 说明优化的直接改动、收益条件、额外成本和验证指标 |
 
-## 小数字与真实模型怎样配合
+## 教学示例与真实模型
 
 第一次解释计算时，课程会把向量缩到 2 至 4 维，把 token 或 Expert 缩到几个。缩小的是规模，不是算法。一个小例子会按下面的顺序推进：
 
@@ -76,7 +76,7 @@
 
 涉及配置、实现或真实数字时，正文会链接到固定 revision。教学用数值会明确说明，不会伪装成真实模型输出。
 
-## 本轮不展开什么
+## 课程范围
 
 - 训练、反向传播、优化器和完整概率论；
 - CUDA ISA、PTX 和 Kernel 编写；
@@ -86,7 +86,7 @@
 
 这些主题可以以后单独增加，不挤占第一轮主线。
 
-## 主要资料
+## 参考资料
 
 - [Qwen3.5-9B-Base 模型说明，revision 68c46c4](https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/68c46c4b3498877f3ef123c856ecfde50c39f404/README.md)
 - [Qwen3.5-9B-Base 配置，revision 68c46c4](https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/68c46c4b3498877f3ef123c856ecfde50c39f404/config.json)

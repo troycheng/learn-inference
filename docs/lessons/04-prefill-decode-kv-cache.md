@@ -1,4 +1,4 @@
-# 第 4 课：模型读完 Prompt 后怎样逐个生成 token
+# 第 4 课：Prefill、Decode 与 KV Cache
 
 生成回答时，模型会反复执行同一套 Decoder。第一轮要处理完整 Prompt，后面的每一轮通常只处理刚生成的一个 token。两类计算使用同一套权重，输入规模和可复用状态却不同。
 
@@ -20,7 +20,7 @@ y1  y2  y3
 
 这条时间线里有四个问题：Prefill 做了什么，Decode 为什么只能逐 token 推进，KV Cache 省掉了哪些重复计算，以及多个请求怎样进入同一轮执行。
 
-## 1. 同一次生成有两类模型计算
+## 1. Prefill 与 Decode 的阶段划分
 
 一次普通自回归生成通常分成 Prefill 和 Decode 两个阶段。
 
@@ -43,7 +43,7 @@ Prefill 的模型前向不会直接吐出文字。它产生最后一个 Prompt �
 
 因此，图中的“Decode 第 1 轮”以 `y1` 为输入，预测的是 `y2`。有些框架会把产生 `y1` 也称为第一步 Decode。阅读指标或代码时，要先确认它对阶段边界的定义，不要只根据名字判断。
 
-## 2. Prompt 的多个位置为什么能一起送入模型
+## 2. Prefill 的已知输入与并行计算
 
 Prompt 中的 token 都由用户输入、系统提示词和 Chat Template 提前确定。模型开始执行前，`p1` 到 `p4` 的具体 Token ID 已经全部知道。
 
@@ -72,7 +72,7 @@ p4 可以读取 p1、p2、p3、p4
 
 “Prompt 可以并行”是一种简写，不表示模型里的所有运算都彼此独立。Decoder Layer 仍要逐层执行，Qwen3.5 的 Gated DeltaNet 层内部也有递归状态依赖。更准确的说法是：Prompt 的 token 在前向开始前已经全部确定，runtime 可以把多个已知位置组织成一次或若干次较大的前向计算。至于每个算子内部怎样并行，由模型结构和 Kernel 决定。
 
-## 3. 未来 token 为什么不能用同样的方法一起计算
+## 3. Decode 的自回归依赖
 
 `y1` 到 `y3` 与 Prompt 不同。开始生成时，它们的值还没有确定。
 
@@ -98,7 +98,7 @@ y1 和 y2 的选择会进入 y3 的条件
 
 推测解码和多 token 预测会同时提出多个候选，但仍需要主模型验证，错误候选还会被丢弃。它们改变了获得已确认 token 的方法，没有取消自回归条件。
 
-## 4. Prefill 在模型内部做了什么
+## 4. Prefill 的输出与请求状态
 
 设单个请求的 Prompt 长度为 `T=4`，Qwen3.5-9B 的隐藏维度为 `H=4096`。Prefill 的文本主线是：
 
@@ -126,7 +126,7 @@ Prefill 还会产生所有 Prompt 位置的中间 Hidden States 和 Attention �
 
 LM Head 也不一定要计算 4 个位置的完整词表 Logits。生成 `y1` 只需要最后一个 Prompt 位置。Qwen3.5 的 Transformers 实现支持通过 `logits_to_keep` 限制计算位置；不同 runtime 可能采用不同实现，但模型语义相同。
 
-## 5. 为什么过去的 K/V 可以直接复用
+## 5. KV Cache 的复用机制
 
 第 3 课已经看到，Decoder 使用因果遮罩。位置 `p2` 在任何一层都不能读取未来的 `p3`、`p4` 或后来生成的 token。因此，未来 token 到来后，`p2` 在这一层产生的 K/V 不需要回头修改。
 
@@ -140,7 +140,7 @@ LM Head 也不一定要计算 4 个位置的完整词表 Logits。生成 `y1` �
 
 这使得 K/V 可以在后续轮次直接复用。
 
-### 不使用缓存时
+### 无缓存的重复计算
 
 为了生成 `y2`，模型重新输入：
 
@@ -156,7 +156,7 @@ p1 p2 p3 p4 y1 y2
 
 每一轮都会重复计算整个前缀的 Embedding、各层投影、FFN 和 Attention。
 
-### 使用缓存时
+### 使用 KV Cache 的增量计算
 
 Prefill 已经保存 `p1` 到 `p4` 的历史状态。选出 `y1` 后，下一轮只把 `y1` 送进模型。每个 Full Attention 层为 `y1` 计算新的 Q/K/V，让新 Q 读取历史 K/V，再把新 K/V 追加到缓存。
 
@@ -164,7 +164,7 @@ Prefill 已经保存 `p1` 到 `p4` 的历史状态。选出 `y1` 后，下一轮
 
 ![没有 KV Cache 与使用 KV Cache 的计算对比](../assets/04-without-vs-with-kv-cache.svg)
 
-## 6. 一步 Decode 怎样使用 KV Cache
+## 6. 单步 Decode 的数据流
 
 假设 Prefill 后已有 4 个历史位置，缓存为：
 
@@ -199,19 +199,19 @@ Softmax 后汇总 V_all         → [B,Nq,1,D]
 
 这一步完成后，缓存长度从 4 变成 5。下一轮输入 `y2` 时，过程相同，长度再变成 6。
 
-### 为什么只缓存 K 和 V，不缓存 Q
+### Q、K、V 的缓存需求
 
 Q 表示当前位置发起的查询。`y1` 的 Q 只用于更新 `y1` 这个位置，后续生成 `y2`、`y3` 时不会再次读取它。
 
 K 和 V 则不同。它们代表一个历史位置以后怎样接受查询、怎样提供信息。每个未来 token 的新 Q 都可能读取过去的 K/V，所以需要保留。
 
-### RoPE 与缓存位置
+### RoPE 位置与 K Cache
 
 Qwen3.5 的 Full Attention 先对 Q/K 应用 RoPE，再把 K 写入缓存。缓存中的 K 已经带有它原来的位置信息。追加新 K 时，必须使用连续且正确的位置编号。
 
 因此，前缀复用、缓存拼接或位置重映射不能只检查 shape。位置编号和 RoPE 规则不一致时，缓存中的数值虽然仍能参与矩阵乘法，语义却已经错了。
 
-## 7. KV Cache 容量怎样计算
+## 7. KV Cache 容量估算
 
 先只考虑标准 Full Attention 层，不计算内存分配器的块、对齐、元数据，也不考虑量化和并行切分。
 
@@ -239,7 +239,7 @@ $$
 | `D` | 每个头的维度 |
 | `S` | 每个缓存元素占用的字节数 |
 
-### 用一个小模型手算
+### 小模型计算示例
 
 设：
 
@@ -261,7 +261,7 @@ $$
 
 这 192 Bytes 可以逐层拆开检查：每层 K 有 `1×2×3×4=24` 个元素，V 也有 24 个；两层共 96 个元素，每个元素 2 Bytes。
 
-### 代入 Qwen3.5-9B
+### Qwen3.5-9B 的 KV Cache
 
 Qwen3.5-9B 共 32 层，每 4 层中只有 1 层 Full Attention，因此：
 
@@ -294,7 +294,7 @@ $$
 
 `partial_rotary_factor=0.25` 也不会把 KV Cache 缩小到四分之一。RoPE 只旋转 K 的部分维度，缓存仍然保存完整的 `D=256` 维 K 和 V。
 
-### PagedAttention 管理的是缓存块
+### PagedAttention 的缓存块管理
 
 上面的公式回答了模型需要保存多少 K/V，却没有说明 runtime 怎样在显存中摆放这些数据。
 
@@ -326,7 +326,7 @@ runtime 为缓存预留了多少显存
 | PagedAttention | runtime 怎样分配和定位这些 K/V？ |
 | Prefix Cache | 不同请求何时能共用已经算好的前缀状态？ |
 
-## 8. Prefill 和 Decode 的计算形态为什么不同
+## 8. Prefill 与 Decode 的计算特征
 
 模型权重没有在两个阶段之间切换，变化的是本轮输入的位置数和需要读取的历史状态。
 
@@ -344,7 +344,7 @@ Decode 每轮虽然只处理一个新位置，却仍要让这个位置通过所�
 
 Prefill 常偏计算，Decode 常偏访存，但这不是定律。模型结构、Batch、上下文长度和硬件都会改变瓶颈。判断实际情况，仍要看矩阵尺寸、缓存长度和执行时间线。
 
-## 9. 不同请求的已知 token 可以一起执行
+## 9. 多请求批量执行
 
 假设服务端同时有三个请求：
 
@@ -369,7 +369,7 @@ C 的 Prompt 也已经知道。如果调度器取出其中 4 个 token 作为一
 不同请求的已知 token：互不依赖，可以批量执行
 ```
 
-## 10. Continuous Batching 改变了什么
+## 10. Continuous Batching
 
 传统静态 Batch 往往先凑齐一组请求，再让整组一起运行到结束。不同请求的输出长度不同时，短请求完成后可能仍要等待长请求，空出的计算位置也不能及时给新请求使用。
 
@@ -389,7 +389,7 @@ Continuous Batching 只保证 Batch 可以在两轮模型执行之间改变。�
 
 “一轮”也不等于一个固定的二维 `[B,T]` 矩形。推理 runtime 常把不同请求当前需要处理的 token 打包起来，再用元数据描述序列边界和缓存位置。看到日志中的 Batch Size 或 Batched Tokens 时，要确认它统计的是请求数、序列数还是本轮 token 数。
 
-## 11. Chunked Prefill 为什么能与 Decode 同批
+## 11. Chunked Prefill 与混合批处理
 
 长 Prompt 全部一次处理会占用一轮较大的 token 预算，也可能让已经在 Decode 的请求等待更久。Chunked Prefill 把已知 Prompt 切成若干段：
 
@@ -412,7 +412,7 @@ Chunked Prefill 改变的是执行和调度方式。Prompt 的 token 顺序、�
 
 还要看清实现边界。Transformers 的 `prefill_chunk_size` 是把一个输入的 Prompt 依次切开，并在相邻 Chunk 之间传递 Cache；它不等于在线服务框架把某个请求的 Prefill Chunk 与其他请求的 Decode token 混在同一轮。两种能力都可能叫 Chunked Prefill，但调度范围并不相同。
 
-## 12. TTFT、TPOT 和 ITL 分别量到哪里
+## 12. TTFT、TPOT 与 ITL
 
 服务端性能指标把一次请求的等待和生成过程分成几段。
 
@@ -448,7 +448,7 @@ $$
 
 不同系统对阶段起止点、网络时间和流式缓冲的处理可能不同。即使在同一个框架中，不同指标接口也可能采用不同起点。例如当前 vLLM 的 Prometheus TTFT 从请求到达开始计时，包含排队；每请求指标文档则把排队时间单列，TTFT 从首次被调度开始。比较数据前要查看采集点和计算公式，不能只比较同名字段。
 
-## 13. Qwen3.5 的请求状态不只有 KV Cache
+## 13. Qwen3.5 的混合请求状态
 
 Qwen3.5-9B 的 32 个 Decoder Layer 按下面的顺序重复：
 
@@ -468,29 +468,29 @@ Qwen3.5-9B 的 32 个 Decoder Layer 按下面的顺序重复：
 
 Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Full Attention 层更新 K/V，Gated DeltaNet 层更新卷积状态和 recurrent state。第 5 课会打开 Gated DeltaNet，解释固定 shape 的状态怎样逐步吸收历史。
 
-## 14. KV Cache 最容易混淆的地方
+## 14. Prefill、Decode 与缓存的概念辨析
 
-### KV Cache 保存向量，不保存 Token IDs
+### KV Cache 与 Token ID
 
 Token IDs 仍由生成循环保存，用于输出、停止判断或后续处理。KV Cache 是每个 Full Attention 层根据 Hidden States 投影得到的浮点 K/V。
 
-### KV Cache 只保留未来 Attention 会读取的 K/V
+### KV Cache 的存储范围
 
 缓存保存的是未来 Attention 需要读取的 K/V。每层的其他中间值、Attention Score 和 FFN 激活通常不会跨生成轮次保留。
 
-### Prefix Cache 在不同请求之间复用前缀状态
+### KV Cache 与 Prefix Cache
 
 每个运行中请求都需要自己的历史状态。Prefix Cache 进一步尝试让具有相同前缀的不同请求复用已经算好的状态，还要处理匹配、生命周期和淘汰。二者不是同一个概念。
 
-### 下一个 Token ID 仍要逐轮确定
+### KV Cache 与自回归依赖
 
 缓存只复用已经确定的历史。下一个 Token ID 仍要经过当前轮 Logits 和选择策略才能知道。
 
-### Prefill 本轮可以只处理部分新位置
+### 增量 Prefill
 
 首次请求常处理完整 Prompt；启用 Prefix Cache、Chunked Prefill 或外部已提供合法缓存时，本轮实际计算的位置可以少于逻辑上下文长度。
 
-### 一轮 Decode 可以包含许多请求
+### 请求级 Decode Batch
 
 单个请求通常贡献一个新位置。许多请求可以在同一轮各贡献一个位置，形成较大的 Batch。
 
@@ -532,7 +532,7 @@ Token IDs 仍由生成循环保存，用于输出、停止判断或后续处理�
 
 </details>
 
-## 16. 自测：画出一次生成
+## 16. 综合练习：还原一次生成的时间线
 
 不看正文，画出下面这条时间线：
 
@@ -552,7 +552,7 @@ V_past [B,Nkv,T,D]
 
 [第 5 课](05-gated-deltanet.md)会打开 Qwen3.5 中占多数的 Gated DeltaNet 层。它不会保留随 `T` 增长的 K/V，而是把历史更新进固定 shape 的 recurrent state。理解那套更新前，先把本课的“逐 token K/V 历史”与“固定 shape 状态”分开。
 
-## 资料来源
+## 参考资料
 
 以下 Qwen3.5 配置、Transformers 和 vLLM 实现于 2026-08-08 按固定 revision 复核：
 

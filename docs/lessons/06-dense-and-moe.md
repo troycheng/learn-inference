@@ -1,4 +1,4 @@
-# 第 6 课：Dense 和 MoE 有什么区别
+# 第 6 课：Dense FFN 与 MoE 的结构差异
 
 第 2 课已经拆开过 Dense SwiGLU FFN：每个 token 都经过 `gate_proj`、`up_proj`、SiLU、逐元素乘法和 `down_proj`。Qwen3.5-9B 的 32 个 Decoder Layer 都使用这套 Dense FFN。
 
@@ -8,7 +8,7 @@ Qwen3.5-35B-A3B 则在语言模型的 40 个 Decoder Layer 中使用 MoE。RMSNo
 
 MoE 中有很多套参数不同的 FFN，通常称为 Expert。Router 根据当前 token 的 Hidden State 选出少数 Routed Experts。Qwen3.5 还为所有 token 固定执行一套 Shared Expert，最后把这些输出合并回 H 维。
 
-## 1. Dense 表示每个 token 使用完整 FFN
+## 1. Dense FFN 的计算路径
 
 对一个 token 的 `H` 维输入 `x`，Dense SwiGLU 的计算是：
 
@@ -50,7 +50,7 @@ $$
 
 每个 token 都会使用这些参数。
 
-## 2. 把一套 FFN 换成四套
+## 2. 最小 MoE 示例
 
 假设一层有 4 个 Routed Experts，每个 Expert 都是一套独立的 SwiGLU FFN：
 
@@ -98,7 +98,7 @@ $$
 
 Router 没有把 token 永久归类。下一层会使用另一组 Router 权重，同一个 token 也可能选中完全不同的 Expert。
 
-## 3. Router Logits、Expert ID 和权重要分开
+## 3. Router Logits、Expert ID 与 Routing Weight
 
 这三个对象经常在日志和代码中同时出现：
 
@@ -118,7 +118,7 @@ Router Softmax：在 E 个 Routed Experts 中选择本层要执行的 FFN
 
 Expert ID 只是参数集合的编号。训练没有要求 Expert 17 必须是“代码专家”，也没有保证某个 Expert 始终对应一个可命名主题。
 
-## 4. 每个 Routed Expert 内部仍是 SwiGLU
+## 4. Routed Expert 的内部计算
 
 MoE 没有发明一种全新的 FFN 算法。每个 Routed Expert 都包含自己的三张权重：
 
@@ -142,7 +142,7 @@ down_proj                  [n_e,H]
 
 Qwen3.5 为执行方便，把全部 Routed Experts 的 gate 和 up 权重存成一个融合张量，但逻辑上仍可理解为每个 Expert 各有一套 `H → I → H` 的 SwiGLU。
 
-## 5. Shared Expert 不参加 Top-K
+## 5. Shared Expert 与 Top-K 路由
 
 Qwen3.5-35B-A3B 还有一套 Shared Expert。所有 token 都会经过它：
 
@@ -172,7 +172,7 @@ $$
 
 Shared Expert 不属于 Top-2，也不与 Routed Experts 共用那组和为 1 的 Routing Weights。可以说它为每个 token 提供一条固定执行的 FFN 路径，但不能未经分析就断言它一定保存“通用知识”。
 
-## 6. Qwen3.5-35B-A3B 的完整数据流
+## 6. Qwen3.5-35B-A3B 的 MoE 数据流
 
 官方配置给出：
 
@@ -206,7 +206,7 @@ Decoder Layer = 40
 
 MoE 的入口和出口仍是 `[B,T,H]`，所以外侧残差连接不需要改变。
 
-## 7. Token Dispatch：先按 Expert 分组，再回到原顺序
+## 7. Token Dispatch 与 Combine
 
 假设一批只有 3 个 token，每个选择 2 个 Expert：
 
@@ -229,7 +229,7 @@ Expert 4 收到：token 2
 
 参考实现可以逐 Expert gather 和 `index_add`。生产 Kernel 常先按 Expert ID 排序，再用 Grouped GEMM 一次处理多组不同大小的矩阵。两种实现的 Router、Top-K、Expert FFN 和加权合并语义相同。
 
-## 8. 为什么 Expert 负载可能很不均
+## 8. Expert 负载均衡
 
 Router 按每个 token 的内容选择 Expert，不保证一批内 256 个 Expert 平均收到 token。对某层来说：
 
@@ -247,7 +247,7 @@ Decode 小 Batch 尤其容易出现碎片。若一轮只有 8 个 token，Top-8 
 
 训练时的负载均衡损失会惩罚长期过度集中的路由，但它不是推理调度器，也不能保证每个推理 Batch 完全平均。判断 MoE 性能要看每层实际 `n_e` 分布，不能只用 `N×K/E` 的平均值。
 
-## 9. 35B Total 与 3B Active 分别表示什么
+## 9. Total Parameters 与 Active Parameters
 
 总参数回答模型需要保存多少权重。Active Parameters 描述一个 token 本轮实际使用了哪些权重。没被当前 token 选中的 Expert 仍属于模型，其他 token 或下一轮可能会用到。
 
@@ -291,7 +291,7 @@ $$
 
 所以 A3B 不表示只需要加载 3B 权重，也不表示推理速度必然是同等 Dense 模型的若干倍。一批 token 合起来可能访问很多甚至全部 Expert，实际成本还受权重读取、Dispatch、Grouped GEMM 大小和通信影响。
 
-## 10. EP 切 Expert，TP 切 Expert 内部的矩阵
+## 10. Expert Parallel 与 Tensor Parallel
 
 ![Expert Parallel 与 Tensor Parallel 分别怎样切分](../assets/06-ep-vs-tp.svg)
 
@@ -306,51 +306,51 @@ EP 把 Expert 权重分布在不同设备，并把 token 送到持有相应 Expe
 
 TP 可以继续切分单个 Expert 的 gate/up/down 矩阵。一个部署也可能同时使用 EP 和 TP，此时要同时考虑 token Dispatch/Combine 与 Expert 内部的 TP Collective。
 
-## 11. 判断 MoE 推理性能时看什么
+## 11. MoE 推理的性能因素
 
-### 每轮有多少 Routed Assignments
+### Routed Assignment 数量
 
 一轮 `N` 个 token、Top-K 为 `K`，逻辑上产生 `N×K` 份 Routed Expert 工作。这个数比请求数更接近 Expert 侧的计算规模。
 
-### 每个 Expert 收到多少 token
+### Expert 的 Token 分布
 
 Grouped GEMM 的效率取决于各 Expert 的 `n_e`，不只取决于所有 assignment 的总数。平均值相同，分布倾斜程度也可能完全不同。
 
-### 权重是否需要跨层反复搬入
+### Expert 权重的加载与驻留
 
 Total Parameters 决定所有 Expert 权重必须存在哪里。即使单 token 只激活 8 个 Expert，小 Batch 下不同轮次命中的 Expert 变化仍会影响缓存和显存带宽行为。
 
-### Dispatch 和 Combine 走什么拓扑
+### Dispatch、Combine 与网络拓扑
 
 跨 NVLink、PCIe 或跨机网络的代价差异很大。EP 映射要结合热点 Expert 分布和实际互联，不能只看卡数。
 
-### Shared Expert 怎样放置
+### Shared Expert 的设备布局
 
 Shared Expert 可能复制、做 TP，或与 Routed Expert 计算重叠。模型公式只规定它对所有 token 执行，具体优化方式属于 runtime。
 
-## 12. MoE 的几个边界
+## 12. MoE 中的概念辨析
 
-### MoE 只替换 FFN
+### MoE 的替换范围
 
 Qwen3.5-MoE 仍按 3 层 Gated DeltaNet 加 1 层 Full Attention 排列。MoE 位于每个语言 Decoder Layer 的 FFN 支路。
 
-### 视觉编码器仍使用自己的 Dense MLP
+### 视觉编码器的 MLP 结构
 
 Qwen3.5-35B-A3B 的语言 Decoder 使用 MoE，视觉编码器仍有自己的 Dense Vision MLP。
 
-### Shared Expert 在 Top-8 之外固定执行
+### Shared Expert 与 Top-8
 
 每个 token 执行 8 个 Routed Experts，再固定执行 1 个 Shared Expert。Shared Expert 的门控也不与 Top-8 Routing Weights 一起归一化。
 
-### Active Parameters 不是权重显存
+### Active Parameters 与权重显存
 
 35B 权重仍需加载或分布在设备上。3B 是官方每 token 激活参数口径，不是模型文件大小。
 
-### Expert 的分工来自训练
+### Expert 分工的来源
 
 Router 和 Expert 权重都由训练形成。可以分析某些路由模式，但不能只凭 Expert ID 给它命名。
 
-### EP 可以采用不同通信实现
+### Expert Parallel 的通信实现
 
 无论框架选择 All-to-All、All-Reduce 还是其他实现，都必须把 token 送到相应 Expert，再把 Expert 输出送回原 token。
 
@@ -392,7 +392,7 @@ Router 和 Expert 权重都由训练形成。可以分析某些路由模式，�
 
 </details>
 
-## 14. 自测：画出一层 MoE
+## 14. 综合练习：还原一层 MoE 数据流
 
 不看正文，画出一层 MoE 的数据流：
 
@@ -411,7 +411,7 @@ Hidden States [B,T,H]
 
 [第 7 课](07-multimodal-input.md)会把图片和视频接入目前只处理文字的链路，解释视觉输入怎样变成语言 Decoder 可以接收的向量。
 
-## 资料来源
+## 参考资料
 
 以下模型配置和实现于 2026-08-08 按固定 revision 复核：
 

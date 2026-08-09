@@ -4,7 +4,7 @@
 
 课程从一次生成开始：文字怎样变成 token，token 怎样经过 Decoder，模型怎样读取前文，为什么回答只能逐个 token 产生。Prefill、Decode、KV Cache、Dense、MoE 和常见优化都放回这条链路中解释。
 
-## 读完以后能讲清什么
+## 学习目标
 
 这 10 课不要求你推导复杂公式，但要能做到：
 
@@ -17,7 +17,7 @@
 - 阅读模型 `config.json`，判断参数规模、状态规模和主要计算来自哪里；
 - 判断量化、缓存、批处理和并行方案究竟改变了模型链路中的什么。
 
-## 主线
+## 课程主线
 
 ```mermaid
 flowchart LR
@@ -44,23 +44,23 @@ flowchart LR
 - 用 Qwen3.5 的视觉输入路径讲视觉编码器与多模态序列；
 - 第一轮不展开训练、CUDA 编程和框架参数清单。
 
-## 从这里开始
+## 课程目录
 
-1. [第 0 课：看懂模型里的数字和 shape](docs/lessons/00-math-and-tensors.md)
-2. [第 1 课：模型怎样生成下一个 token](docs/lessons/01-text-to-next-token.md)
-3. [第 2 课：一个 Decoder Layer 里发生了什么](docs/lessons/02-inside-a-decoder-layer.md)
-4. [第 3 课：Attention 怎样从前文取回信息](docs/lessons/03-attention.md)
-5. [第 4 课：模型读完 Prompt 后怎样逐个生成 token](docs/lessons/04-prefill-decode-kv-cache.md)
-6. [第 5 课：Gated DeltaNet 怎样记住前文](docs/lessons/05-gated-deltanet.md)
-7. [第 6 课：Dense 和 MoE 有什么区别](docs/lessons/06-dense-and-moe.md)
-8. [第 7 课：图片怎样送进语言模型](docs/lessons/07-multimodal-input.md)
-9. [第 8 课：从 config.json 看懂模型](docs/lessons/08-config-and-sizing.md)
-10. [第 9 课：一种优化到底有没有用](docs/lessons/09-optimization-judgment.md)
+1. [第 0 课：张量与模型计算基础](docs/lessons/00-math-and-tensors.md)
+2. [第 1 课：大模型生成下一个 Token 的过程](docs/lessons/01-text-to-next-token.md)
+3. [第 2 课：Decoder Layer 的结构与计算](docs/lessons/02-inside-a-decoder-layer.md)
+4. [第 3 课：Attention 的计算原理](docs/lessons/03-attention.md)
+5. [第 4 课：Prefill、Decode 与 KV Cache](docs/lessons/04-prefill-decode-kv-cache.md)
+6. [第 5 课：Gated DeltaNet 的状态更新机制](docs/lessons/05-gated-deltanet.md)
+7. [第 6 课：Dense FFN 与 MoE 的结构差异](docs/lessons/06-dense-and-moe.md)
+8. [第 7 课：多模态输入与视觉编码](docs/lessons/07-multimodal-input.md)
+9. [第 8 课：模型配置与资源估算](docs/lessons/08-config-and-sizing.md)
+10. [第 9 课：推理优化的分析与评估](docs/lessons/09-optimization-judgment.md)
 11. [完整课程路线](docs/roadmap.md)
 12. [课程术语与符号表](docs/glossary.md)
 13. [课程讲解原则](docs/teaching-method.md)
 
-## 怎么读
+## 学习顺序
 
 第 0 课补齐后文会用到的数学动作。第 1 至第 4 课是一条连续主线，先把文字生成和自回归过程读通；第 5 至第 7 课再加入 Gated DeltaNet、MoE 和图片输入；第 8、9 课把模型原理变成配置估算和优化判断。
 

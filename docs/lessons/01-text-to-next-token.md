@@ -1,14 +1,14 @@
-# 第 1 课：模型怎样生成下一个 token
+# 第 1 课：大模型生成下一个 Token 的过程
 
 聊天框里是文字，模型里流动的是数字。一条消息要先变成 Token ID，再变成向量；模型算出下一个 Token ID 后，Tokenizer 才把它还原成文字。本课沿着一次真实生成，把这条链路走完。
 
 本课暂时不打开 Decoder，也不讨论 GPU 性能。先把文字、Token ID、嵌入（Embedding）、隐藏状态（Hidden State）、未归一化分数（Logit）和概率分清楚。
 
-如果对 `[B,T,H]`、轴、点积或 Linear 的 shape 还不熟悉，先阅读[第 0 课：看懂模型里的数字和 shape](00-math-and-tensors.md)。
+如果对 `[B,T,H]`、轴、点积或 Linear 的 shape 还不熟悉，先阅读[第 0 课：张量与模型计算基础](00-math-and-tensors.md)。
 
 中英文名称和符号统一见[课程术语与符号表](../glossary.md)。
 
-## 1. 模型内部流动的不是文字
+## 1. 文本进入模型后的数据形式
 
 聊天接口看起来像这样：
 
@@ -32,7 +32,7 @@
 | 选择策略 | Logits | 下一个 Token ID | 贪心选择或按概率采样 |
 | Tokenizer Decode | Token IDs | 文字 | 把模型生成的编号还原为可见文字 |
 
-## 2. 对话模板补上角色和消息边界
+## 2. Chat Template 构造模型输入
 
 同一句文字可能来自系统、用户、助手或工具。如果只把消息内容拼在一起，模型无法稳定判断是谁说了什么、哪里应该开始回答。
 
@@ -49,7 +49,7 @@ Chat Template 会把结构化消息转换成模型训练时使用的文本格式
 
 ![把同一条对话补成模型输入](../assets/01-text-to-token.svg)
 
-### 2.1 为什么工程上必须知道它
+### 2.1 Chat Template 对推理链路的影响
 
 Chat Template 会改变实际送入模型的 token 序列，因此会影响：
 
@@ -60,7 +60,7 @@ Chat Template 会改变实际送入模型的 token 序列，因此会影响：
 
 所以，接口中的 `content` 不是模型的完整输入。分析上下文长度或比对两个推理后端时，应比较应用模板后的 Token IDs。
 
-## 3. 分词器把文字切成模型认识的编号
+## 3. Tokenizer：从文本到 Token ID
 
 模型只能处理有限维度的数字张量，而自然语言可以不断出现新句子。Tokenizer 通过一个有限词表，把任意文本切成模型能够编号的片段。
 
@@ -73,7 +73,7 @@ Chat Template 会改变实际送入模型的 token 序列，因此会影响：
 - 空格和标点；
 - 表示消息边界的特殊 token。
 
-### 3.1 看一次真实切分
+### 3.1 Qwen3.5 的实际分词结果
 
 按 Qwen3.5-9B 当前官方 Tokenizer：
 
@@ -99,7 +99,7 @@ Chat Template 会改变实际送入模型的 token 序列，因此会影响：
 
 切分规则由具体模型的 Tokenizer 决定。不能拿另一个模型的经验猜 Qwen3.5 的 token 数。
 
-### 3.2 切分规则从哪里来
+### 3.2 词表与切分规则
 
 Qwen3.5 当前配置使用 `Qwen2Tokenizer`，其实现基于 Byte-level BPE。第一轮不需要推导完整算法，只需理解三个步骤：
 
@@ -113,7 +113,7 @@ Qwen3.5 当前配置使用 `Qwen2Tokenizer`，其实现基于 Byte-level BPE。�
 
 BPE 决定的是“怎样切分和编号”。Token 在上下文里表达什么，仍由模型参数学习。
 
-### 3.3 Token 与 Token ID 的区别
+### 3.3 Token 与 Token ID
 
 假设一个极小词表是：
 
@@ -143,7 +143,7 @@ Token ID 是词表编号
 → 模型使用这个编号索引 Embedding 的对应行
 ```
 
-### 3.4 Tokenizer 输出什么
+### 3.4 Tokenizer 的输出张量
 
 在最简主链路中，Tokenizer 输出 `input_ids`。批量输入时，其 shape 通常是：
 
@@ -166,9 +166,9 @@ input_ids.shape = [2, 8]
 
 Tokenizer 的工作到这里结束。查 Embedding 表属于模型计算。
 
-## 4. Embedding 把编号换成可计算的向量
+## 4. Embedding：从 Token ID 到向量
 
-### 4.1 Token ID 不能直接表示语义
+### 4.1 Token ID 是词表索引
 
 Token ID 只是编号。如果直接拿它计算，就会错误地暗示：
 
@@ -178,7 +178,7 @@ ID 100 比 ID 10 大十倍，因此语义也更强
 
 编号之间不存在这种数量关系。模型需要把每个离散 ID 映射成一组可学习的连续数值，这就是 Embedding。
 
-### 4.2 Embedding 的计算就是查表
+### 4.2 Embedding 的查表过程
 
 为了手算，下面只展示 Embedding 表中的四行，并把每个向量缩成 `H=3` 维。`推理` 和 `优化` 仍使用上面已经核实的实际 ID；表中的向量只是教学数值。
 
@@ -208,7 +208,7 @@ Embedding 根据每个 ID 取出对应行：
 
 ![按“优化”的 Token ID 查 Embedding 表](../assets/01-embedding-lookup.svg)
 
-### 4.3 shape 怎样变化
+### 4.3 Embedding 的输出 shape
 
 Embedding 参数表的 shape 是：
 
@@ -232,7 +232,7 @@ input_embeddings.shape = [2, 8, 4096]
 
 它没有增加 token 位置数，只是把每个位置的一个整数编号换成一个 `H` 维向量。
 
-### 4.4 Embedding 有没有语义
+### 4.4 Embedding 与上下文语义
 
 Embedding 是训练得到的模型参数，包含基础的词义、语法和相似关系。说“Embedding 没有语义”并不准确。
 
@@ -253,7 +253,7 @@ Embedding 是训练得到的模型参数，包含基础的词义、语法和相�
 
 Embedding 和 Hidden State 可以具有相同 shape，但不是同一个概念。
 
-## 5. Decoder 把初始向量变成上下文表示
+## 5. Decoder 生成上下文表示
 
 Qwen3.5-9B 的文本模型使用 `H=4096`，共有 32 层。Embedding 输出进入这些层后，模型会反复更新每个 token 的向量。
 
@@ -265,7 +265,7 @@ Qwen3.5-9B 的文本模型使用 `H=4096`，共有 32 层。Embedding 输出进�
 
 第 2 课会打开一个 Decoder Layer，解释 RMSNorm、Residual 和 FFN；第 3 课再完整拆解 Attention 的计算过程。
 
-### 5.1 为什么使用最后一个位置
+### 5.1 下一个 Token 由最后一个位置预测
 
 假设已知输入有三个 token：
 
@@ -293,7 +293,7 @@ h3 用来预测尚未出现的 x4
 Qwen3.5 的 Transformers 实现提供 `logits_to_keep`，允许限制需要产生
 Logits 的位置；这改变实现成本，不改变上述语义。
 
-## 6. LM Head 为词表中的每个候选打分
+## 6. LM Head 生成词表 Logits
 
 Decoder 的输出仍然是一个 `H` 维向量。我们最终要从 `V` 个词表候选中选一个 token，因此需要把：
 
@@ -304,7 +304,7 @@ H 个上下文特征
 
 完成这个映射的 Linear 层叫 LM Head。
 
-### 6.1 用四个候选手算一次
+### 6.1 四候选手算示例
 
 沿用贯穿案例的最后输入位置，也就是 assistant 生成起点。图中把它在 Decoder 后的 Hidden State 缩成两维：
 
@@ -336,7 +336,7 @@ Logit 是未归一化分数：
 - 所有 Logit 的和不需要等于 1；
 - 只看单个 Logit，不能知道最终概率。
 
-### 6.2 通用 shape
+### 6.2 LM Head 的通用 shape
 
 对于一次只取最后位置的生成：
 
@@ -362,7 +362,7 @@ V = 248320
 
 因此单个位置的 4096 维 Hidden State 会被映射成 248320 个候选分数。
 
-### 6.3 LM Head 与 Embedding 方向相反
+### 6.3 LM Head 与 Embedding 的映射方向
 
 二者方向相反：
 
@@ -375,11 +375,11 @@ Qwen3.5-9B 的 `tie_word_embeddings` 当前配置为 `false`，输入 Embedding
 与输出 LM Head 不共享同一套权重。即使某些模型选择共享权重，
 Tokenizer Decode 也仍然负责 ID 到文字的转换，不能把 Embedding 当作解码器。
 
-## 7. 从 Logits 中选出下一个 token
+## 7. 从 Logits 选择下一个 Token
 
 Logits 已经给出了候选 token 的相对排序。下一步有两类常用选择方式。
 
-### 7.1 贪心：直接选择最大 Logit
+### 7.1 贪心解码
 
 仍使用：
 
@@ -395,7 +395,7 @@ next_token_id = argmax(logits)
 
 贪心选择不必计算 Softmax，因为 Softmax 不会改变候选之间的大小顺序。
 
-### 7.2 概率归一化（Softmax）：把分数变成概率
+### 7.2 Softmax 概率归一化
 
 采样需要概率。对有限实数 Logit，Softmax 会把它们转换成：
 
@@ -432,7 +432,7 @@ $$
 
 它的最终概率还取决于所有候选共同构成的分母。
 
-### 7.3 采样：按概率随机抽取
+### 7.3 随机采样
 
 如果“从”的概率为 83.1%，采样并不保证选中它。含义是：在相同分布下重复很多次，平均大约 83.1% 的次数会选中它，仍有 16.9% 的机会选中其他候选。
 
@@ -462,7 +462,7 @@ Top-P 依赖概率，不能只看原始 Logit 决定保留哪些候选。它先�
 
 不同框架可能组合或调整处理器顺序。需要区分的是：贪心可以直接 `argmax`，Top-P 和最终概率采样都依赖归一化后的分布。
 
-## 8. 一段完整回答为什么只能逐个 token 生成
+## 8. 自回归生成的数据依赖
 
 假设模型要回答三个 token。普通自回归生成时，上一轮选出的 token 会成为下一轮已知序列的一部分：
 
@@ -487,7 +487,7 @@ token 尚未确定，第二步就缺少输入。因此，不能把同一个请�
 
 停止 token 可能由模型和生成配置共同决定，不应假设所有模型都只有同一个 EOS ID。
 
-## 9. Tokenizer Decode 把编号还原成文字
+## 9. Tokenizer Decode：从 Token ID 回到文本
 
 假设模型连续生成：
 
@@ -513,7 +513,7 @@ Embedding：Token IDs → 初始向量
 
 Embedding 向量是训练得到的一组连续数值，不能可靠地反查为文字。把向量找最近邻也不等于 Tokenizer Decode。
 
-## 10. 整条链路的 shape
+## 10. 生成链路中的 shape 变化
 
 以 Qwen3.5-9B 文本路径为例：
 
@@ -528,7 +528,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 实际 runtime 可能保留 `[B,1,V]`，也可能压缩成 `[B,V]`；可能计算全部位置的 Logits，也可能只计算需要的位置。这些实现差异不改变张量的语义。
 
-## 11. 四个关键动作放在一起比较
+## 11. Embedding、LM Head 与采样算子
 
 ### 11.1 Embedding / Gather
 
@@ -574,7 +574,7 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 | 不变量 | 不改变模型词表中 ID 的含义 |
 | 长期数据 | 无模型权重 |
 
-## 12. 从生成步骤排查工程问题
+## 12. 按生成阶段定位工程问题
 
 有了这条链路，已经可以避免几类常见误判：
 
@@ -590,37 +590,37 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 以后再看到一种优化，可以先问清它改的是 Tokenizer、Linear、Cache、采样还是调度，再去核对相应的框架参数和指标。
 
-## 13. 这些概念别混在一起
+## 13. 常见概念辨析
 
-### 汉字和 token 没有固定的一一对应关系
+### 汉字与 Token 的非一一对应关系
 
 Token 是由具体 Tokenizer 学到或定义的文本片段。多个汉字可以组成一个 token，一个英文单词也可能被拆成多个 token。
 
-### Token ID 只是词表索引
+### Token ID 的索引语义
 
 ID 是词表索引。它的大小、差值和相邻关系都不能直接解释为语义关系。
 
-### Embedding 还没有当前上下文
+### Embedding 与当前上下文
 
 Embedding 是训练出的初始表示，具有基础语义；它缺少的是当前句子的上下文信息。
 
-### LM Head 先输出 Logits
+### LM Head 的输出类型
 
 LM Head 直接输出的是 Logits。采样通常需要进一步处理并做 Softmax；贪心可以直接对 Logits 取 `argmax`。
 
-### Logit 为 0，经过 Softmax 仍有概率
+### 零 Logit 的 Softmax 概率
 
 Softmax 中 $e^0=1$。概率由所有候选共同决定。
 
-### 采样不保证选择最大概率项
+### 随机采样与最大概率项
 
 贪心会选中最大项；随机采样不保证。83.1% 仍然不是 100%。
 
-### Tokenizer Decode 负责把 ID 还原成文字
+### Tokenizer Decode 的职责
 
 Embedding 的方向是 ID 到向量；Tokenizer Decode 才负责 ID 到文字。
 
-### KV Cache 只复用已经确定的历史
+### KV Cache 的复用范围
 
 缓存复用已经发生的历史计算，不能提前知道尚未生成的 token。
 
@@ -663,7 +663,7 @@ Embedding 的方向是 ID 到向量；Tokenizer Decode 才负责 ID 到文字。
 
 </details>
 
-## 15. 自测：从消息讲到下一个 token
+## 15. 综合练习：复述下一个 Token 的生成过程
 
 不看正文，画出并解释下面这条链路：
 
@@ -692,7 +692,7 @@ Token IDs → 初始向量：Embedding
 Hidden State → 全词表分数：LM Head
 ```
 
-## 原始资料
+## 参考资料
 
 以下事实于 2026-08-08 按官方配置与实现复核：
 
