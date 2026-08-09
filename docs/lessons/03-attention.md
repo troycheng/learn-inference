@@ -1,8 +1,8 @@
 # 第 3 课：Attention 的计算原理
 
-Decoder Layer 需要让当前位置读取前文。Full Attention 的做法很直接：当前位置依次和允许读取的位置打分，再按分数取回信息。
+Decoder Layer 需要让当前位置读取前文。Full Attention 会让当前位置与所有可见位置分别计算分数，再按分数汇总这些位置的信息。
 
-Qwen3.5 还会使用 Gated DeltaNet，把历史整理进固定大小的状态。那条路径放到第 5 课；本课只讲 Full Attention。
+Qwen3.5 还使用 Gated DeltaNet，把历史写入固定大小的状态；第 5 课会单独分析这条路径。本课只讲 Full Attention。
 
 ```text
 Gated DeltaNet：把读过的信息持续整理到固定大小的状态中
@@ -90,7 +90,7 @@ $$
 
 仍用代词举例：判断“它”和“杯子”是否相关时，模型可能更关心词性、位置和上下文关系；从“杯子”位置取回的信息则可能包含对象类别、属性和前后动作。Q/K 负责前一种比较，V 负责后一种信息传递。
 
-三组权重会在训练中学出合适的表示。每个 token 都有自己的 Q、K、V。下面只盯住“它”的 Q，把一次读取走完。
+三组权重会在训练中学出合适的表示。每个 token 都有自己的 Q、K、V。下面继续只跟踪“它”的 Q，完成一次读取计算。
 
 ## 4. QK 点积与相关性分数
 
@@ -173,7 +173,7 @@ M=
 \end{bmatrix}
 $$
 
-`M` 是额外的 `[T,T]` 规则表，不是 Q、K、V，也不是 Attention 分数矩阵。它与分数矩阵逐元素相加：
+`M` 是一个 `[T,T]` 遮罩矩阵，不是 Q、K、V，也不是由 Q/K 算出的分数。它与分数矩阵逐元素相加：
 
 $$
 S_{masked}=\frac{QK^T}{\sqrt{D}}+M
@@ -197,6 +197,8 @@ Softmax 做了两件事：权重都不小于 0，并且一行权重的总和等�
 Attention Score：Q/K 点积并缩放后的分数
 Attention Weight：经过遮罩和 Softmax 后的权重
 ```
+
+Attention 权重只描述这一层、这一个头怎样汇总 V，不能单独解释模型最终为什么生成某个 token。后续的输出投影、FFN、残差连接和其他层都会继续改变表示。
 
 ## 8. V 的加权求和
 
@@ -389,7 +391,7 @@ RoPE 要改变的是位置之间的匹配分数，而分数来自 Q 与 K 的点
 
 ### 10.5 Qwen3.5-9B 的部分旋转维度
 
-Qwen3.5-9B 的每个 Full Attention 头有 `256` 维。配置中的 `partial_rotary_factor=0.25` 表示只有前 `64` 维参与 RoPE，后 `192` 维原样通过：
+Qwen3.5-9B 的每个 Full Attention 头有 `256` 维。配置项 `text_config.rope_parameters.partial_rotary_factor=0.25` 表示只有前 `64` 维参与 RoPE，后 `192` 维原样通过：
 
 ```text
 Q：前 64 维旋转，后 192 维不旋转
@@ -485,6 +487,8 @@ V 总宽度： 4 × 256 = 1024
 
 输出投影（Output Projection，`o_proj`）也是 Linear。它负责重新混合各个头产生的特征，并把结果整理回 Decoder Layer 约定的 H 维。只有经过拼接和 `o_proj` 后，才是完整 Attention 子层的 `[B,T,H]` 输出；随后才能和进入 Attention 前保存的残差分支相加。
 
+这个输出仍然是中间 Hidden State，不是下一个 token。它还要经过本层 FFN、后续 Decoder Layer、最终 RMSNorm 和 LM Head，才会形成词表 Logits。
+
 一个 Full Attention 子层的数据流如下：
 
 ![Full Attention 子层中的输出投影和残差连接](../assets/03-attention-residual.svg)
@@ -499,7 +503,7 @@ Qwen3.5-9B 的 Full Attention 输入是：
 X: [B,T,4096]
 ```
 
-核心 Attention 的 shape 如下：
+Attention 主计算的 shape 如下：
 
 | 阶段 | shape | 说明 |
 | --- | --- | --- |
@@ -515,7 +519,7 @@ X: [B,T,4096]
 
 ### 14.1 Qwen3.5 Full Attention 的附加处理
 
-标准公式讲清核心后，再看 Qwen3.5 的具体实现：
+标准公式说明了共同的计算骨架。Qwen3.5 还在这条骨架上加入三项处理：
 
 1. **Q/K 归一化**：Q 和 K 按每个头的 256 维做 RMSNorm，再进入 RoPE 和点积。
 2. **部分 RoPE**：每头 256 维中有 64 维参与位置旋转。
@@ -586,19 +590,7 @@ Qwen3.5 用 4 个 K/V 头服务 16 个查询头。判断 KV Cache 容量时，�
 
 位置旋转发生在 K 写入缓存前。处理缓存复用、前缀拼接或位置重映射时，必须保证位置编号和 RoPE 规则一致，不能只复制一段 K/V 就认为语义一定正确。
 
-## 17. 容易混淆的概念
-
-| 容易产生的误解 | 实际情况 |
-| --- | --- |
-| Attention 直接输出下一个 token | Attention 只更新当前层的隐藏状态。还要经过后续计算、更多 Decoder Layer、最终 RMSNorm 和 LM Head，才会得到词表 Logits。 |
-| Q、K、V 是三份相同数据 | 自注意力中的三者来自同一组 `X`，但由三组不同权重计算。 |
-| V 也参与相关性打分 | 分数来自 Q/K。V 在权重确定后才被汇总。 |
-| 因果遮罩可以放在 Softmax 后 | 遮罩必须先把未来位置的分数改为负无穷，Softmax 后这些位置的权重才会是 0。 |
-| GQA 共享 Q | GQA 保留多个 Q 头，共享的是 K/V。 |
-| RoPE 会增加 token 数或隐藏维度 | RoPE 只旋转 Q/K 的部分数值，shape 不变。 |
-| Attention 权重足以解释模型回答 | 权重只表示某一层、某一头的一次加权分布。V、输出投影、FFN、残差和其他层都会影响最终结果。 |
-
-## 18. 练习
+## 17. 练习
 
 1. Q、K、V 分别在 Attention 中做什么？
 2. `QK^T` 的一个元素是怎样算出来的？它表示什么？
@@ -632,7 +624,7 @@ Qwen3.5 用 4 个 K/V 头服务 16 个查询头。判断 KV Cache 容量时，�
 
 </details>
 
-## 19. 实践：用一组新数据完成 Attention
+## 18. 实践：用一组新数据完成 Attention
 
 只看一个头。当前位置是序列中的第 2 个 token，因此两个位置都可以读取：
 

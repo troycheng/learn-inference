@@ -20,10 +20,10 @@ V Cache：[B,Nkv,T,D]
 Gated DeltaNet 不保留这条逐 token 列表。每个头只有一张状态矩阵：
 
 ```text
-S：[B,N,Dk,Dv]
+S：[B,N_state,Dk,Dv]
 ```
 
-`N` 是并行维护状态的头数；在 Qwen3.5-9B 中，Q/K 复制后与 32 个 Value 头对齐，所以 `N=32`。`Dk` 是 Key 和 Query 的宽度，`Dv` 是 Value 的宽度。序列继续变长时，`S` 的 shape 不变，数值会不断更新。
+`N_state` 是并行维护状态的头数；在 Qwen3.5-9B 中，Q/K 复制后与 32 个 Value 头对齐，所以 `N_state=32`。`Dk` 是 Key 和 Query 的宽度，`Dv` 是 Value 的宽度。序列继续变长时，`S` 的 shape 不变，数值会不断更新。
 
 可以先把 `S` 看成一张由模型自己维护的关联表：
 
@@ -35,6 +35,8 @@ Query 用相似的特征从 S 中读取结果
 ```
 
 这只是帮助理解的说法。状态矩阵里没有可读的字符串字段，也没有给某个 token 单独保留一行。多段历史会被压进同一组数值，因此它和 KV Cache 的能力及代价都不同。
+
+`recurrent state` 也不是 token 的 Hidden State。Hidden State 是某个位置在层与层之间传递的 `H` 维向量；recurrent state 是某个 Gated DeltaNet 层跨 token 保留并更新的矩阵。
 
 ## 2. Gated DeltaNet 的完整数据流
 
@@ -48,7 +50,7 @@ X：[B,T,H]
 
 ![Gated DeltaNet 的完整数据流](../assets/05-gated-deltanet-flow.svg)
 
-这里有三组容易混淆的控制量：
+三组控制量作用在不同位置：
 
 | 名称 | 代码来源 | 控制什么 |
 | --- | --- | --- |
@@ -87,7 +89,7 @@ $$
 
 Decode 时不必重新读取完整序列。`conv_state` 只保留卷积所需的最近窗口。新 token 到来后，runtime 把它推入窗口，移出最旧的位置。
 
-## 4. 状态如何记录并读取一条关联
+## 4. 状态矩阵的写入与读取
 
 下面只看一个头，把 Key、Query 和 Value 都缩成 2 维。例子从全零状态开始，后面一直沿用同一张状态矩阵：
 
@@ -149,7 +151,7 @@ $$
 
 再用 $k/\lVert k\rVert_2$ 参加状态计算。忽略实现中防止除零的极小稳定项，归一化后的向量长度为 1。这样读写方向主要由各维度的相对比例决定，不会因为整条 Q 或 K 同时放大几倍而突然变强。
 
-## 5. Delta Rule 如何修正旧记录
+## 5. Delta Rule 的误差修正
 
 第二个 token 仍产生 `k_2=[1,0]`，但这一次希望关联到新的 Value：
 
@@ -163,7 +165,7 @@ $$
 \Delta_2=[5,1]-[3,4]=[2,-3]
 $$
 
-暂时令 `alpha=1`、`beta=1`，状态更新为：
+为了单独看清 Delta Rule，先把两个门近似看作完全打开，令 `alpha=1`、`beta=1`。真实模型中的两者严格位于 `(0,1)`，下一节再把它们放回计算。此时状态更新为：
 
 $$
 S_2=S_1+k_2^T\Delta_2=
@@ -205,14 +207,14 @@ $$
 | 符号 | 范围 | 作用 |
 | --- | --- | --- |
 | `S_{t-1}` | `[Dk,Dv]` | 处理当前 token 前的状态 |
-| `alpha_t` | 0 到 1 之间 | 统一缩放旧状态，越小遗忘越快 |
+| `alpha_t` | `(0,1)` | 统一缩放旧状态，越小遗忘越快 |
 | `k_t` | `[Dk]` | 定位要检查和修正的状态方向 |
 | `v_t` | `[Dv]` | 当前希望写入的内容 |
-| `beta_t` | 0 到 1 之间 | 控制本次误差写入的幅度 |
+| `beta_t` | `(0,1)` | 控制本次误差写入的幅度 |
 | `q_t` | `[Dk]` | 从更新后状态中读取输出 |
 | `sqrt(Dk)` | 标量 | 控制 Query 读出结果的尺度 |
 
-Qwen3.5 的代码先算出一个非正数 `g_t`，再使用 `alpha_t=exp(g_t)`，所以衰减系数落在 0 到 1 之间。这里的 `exp(g)` 就是 $e^g$：`g=0` 时结果为 1，`g` 越小，结果越接近 0。代码里的原始投影 `a` 不是 `alpha`。
+Qwen3.5 的代码先算出一个负数 `g_t`，再使用 `alpha_t=exp(g_t)`，因此衰减系数严格位于 `(0,1)`。`g_t` 越接近 0，`alpha_t` 越接近 1；`g_t` 越小，`alpha_t` 越接近 0。代码里的原始投影 `a` 不是 `alpha`。
 
 `beta_t` 由 Sigmoid 得到：
 
@@ -220,7 +222,7 @@ $$
 \mathrm{sigmoid}(b)=\frac{1}{1+e^{-b}}
 $$
 
-Sigmoid 把任意实数平滑地映射到 0 和 1 之间，`b=0` 时结果为 0.5。模型可以先用 Linear 产生不受范围限制的数，再把它转换成本层可用的衰减系数或修正幅度。
+Sigmoid 把任意实数平滑地映射到 0 和 1 之间，`b=0` 时结果为 0.5。模型先用 Linear 产生不受范围限制的 `b`，再把它转换成当前误差的修正幅度。
 
 这两个门分工不同。`alpha` 作用于整张旧状态，适合快速减弱过去；`beta` 只控制当前误差写入多少。即使 `beta` 很大，也不等于清空所有旧信息。
 
@@ -373,17 +375,7 @@ Gated DeltaNet 的 `conv_state` 和 `recurrent_state` shape 不随 token 数增�
 
 Gated Delta Rule 的 Chunk Kernel 是算子内部的并行算法。服务端 Chunked Prefill 是调度器把长 Prompt 分成多个执行轮次。两者都使用 Chunk 这个词，但切分层级不同。
 
-## 12. 容易混淆的概念
-
-| 容易混淆的对象 | 应怎样理解 |
-| --- | --- |
-| Gated DeltaNet 是否没有请求状态 | 它不保存逐 token K/V，但 Decode 需要 `conv_state` 和 `recurrent_state`。 |
-| recurrent state 与 Hidden State | Hidden State 是某个 token 在层间传递的 H 维表示；recurrent state 是一个 Gated DeltaNet 层跨 token 保留的矩阵状态。 |
-| 因果卷积是否处理图片 | 这里沿 token 序列的一维时间轴滑动。深度卷积在各通道内处理最近窗口，不在图片上移动二维卷积核。 |
-| 固定状态是否没有读写成本 | 每步仍要读写整张状态矩阵，并执行本层的 Linear 和门控。固定的是随序列长度增长的维度。 |
-| Chunk Kernel 是否改变因果关系 | Chunk Kernel 用代数变换并行组织已知 token 的计算，结果仍遵守前一状态到后一状态的因果顺序。 |
-
-## 13. 练习
+## 12. 练习
 
 1. Qwen3.5-9B 的 32 层中，多少层使用 Gated DeltaNet，多少层使用 Full Attention？
 2. recurrent state 与 KV Cache 在序列长度轴上有什么区别？
@@ -421,9 +413,9 @@ Gated Delta Rule 的 Chunk Kernel 是算子内部的并行算法。服务端 Chu
 
 </details>
 
-## 14. 实践：比较上下文增长前后的请求状态
+## 13. 实践：比较上下文增长前后的请求状态
 
-Qwen3.5-9B 的 BF16 Full Attention KV 每缓存位置占 32 KiB；24 个 Gated DeltaNet 层的卷积状态和递归状态合计约 49.5 MiB/请求。分别考虑 4096 和 8192 个缓存位置：
+Qwen3.5-9B 的 BF16 Full Attention KV 每缓存位置占 32 KiB。按本课核对的 Transformers 参考实现，`conv_state` 沿用 BF16，`recurrent_state` 使用 FP32；24 个 Gated DeltaNet 层的两类状态合计约 49.5 MiB/请求。分别考虑 4096 和 8192 个缓存位置：
 
 1. 两种长度下，Full Attention KV 各占多少？
 2. Gated DeltaNet 状态各占多少？

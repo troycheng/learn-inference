@@ -4,6 +4,8 @@
 
 Qwen3.5-35B-A3B 则在语言模型的 40 个 Decoder Layer 中使用 MoE。RMSNorm、残差连接以及 Gated DeltaNet 和 Full Attention 的排列没有因此消失，模型只是把每层的一套 Dense FFN 换成了 Router 和多套 Expert FFN。
 
+这里的 MoE 指语言 Decoder 的 FFN。Qwen3.5-35B-A3B 的视觉编码器仍使用自己的 Dense Vision MLP，不能把语言层的 Expert 数量套到视觉路径上。
+
 ![Dense 与 MoE 替换的是 FFN 子层](../assets/06-dense-vs-moe.svg)
 
 MoE 中有很多套参数不同的 FFN，通常称为 Expert。Router 根据当前 token 的 Hidden State 选出少数 Routed Experts。Qwen3.5 还为所有 token 固定执行一套 Shared Expert，最后把这些输出合并回 H 维。
@@ -187,23 +189,23 @@ Shared Expert = 1 个，中间维度也是 512
 Decoder Layer = 40
 ```
 
-令 `N=B×T`，也就是当前这批 token 的总数。MoE 会临时把 `[B,T,H]` 展平为 `[N,H]`：
+令 `M=B×T`，也就是当前这批 token 的总数。MoE 会临时把 `[B,T,H]` 展平为 `[M,H]`：
 
 ![Qwen3.5 一层 MoE 的完整流程](../assets/06-qwen35-moe-flow.svg)
 
 | 阶段 | shape | 说明 |
 | --- | --- | --- |
 | 输入 | `[B,T,2048]` | Decoder Layer 的 Hidden States |
-| 展平输入 | `[N,2048]` | `N=B×T` |
-| Router Logits | `[N,256]` | 每个 token 对所有 Routed Experts 的分数 |
-| Selected Expert IDs | `[N,8]` | 每个 token 的 Top-8 整数编号 |
-| Routing Weights | `[N,8]` | Top-8 重新归一化后的权重 |
+| 展平输入 | `[M,2048]` | `M=B×T` |
+| Router Logits | `[M,256]` | 每个 token 对所有 Routed Experts 的分数 |
+| Selected Expert IDs | `[M,8]` | 每个 token 的 Top-8 整数编号 |
+| Routing Weights | `[M,8]` | Top-8 重新归一化后的权重 |
 | Expert `e` 输入 | `[n_e,2048]` | 本批被送到 Expert `e` 的 token |
 | Expert 中间结果 | `[n_e,512]` | SwiGLU 中间宽度 |
 | Expert 输出 | `[n_e,2048]` | 乘路由权重后写回 |
-| Routed 合并结果 | `[N,2048]` | 每 token 的 8 个 Expert 输出求和 |
-| Shared Expert 输出 | `[N,2048]` | 所有 token 都执行 |
-| Shared Gate | `[N,1]` | 每 token 一个 Sigmoid 系数 |
+| Routed 合并结果 | `[M,2048]` | 每 token 的 8 个 Expert 输出求和 |
+| Shared Expert 输出 | `[M,2048]` | 所有 token 都执行 |
+| Shared Gate | `[M,1]` | 每 token 一个 Sigmoid 系数 |
 | MoE 输出 | `[B,T,2048]` | 恢复原 token 顺序和 shape |
 
 MoE 的入口和出口仍是 `[B,T,H]`，所以外侧残差连接不需要改变。
@@ -247,7 +249,7 @@ n_0, n_1, ..., n_255
 
 Decode 小 Batch 尤其容易出现碎片。若一轮只有 8 个 token，Top-8 共产生 64 个 Routed Assignments，要分给 256 个 Expert。许多 Expert 没有输入，命中的 Expert 也常只有很小的 `n_e`。
 
-训练时的负载均衡损失会惩罚长期过度集中的路由，但它不是推理调度器，也不能保证每个推理 Batch 完全平均。判断 MoE 性能要看每层实际 `n_e` 分布，不能只用 `N×K/E` 的平均值。
+训练时的负载均衡损失会惩罚长期过度集中的路由，但它不是推理调度器，也不能保证每个推理 Batch 完全平均。判断 MoE 性能要看每层实际 `n_e` 分布，不能只用 `M×K/E` 的平均值。
 
 ## 9. Total Parameters 与 Active Parameters
 
@@ -308,44 +310,25 @@ EP 把 Expert 权重分布在不同设备，并把 token 送到持有相应 Expe
 
 TP 可以继续切分单个 Expert 的 gate/up/down 矩阵。一个部署也可能同时使用 EP 和 TP，此时要同时考虑 token Dispatch/Combine 与 Expert 内部的 TP Collective。
 
-## 11. MoE 推理的性能因素
+## 11. MoE 推理中的计算与通信瓶颈
 
-### 11.1 Routed Assignment 数量
+只看 Total Parameters 或 Active Parameters 都不足以判断实际速度。一次运行至少要同时观察下面五项：
 
-一轮 `N` 个 token、Top-K 为 `K`，逻辑上产生 `N×K` 份 Routed Expert 工作。这个数比请求数更接近 Expert 侧的计算规模。
+| 因素 | 为什么影响性能 | 需要观察什么 |
+| --- | --- | --- |
+| Routed Assignment 数量 | 一轮 `M` 个 token、Top-K 为 `K`，会产生 `M×K` 份 Routed Expert 工作 | 每层 assignment 总数 |
+| Expert 的 token 分布 | Grouped GEMM 的效率取决于各 Expert 的 `n_e`；总量相同，分布倾斜程度仍可能不同 | `n_e` 分布、空 Expert 和热点 Expert |
+| Expert 权重的加载与驻留 | 单 token 只激活少数 Expert，但不同轮次可能访问不同权重 | 权重驻留位置、显存带宽和缓存命中 |
+| Dispatch、Combine 与拓扑 | 跨 NVLink、PCIe 和跨机网络的代价差异很大 | 每个 Rank 的发送量、Collective 时间和慢 Rank |
+| Shared Expert 的布局 | Shared Expert 对所有 token 执行，可能复制、做 TP 或与 Routed Expert 重叠 | Shared Expert 计算与通信是否进入关键路径 |
 
-### 11.2 Expert 的 token 分布
+因此，MoE 性能分析不能只用 `M×K/E` 的平均值代替真实分布，也不能只看卡数推断通信代价。
 
-Grouped GEMM 的效率取决于各 Expert 的 `n_e`，不只取决于所有 assignment 的总数。平均值相同，分布倾斜程度也可能完全不同。
-
-### 11.3 Expert 权重的加载与驻留
-
-Total Parameters 决定所有 Expert 权重必须存在哪里。即使单 token 只激活 8 个 Expert，小 Batch 下不同轮次命中的 Expert 变化仍会影响缓存和显存带宽行为。
-
-### 11.4 Dispatch、Combine 与网络拓扑
-
-跨 NVLink、PCIe 或跨机网络的代价差异很大。EP 映射要结合热点 Expert 分布和实际互联，不能只看卡数。
-
-### 11.5 Shared Expert 的设备布局
-
-Shared Expert 可能复制、做 TP，或与 Routed Expert 计算重叠。模型公式只规定它对所有 token 执行，具体优化方式属于 runtime。
-
-## 12. 容易混淆的概念
-
-| 容易混淆的对象 | 应怎样理解 |
-| --- | --- |
-| MoE 替换了什么 | Qwen3.5-MoE 仍按 3 层 Gated DeltaNet 加 1 层 Full Attention 排列。MoE 替换的是各语言 Decoder Layer 的 FFN 支路。 |
-| 视觉编码器是否也使用语言 MoE | Qwen3.5-35B-A3B 的语言 Decoder 使用 MoE，视觉编码器仍有自己的 Dense Vision MLP。 |
-| Shared Expert 是否属于 Top-8 | 每个 token 执行 8 个 Routed Experts，再固定执行 1 个 Shared Expert。Shared Expert 的门控不与 Top-8 Routing Weights 一起归一化。 |
-| Active Parameters 是否等于权重显存 | 35B 权重仍需加载或分布在设备上。3B 是官方每 token 激活参数口径，不是模型文件大小。 |
-| Expert ID 是否代表固定知识领域 | Router 和 Expert 权重都由训练形成。可以分析路由模式，不能只凭 Expert ID 给它命名。 |
-| Expert Parallel 是否固定使用 All-to-All | 框架可以选择 All-to-All、All-Reduce 或其他实现，但都要把 token 送到相应 Expert，再把输出送回原 token。 |
-
-## 13. 练习
+## 12. 练习
 
 1. MoE 替换 Decoder Layer 的哪个子层？哪些公共结构仍然存在？
 2. Dense FFN 中的 Dense 是否表示不同 token 彼此全连接？
-3. Router Logits `[N,256]` 和 Selected Expert IDs `[N,8]` 各是什么数据？
+3. Router Logits `[M,256]` 和 Selected Expert IDs `[M,8]` 各是什么数据？
 4. Routing Weights 为什么每个 token 有 8 个？它们的和是多少？
 5. 一个 Routed Expert 内部怎样完成 `H → I → H`？
 6. 一个 token 的 Top-8 是否包含 Shared Expert？
@@ -369,7 +352,7 @@ Shared Expert 可能复制、做 TP，或与 Routed Expert 计算重叠。模型
 5. 它执行自己的 gate/up Linear、SiLU、逐元素乘法和 down Linear，shape 为 `[n_e,H] → [n_e,I] → [n_e,H]`。
 6. 不包含。Shared Expert 在 Top-8 之外固定执行。
 7. `[B×T,256]`。
-8. `N=8`，所以是 `[8,8]`。
+8. `M=8`，所以是 `[8,8]`。
 9. 不固定。它由本批每个 token 的路由结果决定。
 10. 后续残差和 Decoder Layer 按原序列位置工作，每个 Expert 的结果必须加回对应 token。
 11. 35B 是需要保存的整模型总参数；3B 是官方每 token 实际参与前向的参数口径。
@@ -379,7 +362,7 @@ Shared Expert 可能复制、做 TP，或与 Routed Expert 计算重叠。模型
 
 </details>
 
-## 14. 实践：根据路由结果组织 Expert Batch
+## 13. 实践：根据路由结果组织 Expert Batch
 
 一个教学用 MoE 有 4 个 Routed Experts，每个 token 选择 2 个。Router 给出：
 

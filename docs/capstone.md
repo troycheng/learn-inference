@@ -2,7 +2,7 @@
 
 读完 0～9 课后，应该能独立完成一次模型分析。下面给出一份接近线上评审的问题，不再按课程顺序提示该用哪个公式。
 
-建议先独立作答，再展开参考分析。需要把结果整理成技术评审时，可以使用[模型推理分析方法与模板](model-analysis-workbook.md)。
+建议先独立作答，再展开参考分析。需要把结果整理成技术评审时，可以参考[模型接入与优化评审方法](model-analysis-workbook.md)。
 
 ## 1. 已知条件
 
@@ -43,7 +43,7 @@ Prompt：                  4096 token
 <details>
 <summary>查看参考分析</summary>
 
-## 3. 输入怎样到达首个输出 token
+## 3. 从 API 输入到首个输出 token
 
 API 接收的是结构化消息，例如：
 
@@ -86,7 +86,7 @@ Full Attention
 
 因此共有 24 个 Gated DeltaNet 层和 8 个 Full Attention 层。Dense SwiGLU FFN、RMSNorm 和残差连接仍存在于每个 Decoder Layer 中。
 
-## 5. Prefill 结束时发生了什么
+## 5. Prefill 结束时的输出与状态
 
 Prefill 已经处理完整 Prompt，并为最后一个 Prompt 位置得到 Logits。选择策略用这组 Logits 选出首个输出 token，记为 `y1`。
 
@@ -121,7 +121,7 @@ $$
 4352\times32\ KiB=136\ MiB
 $$
 
-第 8 课已经按 Qwen3.5 参考实现核算出 Gated DeltaNet 固定状态约为：
+第 8 课已经按 Qwen3.5 参考实现核算出 Gated DeltaNet 固定状态：`conv_state` 按 BF16、`recurrent_state` 按 FP32 计算，约为：
 
 ```text
 24 层 conv_state 与 recurrent_state：49.5 MiB / 请求
@@ -157,9 +157,9 @@ $$
 
 8 个 Rank 合计为 64 KiB，比模型逻辑 KV 的 32 KiB 更大。原因是 4 个逻辑 K/V 头在 8 个 Rank 上发生了复制。多卡容量不能默认按设备数平均分配，必须核对 runtime 的实际布局。
 
-## 8. 优先验证哪项优化
+## 8. 优化方案的验证顺序
 
-当前未达标的是 P99 TTFT，TPOT 已经达标；80% 请求又有完全相同的 2048-token 系统前缀。Prefix Cache 与已知问题直接对应，应排在第一轮实验中。
+现有信息还不足以断定哪项优化能改善总体 P99 TTFT。必须先把最慢请求分成三类：命中共享前缀、未命中前缀，以及主要耗时来自排队的请求。80% 请求拥有相同前缀，说明 Prefix Cache 有明确的重复计算可消除，适合作为第一轮对照实验；它不是已经确定的 P99 解决方案。
 
 在缓存已经建立、能够命中且没有被驱逐的理想条件下，平均每个请求可复用的 Prompt 位置数为：
 
@@ -167,11 +167,11 @@ $$
 0.8\times2048=1638.4
 $$
 
-这个结果不能改写成“TTFT 降低 40%”。命中查找、剩余 Prefill、排队和其他计算仍然存在。Qwen3.5 的前缀状态还必须同时恢复 Full Attention KV、卷积状态和 recurrent state。
+这个结果不能改写成“TTFT 降低 40%”。命中查找、剩余 Prefill、排队和其他计算仍然存在。更重要的是，20% 未命中请求足以覆盖最慢的 1%；如果 P99 主要落在未命中路径上，Prefix Cache 即使显著改善命中请求，也可能只改善 P50 而不改变总体 P99。Qwen3.5 的前缀状态还必须同时恢复 Full Attention KV、卷积状态和 recurrent state。
 
 其他方案需要证据后再排序：
 
-| 方案 | 为什么不能直接排在第一位 |
+| 方案 | 现有证据为什么不足 |
 | --- | --- |
 | 权重量化 | 它可以减少权重容量和读取字节，但当前症状是长共享前缀带来的 TTFT；没有 Profile 不能断定权重读取是主要瓶颈。 |
 | FlashAttention | 它可能改善长 Prompt 的 Full Attention，但不会跳过 Gated DeltaNet、FFN 和未命中的 Prefill。 |
@@ -190,17 +190,17 @@ $$
 同一采样设置与正确性输入集
 ```
 
-对 Prefix Cache，测试应区分冷请求和命中请求：
+对 Prefix Cache，测试必须区分冷请求和命中请求：
 
 | 证据 | 需要记录什么 |
 | --- | --- |
 | 缓存行为 | 命中请求比例、命中 token 数、驱逐率、Cache 占用 |
-| 用户延迟 | 冷请求、命中请求和总体的 TTFT P50/P99；同时保留 TPOT |
-| 服务能力 | 固定 SLO 下的 Goodput、排队时间、输出 token 吞吐 |
+| 用户延迟 | 命中、未命中、排队主导请求和总体的 TTFT P50/P99；同时保留 TPOT |
+| 服务能力 | 固定 SLO 下的 `goodput`、排队时间、输出 token 吞吐 |
 | 正确性 | 固定输入和采样条件，对比 Logits 或 Token IDs；确认三类前缀状态一起恢复 |
 | 资源 | 每 Rank 显存峰值、KV 分配、通信与回退路径 |
 
-如果 P99 TTFT 改善，但 Cache 驱逐导致部分请求尾延迟更差，或者 Goodput 下降，仍不能只凭平均 TTFT 宣布方案有效。
+如果 Prefix Cache 只改善命中请求的 P50，而总体 P99 仍由未命中请求主导，就不能说当前目标已经完成。反过来，如果它减少了整体 Prefill 负载和排队，使未命中请求的 P99 也下降，则应通过队列时间和分桶结果证明这条间接收益。Cache 驱逐导致尾延迟变差，或者 `goodput` 下降时，也不能只凭平均 TTFT 宣布方案有效。
 
 </details>
 
@@ -226,7 +226,7 @@ Gated DeltaNet 的状态 shape 不会因此扩大，但 Prefill 计算、临时�
 请求状态：KV 随缓存长度增长；GDN 状态固定 shape；两者都随并发增长
 容量口径：单请求逻辑状态 185.5 MiB，32 并发约 5.80 GiB，尚未包含运行时预留
 当前问题：P99 TTFT 超标，TPOT 达标，且大部分请求共享精确前缀
-首轮方案：验证 Prefix Cache，单独报告冷请求、命中请求、总体尾延迟和 Goodput
+首轮方案：先定位 P99 请求群体，再对照验证 Prefix Cache；分开报告命中、未命中、排队与总体指标
 关键风险：混合状态恢复、Cache 驱逐、TP 下 KV 头复制、运行时回退
 ```
 
@@ -242,4 +242,4 @@ Gated DeltaNet 的状态 shape 不会因此扩大，但 Prefill 计算、临时�
 
 ---
 
-[返回课程路线](roadmap.md) · [打开模型推理分析方法与模板](model-analysis-workbook.md)
+[返回课程路线](roadmap.md) · [打开模型接入与优化评审方法](model-analysis-workbook.md)

@@ -23,7 +23,7 @@
 
 ```text
 第 0 课  张量、shape 与基础计算
-第 1 课  下一个 Token 的生成过程
+第 1 课  下一个 token 的生成过程
 第 2 课  Decoder Layer 的结构与计算
 第 3 课  Full Attention 的计算原理
 第 4 课  Prefill、Decode 与 KV Cache
@@ -56,7 +56,7 @@
 | [8](lessons/08-config-and-sizing.md) | 模型配置与资源估算 | 区分保存、计算与累加 dtype，估算参数、权重、请求状态和计算量 |
 | [9](lessons/09-optimization-judgment.md) | 推理优化的分析与评估 | 比较常见优化和并行策略，估算端到端上限并设计验证实验 |
 
-完成 0～9 课后，使用[结业案例](capstone.md)把输入链路、层结构、请求状态、容量估算和优化判断连起来。分析其他模型时，可以按照[模型推理分析方法与模板](model-analysis-workbook.md)写出一页可复现的技术结论。
+完成 0～9 课后，使用[结业案例](capstone.md)把输入链路、层结构、请求状态、容量估算和优化判断连起来。分析其他模型时，可以按照[模型接入与优化评审方法](model-analysis-workbook.md)写出一页可复现的技术结论。
 
 ## 教学示例与真实模型
 

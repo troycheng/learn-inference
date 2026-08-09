@@ -15,7 +15,8 @@
 | `Nkv` | 键值头数 | Number of Key/Value Heads | Attention 中键头和值头的数量 |
 | `D` | 头维度 | Head Dimension | 每个 Attention 头包含的特征数 |
 | `L_full` | Full Attention 层数 | Number of Full-Attention Layers | 模型中使用 Full Attention 的 Decoder Layer 数量 |
-| `N` | 状态头数 | Number of State Heads | Gated DeltaNet 中并行维护的状态头数量；正文第一次使用时会重新说明 |
+| `N_state` | 状态头数 | Number of State Heads | Gated DeltaNet 中并行维护的状态头数量 |
+| `M` | 本轮 token 位置数 | Number of Batched Token Positions | 把当前执行批次中的位置展平后得到的总数；例如 `M=B×T` |
 | `s` | 单元素字节数 | Bytes per Element | 指定 dtype 下，一个缓存或状态元素占用的字节数 |
 
 ## 数学与张量
@@ -101,6 +102,8 @@
 | 张量并行 | Tensor Parallelism / TP | 切分一个 Linear 或 Expert 内部的权重矩阵并行计算 |
 | 数据并行 | Data Parallelism / DP | 在不同设备上复制完整模型，并把独立请求或 Batch 分给不同副本 |
 | 流水线并行 | Pipeline Parallelism / PP | 按模型深度把连续 Decoder Layer 分到不同设备阶段 |
+
+`gate_proj`、`up_proj`、`down_proj` 的中文名称是本课程为说明数据流采用的描述性译法。工程代码和框架文档通常直接使用代码名，不能把这些中文名称当作跨框架统一术语。
 
 ## Attention
 

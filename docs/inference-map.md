@@ -12,7 +12,7 @@
 4. LM Head 把最后的 Hidden States 变成词表 Logits。贪心或采样选出的 Token ID 会成为下一轮 Decode 的输入。
 5. Prefill 和 Decode 执行同一套模型权重。Prefill 处理已经给出的 Prompt，Decode 每轮处理刚刚确定的新 token。
 
-## 每一段应该看什么
+## 各阶段的检查对象
 
 | 位置 | 输入与输出 | 会长期保留什么 | 常见工程问题 | 对应课程 |
 | --- | --- | --- | --- | --- |
@@ -33,9 +33,9 @@
 模型权重：参数量、保存 dtype、设备切分
 请求状态：KV Cache、卷积状态、递归状态
 本轮执行：Batched Tokens、临时激活、FLOPs、HBM 读写、通信
-服务结果：TTFT、TPOT、吞吐、Goodput、输出质量
+服务结果：TTFT、TPOT、吞吐、`goodput`、输出质量
 ```
 
 例如，INT4 权重变小属于模型权重；长上下文 KV 增长属于请求状态；FlashAttention 减少中间 HBM 读写属于本轮执行；用户最终看到的 P99 TTFT 属于服务结果。它们之间有因果关系，但不能用一个数字替代另一个数字。
 
-拿到一个新模型时，可以按照[模型推理分析方法与模板](model-analysis-workbook.md)把结构、资源和实验结论整理成一页分析。
+拿到一个新模型时，可以按照[模型接入与优化评审方法](model-analysis-workbook.md)把结构、资源和实验结论整理成一页分析。

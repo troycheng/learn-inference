@@ -4,14 +4,14 @@
 
 这套课写给正在维护推理系统、希望补齐模型原理的工程师。你可能已经处理过显存不足、吞吐下降或首 token 变慢，但碰到 QKV、RoPE、KV Cache 或 MoE 时，还很难从模型计算解释原因。
 
-课程从一条输入开始，沿生成过程解释文字怎样变成 token、token 怎样经过 Decoder、模型怎样读取前文，以及回答为什么只能逐个 token 产生。学完后，你应该能指出 Prefill、Decode、KV Cache、Dense、MoE 分别涉及哪些模型层、张量和请求状态，并据此分析常见优化。
+课程从一条输入开始，沿生成过程解释文字怎样变成 token、token 怎样经过 Decoder、模型怎样读取前文，以及自回归生成为何逐 token 推进。学完后，你应该能指出 Prefill、Decode、KV Cache、Dense、MoE 分别涉及哪些模型层、张量和请求状态，并据此分析常见优化。
 
 ## 学习目标
 
 这 10 课不要求你推导复杂公式，但要能做到：
 
 - 从 Tokenizer 开始，完整解释一个新 token 是怎样产生的；
-- 说明 Embedding、RMSNorm、Attention、FFN、Residual、LM Head 分别解决什么问题；
+- 说明 Embedding、RMSNorm、Attention、FFN、残差连接（Residual Connection）和 LM Head 分别解决什么问题；
 - 看懂 Qwen3.5 文本模型的一层结构和完整层排列；
 - 解释 Dense 与 MoE 的共同骨架，以及 Router、Top-K、共享专家的作用；
 - 解释 Prefill、Decode、KV Cache 和 Gated DeltaNet 状态之间的关系；
@@ -59,7 +59,7 @@
 - [大模型推理链路速查](docs/inference-map.md)
 - [结业案例：从模型配置到优化判断](docs/capstone.md)
 - [课程术语与符号表](docs/glossary.md)
-- [模型推理分析方法与模板](docs/model-analysis-workbook.md)
+- [模型接入与优化评审方法](docs/model-analysis-workbook.md)
 - [课程编写与讲解规范](docs/teaching-method.md)
 
 ## 学习顺序
@@ -68,13 +68,13 @@
 
 建议读两遍。第一遍只追踪数据表示、shape 变化和请求需要保留的状态，不必记住 Qwen3.5 的每个配置数字。第二遍再带着真实模型和工作负载回来，用复算程序核对参数、状态和计算量，并完成每课末尾的实践题。
 
-读完第 9 课后，用[结业案例](docs/capstone.md)完成一次不按章节提示的综合分析。再拿一份自己正在部署的模型配置，按照[模型推理分析方法与模板](docs/model-analysis-workbook.md)写出一页技术结论。每个数字都应能追溯到配置、源码或测量结果。
+读完第 9 课后，用[结业案例](docs/capstone.md)完成一次不按章节提示的综合分析。再拿一份自己正在部署的模型配置，按照[模型接入与优化评审方法](docs/model-analysis-workbook.md)写出一页技术结论。每个数字都应能追溯到配置、源码或测量结果。
 
 正文用小数字缩短手算过程，向量和矩阵的维度虽然变小，计算顺序与真实模型相同。每课末尾先检查基础概念，再用一组新数据完成查错、计算或判断，参考答案默认折叠。
 
 ## 可运行示例
 
-第 1、2、3、5、6、8、9 课提供了只依赖 Python 标准库的[复算程序](examples/README.md)。脚本与正文使用同一组数字，运行后会打印中间结果，并检查关键数值。它们适合在读完公式后自己算一遍，不要求安装 PyTorch 或下载模型权重。
+第 1、2、3、5、6、8、9 课和结业案例提供了只依赖 Python 标准库的[复算程序](examples/README.md)。脚本与正文使用同一组数字，运行后会打印中间结果，并检查关键数值。它们适合在读完公式后自己算一遍，不要求安装 PyTorch 或下载模型权重。
 
 提交前可以运行 `bash scripts/check-course.sh`，检查 Markdown 结构、本地链接、SVG 渲染和可运行示例。GitHub Actions 也会执行同一组检查。
 

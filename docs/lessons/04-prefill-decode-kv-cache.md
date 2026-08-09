@@ -1,6 +1,6 @@
 # 第 4 课：Prefill、Decode 与 KV Cache
 
-生成回答时，模型会反复执行同一套 Decoder。第一轮要处理完整 Prompt，后面的每一轮通常只处理刚生成的一个 token。两类计算使用同一套权重，输入规模和可复用状态却不同。
+生成回答时，模型会反复执行同一套 Decoder。第一次前向处理完整 Prompt，后续每次前向通常只处理刚选出的一个 token。两类计算使用同一套权重，但输入规模和可复用状态不同。
 
 假设 Chat Template 和 Tokenizer 最终产生 4 个 Prompt token：
 
@@ -18,7 +18,7 @@ y1  y2  y3
 
 ![一次请求中的 Prefill 和 Decode](../assets/04-generation-timeline.svg)
 
-这条时间线里有四个问题：Prefill 做了什么，Decode 为什么只能逐 token 推进，KV Cache 省掉了哪些重复计算，以及多个请求怎样进入同一轮执行。
+理解这条生成链路，需要弄清四件事：Prefill 做了什么，Decode 为什么只能逐 token 推进，KV Cache 省掉了哪些重复计算，以及多个请求怎样进入同一轮执行。
 
 ## 1. Prefill 与 Decode 的阶段划分
 
@@ -68,9 +68,7 @@ p4 可以读取 p1、p2、p3、p4
 
 这个限制并不要求 GPU 先算完 `p1`，再开始算 `p2`。在 Full Attention 层里，4 个位置的输入都已经来自上一层，Q/K/V 和分数矩阵可以放进同一组张量运算。因果遮罩只决定矩阵中的哪些位置能参与结果。
 
-可以把它理解成一张已经写完的试卷。4 道题可以一起送进阅卷系统，但第 2 道题的评分规则只允许使用前两段材料。规则限制了每道题能读什么，不要求阅卷系统一次只能处理一道题。
-
-这个类比只解释“输入已知”和“读取范围”是两回事。模型实际执行的是张量计算，不是真的在逐题阅卷。
+把 4 个已知位置看成分数矩阵中的 4 行。GPU 可以同时计算这 4 行；因果遮罩只是在每一行上限制可以读取哪些列。各行能否一起计算，与每一行可以读取哪些位置，是两个不同的问题。
 
 “Prompt 可以并行”是一种简写，不表示模型里的所有运算都彼此独立。Decoder Layer 仍要逐层执行，Qwen3.5 的 Gated DeltaNet 层内部也有递归状态依赖。更准确的说法是：Prompt 的 token 在前向开始前已经全部确定，runtime 可以把多个已知位置组织成一次或若干次较大的前向计算。至于每个算子内部怎样并行，由模型结构和 Kernel 决定。
 
@@ -115,7 +113,7 @@ Token IDs                    [1,4]
 → y1
 ```
 
-每个 Full Attention 层还会把 Prompt 的 K/V 写入本层缓存。Qwen3.5-9B 使用 GQA，单个 Full Attention 层的缓存 shape 为：
+每个 Full Attention 层还会把 Prompt 的 K/V 写入本层缓存。按本课程使用的逻辑轴顺序，Qwen3.5-9B 单个 Full Attention 层的缓存 shape 为：
 
 ```text
 K Cache：[B,Nkv,T,D] = [1,4,4,256]
@@ -123,6 +121,8 @@ V Cache：[B,Nkv,T,D] = [1,4,4,256]
 ```
 
 这里的第一个 `4` 是 `Nkv=4`，第二个 `4` 是 Prompt 长度 `T=4`。两个数字碰巧相同，含义完全不同。
+
+具体 runtime 的物理布局可能调整轴顺序或按块存储；只要逻辑上仍能按请求、K/V 头、位置和头内维度访问，模型含义不变。
 
 Prefill 还会产生所有 Prompt 位置的中间 Hidden States 和 Attention 临时结果。这些数据大多只服务于当前前向计算，完成后可以释放。需要跨 Decode 轮次保留的是缓存状态，而不是每层所有中间张量。
 
@@ -183,12 +183,14 @@ k_new：[B,Nkv,1,D]
 v_new：[B,Nkv,1,D]
 ```
 
-新 K/V 追加到历史缓存：
+在模型语义上，新 K/V 追加到历史缓存：
 
 ```text
 K_all = concat(K_past, k_new)  → [B,Nkv,5,D]
 V_all = concat(V_past, v_new)  → [B,Nkv,5,D]
 ```
+
+PagedAttention 一类实现不必每轮真的申请新连续内存并执行一次完整 `concat`；这里的写法只表示缓存的逻辑长度增加了一个位置。
 
 然后只为新位置计算 Attention：
 
@@ -251,17 +253,17 @@ B      = 1
 T      = 3
 Nkv    = 2
 D      = 4
-dtype  = BF16，每个元素 2 Bytes
+dtype  = BF16，每个元素 2 Byte
 ```
 
 那么：
 
 $$
 2\times2\times1\times3\times2\times4\times2
-=192\ Bytes
+=192\ Byte
 $$
 
-这 192 Bytes 可以逐层拆开检查：每层 K 有 `1×2×3×4=24` 个元素，V 也有 24 个；两层共 96 个元素，每个元素 2 Bytes。
+这 192 Byte 可以逐层拆开检查：每层 K 有 `1×2×3×4=24` 个元素，V 也有 24 个；两层共 96 个元素，每个元素 2 Byte。
 
 ### 7.2 Qwen3.5-9B 的 KV Cache
 
@@ -271,14 +273,14 @@ Qwen3.5-9B 共 32 层，每 4 层中只有 1 层 Full Attention，因此：
 L_full = 8
 Nkv    = 4
 D      = 256
-s      = 2 Bytes（按 BF16 KV Cache 计算）
+s      = 2 Byte（按 BF16 KV Cache 计算）
 ```
 
 单个请求每增加一个缓存 token，8 个 Full Attention 层合计增加：
 
 $$
 2\times8\times4\times256\times2
-=32768\ Bytes
+=32768\ Byte
 =32\ KiB
 $$
 
@@ -328,6 +330,8 @@ runtime 为缓存预留了多少显存
 | PagedAttention | runtime 怎样分配和定位这些 K/V？ |
 | Prefix Cache | 不同请求何时能共用已经算好的前缀状态？ |
 
+前 7 节说明了单个请求的生成顺序和缓存状态。下面转向 runtime：它怎样利用这些依赖关系组织多个请求，以及这些选择会反映在哪些延迟指标上。
+
 ## 8. Prefill 与 Decode 的计算特征
 
 模型权重没有在两个阶段之间切换，变化的是本轮输入的位置数和需要读取的历史状态。
@@ -342,7 +346,7 @@ runtime 为缓存预留了多少显存
 
 Prefill 的 Linear 和 FFN 可以把许多 token 行组成较大的矩阵乘法。Full Attention 在概念上还要处理 Prompt 内大量位置组合，长 Prompt 的 Attention 成本会快速增长。
 
-Decode 每轮虽然只处理一个新位置，却仍要让这个位置通过所有模型层。每个 Full Attention 层还要读取不断增长的历史 K/V。小 Batch 时，矩阵较窄，权重读取、KV 读取、Kernel Launch 和 CPU 调度更容易进入关键路径；Batch 增大后，同一套权重可以服务更多新位置，计算形态又会变化。
+Decode 每轮虽然只处理一个新位置，却仍要让这个位置通过所有模型层。每个 Full Attention 层还要读取不断增长的历史 K/V。小 Batch 时，单轮 GPU 计算量较少，但 Kernel Launch、CPU 调度等固定开销不会按相同比例缩短，因此更容易占到较高比例；模型权重也只服务少量新位置，复用不足。Batch 增大后，同一套权重可以服务更多位置，矩阵形状和瓶颈都会变化。
 
 Prefill 常偏计算，Decode 常偏访存，但这不是定律。模型结构、Batch、上下文长度和硬件都会改变瓶颈。判断实际情况，仍要看矩阵尺寸、缓存长度和执行时间线。
 
@@ -351,8 +355,8 @@ Prefill 常偏计算，Decode 常偏访存，但这不是定律。模型结构�
 假设服务端同时有三个请求：
 
 ```text
-请求 A：已经生成到 a5，现在要处理新 token a5
-请求 B：已经生成到 b2，现在要处理新 token b2
+请求 A：已经选出 a5，现在把 a5 作为输入来预测 a6
+请求 B：已经选出 b2，现在把 b2 作为输入来预测 b3
 请求 C：Prompt 有 8 个 token，尚未完成 Prefill
 ```
 
@@ -468,20 +472,9 @@ Qwen3.5-9B 的 32 个 Decoder Layer 按下面的顺序重复：
 
 本课的 KV Cache 公式只适用于 8 个 Full Attention 层。不能把 `L_full` 错写成 32，也不能因为 DeltaNet 没有逐 token K/V，就认为它在 Decode 时不保存状态。
 
-Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Full Attention 层更新 K/V，Gated DeltaNet 层更新卷积状态和 recurrent state。第 5 课会打开 Gated DeltaNet，解释固定 shape 的状态怎样逐步吸收历史。
+Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Full Attention 层更新 K/V，Gated DeltaNet 层更新卷积状态和 recurrent state。第 5 课会分析固定 shape 的状态怎样逐步吸收历史。
 
-## 14. 容易混淆的概念
-
-| 容易混淆的对象 | 应怎样理解 |
-| --- | --- |
-| KV Cache 与 Token ID | 生成循环仍会保存 Token IDs，用于输出、停止判断或后续处理。KV Cache 是各 Full Attention 层根据 Hidden States 投影得到的浮点 K/V。 |
-| KV Cache 与其他中间值 | Cache 保存后续 Attention 需要读取的 K/V。Attention Score、FFN 激活等中间值通常不会跨生成轮次保留。 |
-| KV Cache 与 Prefix Cache | 每个运行中请求都需要历史状态。Prefix Cache 让相同前缀的请求进一步共享已经计算好的状态，还要负责匹配、生命周期和淘汰。 |
-| KV Cache 与自回归依赖 | Cache 只复用已经确定的历史。下一个 Token ID 仍要由本轮 Logits 和选择策略决定。 |
-| 首次 Prefill 与增量 Prefill | 首次请求常处理完整 Prompt。命中 Prefix Cache、使用 Chunked Prefill 或收到合法外部缓存时，本轮计算的位置可以少于逻辑上下文长度。 |
-| 单请求 Decode 与 Decode Batch | 单个请求通常贡献一个新位置。许多请求可以在同一轮各贡献一个位置，形成较大的 Batch。 |
-
-## 15. 练习
+## 14. 练习
 
 1. Prefill 输入 4 个 Prompt token 后，哪一个位置的 Hidden State 用来预测 `y1`？
 2. 为什么 Prompt 的 4 个位置可以同层并行计算，而未来的 `y1` 到 `y4` 不能直接一起确定？
@@ -496,7 +489,7 @@ Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Ful
 11. Chunked Prefill 的第二个 Chunk 需要读取第一个 Chunk 留下的状态吗？
 12. TTFT 是否等于 GPU 上 Prefill Kernel 的执行时间？
 13. TPOT 和 ITL 有什么区别？
-14. 用自己的话复述：Prompt 为 4 个 token、输出为 3 个 token 时，模型前向和缓存怎样变化。
+14. 按模型前向顺序说明：Prompt 为 4 个 token、输出为 3 个 token 时，输入和缓存怎样变化。
 
 <details>
 <summary>查看参考答案</summary>
@@ -507,9 +500,9 @@ Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Ful
 3. 101。新位置的 K/V 会追加到各 Full Attention 层缓存。
 4. Q 只服务于当前位置发起的一次查询；历史 K/V 会被每个未来位置的新 Q 读取。
 5. 查询位置轴是 1，键位置轴是 `T+1`。GQA 会让多个 Q 头映射到较少的 K/V 头，逻辑分数可写为 `[B,Nq,1,T+1]`。
-6. `2×2×1×3×2×4×2=192 Bytes`。
+6. `2×2×1×3×2×4×2=192 Byte`。
 7. 32 层中每 4 层只有 1 个 Full Attention 层，共 8 层。其余 24 层使用 Gated DeltaNet 状态，不保存同样的逐 token K/V。
-8. `2×8×4×256×2=32768 Bytes=32 KiB`。各因子依次代表 K/V、Full Attention 层数、K/V 头数、头维度和 BF16 字节数。
+8. `2×8×4×256×2=32768 Byte=32 KiB`。各因子依次代表 K/V、Full Attention 层数、K/V 头数、头维度和 BF16 字节数。
 9. `4096×32 KiB=128 MiB`。不是。它没有包含 DeltaNet 状态、分配器预留、元数据和其他运行时数据。
 10. 不会。它只是在每轮之间加入和移除请求，让不同请求的已知位置共享一次模型执行。
 11. 需要。第二段要接着第一段的逻辑前缀计算，必须使用已经建立的 KV Cache 或 recurrent state。
@@ -519,7 +512,7 @@ Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Ful
 
 </details>
 
-## 16. 实践：补全生成时间线
+## 15. 实践：补全生成时间线
 
 Prompt 有四个 token：`p1 p2 p3 p4`。模型最终生成 `y1 y2 y3`。请补全表中的两个空列：
 

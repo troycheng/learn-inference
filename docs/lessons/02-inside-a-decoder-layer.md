@@ -8,9 +8,9 @@ Embedding 输出
 → Hidden States
 ```
 
-现在打开其中一个 Decoder Layer。它接收一组 token 向量，输出同样 shape 的一组向量。中间做两件事：先让 token 之间交换信息，再分别加工每个 token。两次计算的结果都通过残差连接加回原输入。
+本课分析其中一个 Decoder Layer。它接收一组 token 向量，输出同样 shape 的一组向量。中间完成两类计算：先让 token 之间交换信息，再分别加工每个 token。两次计算的结果都通过残差连接加回各自的输入。
 
-负责 token 间信息交换的模块有 Attention 和 Gated DeltaNet。它们的内部计算留到后面，本课先把两者统称为 Token Mixer。
+负责 token 间信息交换的模块有 Attention 和 Gated DeltaNet。本课先把两者统称为 Token Mixer，第 3 课和第 5 课再分别分析其内部计算。
 
 如果遇到中英文名称或 shape 符号不确定，可以查看[课程术语与符号表](../glossary.md)。
 
@@ -273,22 +273,7 @@ y = x + Sublayer(RMSNorm(x))
 
 ## 6. FFN 的计算过程
 
-完成 Token Mixer 子层及第一次残差相加后，得到 `y:[B,T,H]`。FFN 子层从这里开始。第二条残差路径保存的是这个未经归一化的 `y`：
-
-```text
- y [B,T,H]
-├──────────────────────────────────────────────┐  残差分支：保存 y
-│                                              │
-└→ RMSNorm → y_norm [B,T,H]                    │
-      ├→ gate_proj → SiLU ─┐                   │
-      └→ up_proj ──────────┴→ 逐元素相乘       │
-                              → down_proj       │
-                              → f [B,T,H]       │
-                                               ↓
-                                      z = y + f
-```
-
-残差分支在 FFN 之前保存 `y`，但残差相加发生在 FFN 计算完成之后。对整个 `[B,T,H]` 张量，计算可以写成下面的伪代码；这些操作会独立应用到其中的每个 token：
+完成 Token Mixer 子层及第一次残差相加后，得到 `y:[B,T,H]`。FFN 的第二条残差路径保存未经归一化的 `y`，同时把 `RMSNorm(y)` 交给两条投影分支。对整个张量，计算顺序如下；每个 token 都独立执行同一套运算：
 
 ```text
 y_norm = RMSNorm(y)            # [B,T,H]
@@ -329,9 +314,9 @@ I：FFN 内部用于加工的中间特征通道数
 
 投影（Projection）在这里指一个学习得到的 Linear：把一组特征重新组合成另一组特征。它不等同于图像处理中的缩放或采样。
 
-Qwen3.5 的 Dense FFN 使用三个投影：
+工程文档通常直接保留 `gate_proj`、`up_proj` 和 `down_proj` 这些代码名。下表中的中文用于解释方向和作用，不是统一的标准译名。
 
-| 代码名 | 中文名 | 方向 | 作用 |
+| 代码名 | 中文描述 | 方向 | 作用 |
 | --- | --- | --- | --- |
 | `gate_proj` | 门控投影 | `H→I` | 生成经过 SiLU 后的逐元素调节系数 |
 | `up_proj` | 扩展投影 | `H→I` | 生成将被调节的中间特征 |
@@ -555,7 +540,7 @@ Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 �
 
 ## 12. Prefill 与 Decode 的层输入
 
-核心权重和公式不变，主要变化是本轮处理的 token 位置数与历史状态：
+模型权重和 FFN 公式不变，主要变化是本轮处理的 token 位置数与历史状态：
 
 | 阶段 | 本轮输入位置 | Dense FFN 的行为 |
 | --- | --- | --- |
@@ -566,31 +551,9 @@ Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 �
 
 但不能只看 FFN 就断言整个 Decoder Layer 可以随意拼接。Token Mixer 还必须正确处理每个序列的因果关系、位置和缓存边界。第 4 课再展开这部分。
 
-## 13. Decoder Layer 的基本算子
+## 13. Decoder 相关术语
 
-| 算子 | 输入 → 输出 | 在本层中的作用 | 是否有模型参数 |
-| --- | --- | --- | --- |
-| 归约 `mean` | `[B,T,H] → [B,T,1]` | 计算每个 token 的均方 | 否 |
-| `rsqrt` | shape 不变 | 得到平方根倒数 | 否 |
-| 广播乘法 | `[B,T,H]` 与 `[B,T,1]` | 缩放每个 token 的全部特征 | 否 |
-| RMSNorm | `[B,T,H] → [B,T,H]` | 调整输入尺度 | 有 `[H]` 缩放参数 |
-| Linear | `[B,T,H] → [B,T,I]` 等 | 学习新的特征组合 | 有权重 |
-| SiLU | shape 不变 | 加入非线性 | 否 |
-| 逐元素乘法 | 两个相同 shape → 相同 shape | 实现 SwiGLU 门控 | 否 |
-| 残差加法 | 两个 `[B,T,H] → [B,T,H]` | 保留旧表示并叠加更新 | 否 |
-
-## 14. 容易混淆的概念
-
-| 容易混淆的对象 | 应怎样理解 |
-| --- | --- |
-| 单个 Hidden State 特征坐标 | 模型通常使用许多坐标的组合表示信息。单独一列很少能稳定对应一个人工命名的概念。 |
-| RMSNorm 的输出范围 | RMSNorm 调整整条向量的均方根，不限制单个元素的范围。 |
-| `rsqrt` 与 RMSNorm | `rsqrt(a)=1/sqrt(a)`，是实现“除以平方根”的一种写法。RMSNorm 中的 `a` 是 `mean(x²)+epsilon`。 |
-| 残差连接 | 输入直接传到输出，子层只需学习增量更新；训练时这条路径也有助于梯度跨层传播。 |
-| `gate_proj` 的门控值 | SwiGLU 的门控值是连续数，可以压低、放大或改变中间特征的符号，不只取 0 或 1。 |
-| Dense FFN 与 token 混合 | Dense 表示每个 token 使用完整的同一套 FFN 参数。不同 token 的信息交换由 Token Mixer 负责。 |
-
-Decoder 还会出现在四个不同名称中：
+`Decoder` 和 `Decode` 出现在不同层级的概念中，需要根据上下文区分：
 
 | 名称 | 指什么 | 所属层面 |
 | --- | --- | --- |
@@ -603,7 +566,7 @@ Qwen3.5 整体还包含视觉编码器，所以“Decoder-only 语言主干”�
 
 Decoder Layer 并不只在 Decode 阶段运行。Prompt 的 Prefill 同样会经过全部 Decoder Layer，只是本轮处理的位置数和历史状态不同。
 
-## 15. 练习
+## 14. 练习
 
 1. `[B,T,H]` 中的一行和一列分别应怎样理解？
 2. Qwen3.5 一个 Decoder Layer 中，Token Mixer 和 FFN 分别混合什么？
@@ -612,14 +575,14 @@ Decoder Layer 并不只在 Decode 阶段运行。Prompt 的 Prefill 同样会经
 5. 为什么 `[30,40]` 与 `[3,4]` 的归一化结果基本相同？
 6. RMSNorm 后每个元素是否必须位于 `[-1,1]`？
 7. 如果残差分支更新 `F(x)=0`，输出是什么？
-8. `gate_proj`、`up_proj`、`down_proj` 的中文名、方向和作用分别是什么？
+8. `gate_proj`、`up_proj`、`down_proj` 的方向和作用分别是什么？
 9. SwiGLU 中两条 `H→I` 分支怎样连接？
 10. 为什么 `down_proj` 必须回到 `H` 维？
 11. 两个 Linear 中间没有非线性时，为什么可以合并？使用交换律还是结合律？
 12. 当 `B=2,T=8,H=4096,I=12288` 时，`gate_proj`、逐元素乘法和 `down_proj` 的输出 shape 分别是什么？
 13. Dense FFN 是否直接混合不同 token？
 14. Decoder Layer 是否只在 Decode 阶段执行？Decoder-only 又描述什么？
-15. 用自己的话完整复述一个 Decoder Layer 的八个步骤。
+15. 按执行顺序列出一个 Decoder Layer 的八个步骤。
 
 <details>
 <summary>查看参考答案</summary>
@@ -632,7 +595,7 @@ Decoder Layer 并不只在 Decode 阶段运行。Prompt 的 Prefill 同样会经
 5. 输入整体放大 10 倍，均方根也放大 10 倍，相除后尺度因子抵消。
 6. 不必须。RMSNorm 约束整条向量的均方根，不限制每个元素。
 7. `x`。
-8. 门控投影 `H→I` 产生调节系数；扩展投影 `H→I` 产生候选中间特征；回收投影 `I→H` 混合中间特征并回到层接口宽度。
+8. `gate_proj` 沿 `H→I` 产生调节系数；`up_proj` 沿 `H→I` 产生候选中间特征；`down_proj` 沿 `I→H` 混合中间特征并回到层接口宽度。
 9. `gate_proj(y_norm)` 先经过 SiLU，再与 `up_proj(y_norm)` 的结果逐元素相乘，随后交给 `down_proj`。
 10. FFN 输出需要与 `[B,T,H]` 的残差输入逐元素相加，并作为下一层的 `[B,T,H]` 输入。
 11. 中间只有线性变换时，可以利用矩阵乘法结合律把权重预先组合；不是交换律。
@@ -643,7 +606,7 @@ Decoder Layer 并不只在 Decode 阶段运行。Prompt 的 Prefill 同样会经
 
 </details>
 
-## 16. 实践：审查一张错误的 Decoder Layer
+## 15. 实践：审查一张错误的 Decoder Layer
 
 下面的数据流有多处错误：
 

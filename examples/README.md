@@ -10,7 +10,8 @@
 | `gated_deltanet_walkthrough.py` | 第 5 课 | Delta Rule、状态衰减、修正幅度与输出门控 |
 | `moe_routing_walkthrough.py` | 第 6 课 | Router Softmax、Top-2、路由权重与 Shared Expert |
 | `model_sizing_walkthrough.py` | 第 8 课 | KV、TP 下每 Rank KV、固定状态与 Attention 长度项 |
-| `request_budget_walkthrough.py` | 第 9 课 | 线上案例的请求状态、并发容量与可复用前缀 |
+| `optimization_decision_walkthrough.py` | 第 9 课 | Amdahl 收益上限与 TTFT 目标所需加速 |
+| `request_budget_walkthrough.py` | 结业案例 | 请求状态、并发容量与可复用前缀 |
 
 在仓库根目录运行：
 
@@ -21,6 +22,7 @@ python3 examples/attention_walkthrough.py
 python3 examples/gated_deltanet_walkthrough.py
 python3 examples/moe_routing_walkthrough.py
 python3 examples/model_sizing_walkthrough.py
+python3 examples/optimization_decision_walkthrough.py
 python3 examples/request_budget_walkthrough.py
 ```
 

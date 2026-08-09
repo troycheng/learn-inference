@@ -421,13 +421,13 @@ KV 随每个请求的长度 `T` 线性增长；Gated DeltaNet 状态 shape 固�
 
 ## 9. Linear FLOPs 估算
 
-输入 `[M,K]` 乘权重 `[K,N]`：
+输入 `[M,H_{in}]` 乘权重 `[H_{in},H_{out}]`：
 
 $$
-FLOPs\approx2MKN
+FLOPs\approx2M H_{in}H_{out}
 $$
 
-一个输出元素需要 K 次乘法和约 K 次加法，所以近似记为 `2K` 次浮点运算。
+一个输出元素需要 `H_in` 次乘法和约 `H_in` 次加法，所以近似记为 `2H_in` 次浮点运算。
 
 ### 9.1 Dense FFN FLOPs
 
@@ -516,15 +516,15 @@ $$
 
 硬件的峰值计算吞吐除以峰值内存带宽，得到这台设备的 Machine Balance。若一个算子的算术强度明显低于 Machine Balance，它更容易受带宽限制；明显高于时，计算吞吐更可能成为限制。这只是理论边界，Kernel Launch、缓存命中、通信和实现效率仍会增加实际时间。
 
-以一个 BF16 Linear 为例，Batch 为 1 且主要权重只读取一次时：
+以一个输入宽度为 `H_in`、输出宽度为 `H_out` 的 BF16 Linear 为例。Batch 为 1 且主要权重只读取一次时：
 
 ```text
-FLOPs：     约 2KN
-权重字节： 约 2KN Byte
+FLOPs：     约 2×H_in×H_out
+权重字节： 约 2×H_in×H_out Byte
 算术强度： 约 1 FLOP/Byte
 ```
 
-若同一份权重在一轮中服务 `M` 个 token，FLOPs 增加到约 `2MKN`，权重却有机会被复用，算术强度随 `M` 上升。这解释了为什么小 Batch Decode 常暴露权重带宽，而更大的 Batch 更可能提高计算利用率。
+若同一份权重在一轮中服务 `M` 个 token，FLOPs 增加到约 `2×M×H_in×H_out`，权重却有机会被复用，算术强度随 `M` 上升。这解释了为什么小 Batch Decode 常暴露权重带宽，而更大的 Batch 更可能提高计算利用率。
 
 长上下文 Decode 还要单独计算 KV 读取。9B 每个历史位置有 32 KiB 逻辑 KV，所有 Full Attention 层的长度项是 `131,072×T FLOPs`。忽略布局和其他读写时：
 
@@ -555,23 +555,18 @@ $$
 → 再结合 Batch、通信和 Kernel 判断时间
 ```
 
-## 13. 从配置推导工程约束
+## 13. 配置与部署约束
 
-### 13.1 单卡权重容量
+把前面的公式放回部署场景，可以得到四类直接结论：
 
-先算实际加载权重，再留出请求状态、临时激活、通信 Buffer 和 runtime 预留。不能只拿“模型名 × dtype”与显存容量比较。
+| 部署问题 | 需要读取和计算什么 | 不能漏掉什么 |
+| --- | --- | --- |
+| 单卡能否装下权重 | 实际加载模块的参数数与保存 dtype | 请求状态、临时激活、通信 Buffer 和 runtime 预留 |
+| 长上下文能支持多少并发 | `L_full`、`Nkv`、`D`、KV dtype 和最大缓存位置数 | 每请求固定的 Gated DeltaNet 状态、分页与对齐 |
+| Dense 与 MoE 哪个更快 | Active Parameters、Expert 的 `n_e` 分布和通信 | Total Parameters 决定的权重驻留成本 |
+| 延迟怎样随上下文增长 | 每 token 的 Linear 固定项与 Attention 长度项 | Batch、Kernel、通信和调度开销 |
 
-### 13.2 长上下文状态容量
-
-按 `L_full`、`Nkv`、`D` 和 KV dtype 算每个位置的 KV，再加每请求固定的 Gated DeltaNet 状态。不要把全部 Decoder Layer 都代入 KV 公式。
-
-### 13.3 Dense 与 MoE 的成本差异
-
-至少同时列出 Total Parameters、Active Parameters、Expert 分布和通信。Active 少不代表权重显存少，也不保证延迟按比例下降。
-
-### 13.4 固定成本与长度相关成本
-
-Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV 和 KV 读取随上下文长度增长。两者的优化方向不同。
+配置可以给出资源下限和计算规模，不能代替目标 runtime 上的峰值显存与端到端性能测量。
 
 ## 14. 练习
 
@@ -582,7 +577,7 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 5. 根据 `L_full=8,Nkv=4,D=256`，推导 9B 的 BF16 KV 为什么是 32 KiB/位置。
 6. 35B-A3B 在 vLLM TP=8 下，为什么每 Rank 的 BF16 KV 是 10 KiB，而不是 20 KiB 除以 8？
 7. Gated DeltaNet 状态怎样随序列长度和并发数变化？
-8. Linear `[M,K]×[K,N]` 的 FLOPs 近似是多少？Batch 从 1 增大时，为什么算术强度通常会上升？
+8. Linear `[M,H_in]×[H_in,H_out]` 的 FLOPs 近似是多少？Batch 从 1 增大时，为什么算术强度通常会上升？
 9. 为什么 Attention 的上下文长度项不能由参数量推出？
 10. 如果一个新检查点总参数较少，是否足以断定它显存更低、Decode 更快？还缺哪些信息？
 11. 用公式算出的权重、KV 和 recurrent state 之和，为什么通常小于进程实测峰值显存？
@@ -598,7 +593,7 @@ Linear 权重路径主要是每 token 固定成本；Full Attention 的 QK/AV �
 5. `2×8×4×256×2=32768 Byte=32 KiB`，最前面的 2 表示 K 和 V 两份，最后的 2 是 BF16 每元素字节数。
 6. `Nkv=2<TP=8`，固定版本 vLLM 会复制 K/V 头，让每 Rank 至少保存一个，所以是 `2×10×1×256×2=10 KiB`。
 7. 每个请求的状态 shape 不随序列长度增长，但总量随并发请求数增长。
-8. 约 `2MKN`。Batch 增大后，同一份权重有机会服务更多输入，FLOPs 随 `M` 增长，而权重读取可以复用。
+8. 约 `2×M×H_in×H_out`。Batch 增大后，同一份权重有机会服务更多输入，FLOPs 随 `M` 增长，而权重读取可以复用。
 9. QK/AV 和 KV 读取随历史长度 `T` 增长，却没有新增模型参数。
 10. 不足。还要看 dtype、实际加载模块、Dense 或 MoE 的激活路径、KV 和固定状态、上下文长度、Batch、Kernel 与通信。
 11. 进程还需要本轮临时激活、通信 Buffer、Kernel Workspace、CUDA Graph 和分配器预留。哪些中间张量被物化又取决于融合方式、Batched Tokens 与 runtime 实现。
@@ -657,11 +652,11 @@ $$
 - [Qwen3.5-9B 配置，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/config.json)
 - [Qwen3.5-9B 模型卡，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/README.md)
 - [Qwen3.5-9B Safetensors 索引，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/model.safetensors.index.json)
-- [Qwen3.5-9B Safetensors 按 dtype 参数统计，revision c202236](https://huggingface.co/api/models/Qwen/Qwen3.5-9B?revision=c202236235762e1c871ad0ccb60c8ee5ba337b9a)
+- [Qwen3.5-9B Safetensors 按 dtype 参数统计，revision c202236](https://huggingface.co/api/models/Qwen/Qwen3.5-9B/revision/c202236235762e1c871ad0ccb60c8ee5ba337b9a?expand%5B%5D=safetensors)
 - [Qwen3.5-35B-A3B 配置，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/config.json)
 - [Qwen3.5-35B-A3B 模型卡，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/README.md)
 - [Qwen3.5-35B-A3B Safetensors 索引，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/model.safetensors.index.json)
-- [Qwen3.5-35B-A3B Safetensors 按 dtype 参数统计，revision 59d61f3](https://huggingface.co/api/models/Qwen/Qwen3.5-35B-A3B?revision=59d61f3ce65a6d9863b86d2e96597125219dc754)
+- [Qwen3.5-35B-A3B Safetensors 按 dtype 参数统计，revision 59d61f3](https://huggingface.co/api/models/Qwen/Qwen3.5-35B-A3B/revision/59d61f3ce65a6d9863b86d2e96597125219dc754?expand%5B%5D=safetensors)
 - [Transformers：Qwen3.5 Dense 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py)
 - [Transformers：Qwen3.5 MoE 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5_moe/modeling_qwen3_5_moe.py)
 - [Transformers：Cache 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/cache_utils.py)
