@@ -132,12 +132,12 @@ Q/K/V 卷积通道：2048 + 2048 + 4096 = 8192
 
 | 部分 | 参数数量 |
 | --- | ---: |
-| 文本模型、输入 Embedding、LM Head | 8,953,803,264 |
+| 文本模型、输入 Embedding、LM Head | 8,953,799,424 |
 | 视觉编码器与 Merger | 456,010,480 |
 | MTP 辅助层 | 243,294,464 |
-| **检查点合计** | **9,653,108,208** |
+| **检查点合计** | **9,653,104,368** |
 
-官方 Safetensors 索引记录的 tensor payload 为 `19,306,216,416` 字节。该检查点权重为 BF16，每个参数 2 字节，因此反推也是 `9,653,108,208` 个参数，即约 9.65B。[9B Safetensors 索引](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/model.safetensors.index.json)
+官方 Safetensors API 统计为 `9,653,100,528` 个 BF16 参数和 `3,840` 个 FP32 参数，总计 `9,653,104,368` 个参数。对应 tensor payload 是 `19,306,216,416` 字节。不能直接用总字节除以 2，因为 FP32 参数每个占 4 Byte。[9B Safetensors 索引](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/model.safetensors.index.json) [9B 模型 API，revision `c202236`](https://huggingface.co/api/models/Qwen/Qwen3.5-9B/revision/c202236235762e1c871ad0ccb60c8ee5ba337b9a?expand%5B%5D=safetensors)
 
 “Qwen3.5-9B”是产品级取整名称，不表示权重文件里恰好有 9,000,000,000 个数。
 
@@ -181,12 +181,12 @@ $$
 
 | 部分 | 参数数量 |
 | --- | ---: |
-| 文本模型、全部专家、Embedding、LM Head | 34,660,610,688 |
+| 文本模型、全部专家、Embedding、LM Head | 34,660,605,888 |
 | 视觉编码器与 Merger | 446,571,248 |
 | MTP 辅助层 | 844,645,568 |
-| **检查点合计** | **35,951,827,504** |
+| **检查点合计** | **35,951,822,704** |
 
-Safetensors 索引给出的 payload 是 `71,903,655,008` 字节，除以 BF16 的 2 字节后与上表一致。[35B-A3B Safetensors 索引](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/model.safetensors.index.json)
+官方 Safetensors API 统计为 `35,951,817,904` 个 BF16 参数和 `4,800` 个 FP32 参数，总计 `35,951,822,704` 个参数。对应 payload 是 `71,903,655,008` 字节。这里同样不能把总字节直接除以 2。[35B-A3B Safetensors 索引](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/model.safetensors.index.json) [35B-A3B 模型 API，revision `59d61f3`](https://huggingface.co/api/models/Qwen/Qwen3.5-35B-A3B/revision/59d61f3ce65a6d9863b86d2e96597125219dc754?expand%5B%5D=safetensors)
 
 官方模型卡将其写成“35B total and 3B activated”，属于便于交流的取整值。[35B-A3B 官方模型卡](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/README.md)
 

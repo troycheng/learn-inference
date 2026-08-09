@@ -1,0 +1,17 @@
+name: Course checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install render dependencies
+        run: sudo apt-get update && sudo apt-get install -y librsvg2-bin libxml2-utils ruby
+
+      - name: Check course files
+        run: bash scripts/check-course.sh

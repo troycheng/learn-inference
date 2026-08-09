@@ -1,6 +1,6 @@
 # 第 9 课：一种优化到底有没有用
 
-推理优化的名字很多。判断一种方案有没有用，可以先把问题拆成五步：
+量化、FlashAttention、Prefix Cache、Batching 和并行策略改的不是同一部分。判断一种方案有没有用，先回答五个问题：
 
 ```text
 1. 它改了哪段计算、哪份数据或哪条调度规则？
@@ -14,7 +14,7 @@
 
 ![常见优化分别改了哪些计算、数据和调度](../assets/09-optimization-map.svg?rev=20260808-2)
 
-这一课不预设哪种优化一定有效。下面逐项说明量化、FlashAttention、Prefix Cache、Batching、TP、EP 和推测解码改了什么，以及应该怎样测。
+后文用同一套问题检查量化、FlashAttention、Prefix Cache、Batching、TP、EP 和推测解码。先定位改动，再计算省下的工作和新增代价，最后才比较端到端结果。
 
 ## 1. 每种优化具体改了什么
 
@@ -31,7 +31,7 @@
 
 一项改动通常只影响部分耗时。例如 FlashAttention 减少 Full Attention 的中间读写，但 FFN 和 Gated DeltaNet 仍照常计算。因此，算子时间下降多少，不能直接当成整个请求的加速比例。
 
-### 先统一吞吐统计口径
+### `token/s` 先写清分子和时间窗口
 
 同一个 `token/s` 可能统计不同内容。比较前要把分子和时间窗口写清楚。本课使用以下口径：
 
@@ -90,7 +90,7 @@ MoE 每个 Expert 的 GEMM 太小
 
 只看模型文件大小，不能判断量化是否真的降低了服务延迟或提高了同 SLO 吞吐。
 
-## 3. KV 量化：省的是历史状态，不是模型权重
+## 3. KV 量化减少历史 K/V 的存储和读取
 
 第 8 课的 KV 公式是：
 
@@ -116,15 +116,7 @@ $$
 
 ## 4. FlashAttention：少写中间矩阵，计算含义不变
 
-普通 Attention 可以按下面的直观步骤实现：
-
-```text
-QKᵀ → 写出完整分数矩阵
-读取分数 → Softmax → 写出概率矩阵
-读取概率和 V → 得到输出
-```
-
-长序列时，`T×T` 分数和概率矩阵很大，反复写入和读取 HBM 的成本很高。
+普通实现会先把 `QKᵀ` 的完整分数矩阵写到 HBM，Softmax 读取分数后再写出概率矩阵，最后重新读取概率和 V。长序列下，两张 `T×T` 中间矩阵会带来大量 HBM 读写。
 
 FlashAttention 把 Q/K/V 分块搬到片上 SRAM，在块内维护 Softmax 所需统计量，并直接累计最终输出。它避免把完整 `T×T` 中间矩阵物化到 HBM。
 
@@ -476,7 +468,9 @@ input token/s、output token/s 与 engine token/s
 13. 比较两个方案时，至少应固定哪些 workload 条件？
 14. 一个方案 TPOT 下降，但 P99 TTFT 和同 SLO 吞吐都变差，能否直接说整体更优？
 
-## 15. 参考答案
+<details>
+<summary>查看参考答案</summary>
+
 
 1. 它改了哪段计算、哪份数据或哪条调度规则。
 2. 还受反量化、Kernel、硬件、Batch 和原始瓶颈影响。
@@ -493,7 +487,9 @@ input token/s、output token/s 与 engine token/s
 13. 输入输出长度、并发或到达率、采样参数、Batch、硬件拓扑、SLO、dtype 和 runtime 版本。
 14. 不能。要根据业务 SLO 和整体目标权衡，至少不能仅凭 TPOT 下结论。
 
-## 16. 遇到新方案时怎样开始
+</details>
+
+## 15. 拿到新优化方案时怎么判断
 
 现在可以从用户输入一路解释到优化判断：
 

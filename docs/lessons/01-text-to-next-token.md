@@ -1,8 +1,8 @@
 # 第 1 课：模型怎样生成下一个 token
 
-聊天框里是文字，模型里流动的是数字。模型算出一组分数后，系统再把选中的编号还原成文字。这一课从用户消息出发，一直走到下一个 token。
+聊天框里是文字，模型里流动的是数字。一条消息要先变成 Token ID，再变成向量；模型算出下一个 Token ID 后，Tokenizer 才把它还原成文字。本课沿着一次真实生成，把这条链路走完。
 
-Decoder 内部、GPU、FLOPs 和服务吞吐先放到后面。这里要把文字、Token ID、嵌入（Embedding）、隐藏状态（Hidden State）、未归一化分数（Logit）和概率分清楚。
+本课暂时不打开 Decoder，也不讨论 GPU 性能。先把文字、Token ID、嵌入（Embedding）、隐藏状态（Hidden State）、未归一化分数（Logit）和概率分清楚。
 
 如果对 `[B,T,H]`、轴、点积或 Linear 的 shape 还不熟悉，先阅读[第 0 课：看懂模型里的数字和 shape](00-math-and-tensors.md)。
 
@@ -20,7 +20,7 @@ Decoder 内部、GPU、FLOPs 和服务吞吐先放到后面。这里要把文字
 
 正文先跟踪用户内容 token `优化`。它的 ID 是 `99945`，Embedding 会按这个编号查表。到了 LM Head，跟踪对象换成完整提示中的最后一个位置，也就是 Chat Template 补出的 assistant 生成起点。模型用这个位置的 Hidden State 预测回答的第一个 token。两者属于同一条对话，但不是同一个位置。
 
-先看各组件在整条链路中的职责，后面再逐一拆开。
+这条消息会依次经过下面这些组件：
 
 | 组件 | 输入 | 输出 | 核心职责 |
 | --- | --- | --- | --- |
@@ -164,7 +164,7 @@ input_ids: [B, T]
 input_ids.shape = [2, 8]
 ```
 
-Tokenizer 到这里已经完成。接下来查 Embedding 表是模型的工作，不是 Tokenizer 的工作。
+Tokenizer 的工作到这里结束。查 Embedding 表属于模型计算。
 
 ## 4. Embedding 把编号换成可计算的向量
 
@@ -449,7 +449,7 @@ $$
 
 Top-P 依赖概率，不能只看原始 Logit 决定保留哪些候选。它先对当前分数做 Softmax，再按概率从高到低累加，只保留累计概率达到阈值所需的最小候选集合。许多框架把 Top-P 包装成一个 Logits Processor：处理器内部计算一次概率来确定屏蔽范围，再把被屏蔽的 Logits 交给最后的归一化和采样。
 
-可以把常见采样流程概括为：
+常见的采样流程是：
 
 ```text
 原始 Logits
@@ -592,35 +592,35 @@ Embedding 向量是训练得到的一组连续数值，不能可靠地反查为�
 
 ## 13. 这些概念别混在一起
 
-### 一个汉字不一定是一个 token
+### 汉字和 token 没有固定的一一对应关系
 
 Token 是由具体 Tokenizer 学到或定义的文本片段。多个汉字可以组成一个 token，一个英文单词也可能被拆成多个 token。
 
-### Token ID 的大小不带语义
+### Token ID 只是词表索引
 
 ID 是词表索引。它的大小、差值和相邻关系都不能直接解释为语义关系。
 
-### Embedding 有基础语义，但还没有当前上下文
+### Embedding 还没有当前上下文
 
 Embedding 是训练出的初始表示，具有基础语义；它缺少的是当前句子的上下文信息。
 
-### LM Head 直接输出的不是概率
+### LM Head 先输出 Logits
 
 LM Head 直接输出的是 Logits。采样通常需要进一步处理并做 Softmax；贪心可以直接对 Logits 取 `argmax`。
 
-### Logit 为 0，不等于概率为 0
+### Logit 为 0，经过 Softmax 仍有概率
 
 Softmax 中 $e^0=1$。概率由所有候选共同决定。
 
-### 概率最高的 token 不一定会被采样选中
+### 采样不保证选择最大概率项
 
 贪心会选中最大项；随机采样不保证。83.1% 仍然不是 100%。
 
-### 输出 ID 不是靠 Embedding 表还原成文字
+### Tokenizer Decode 负责把 ID 还原成文字
 
 Embedding 的方向是 ID 到向量；Tokenizer Decode 才负责 ID 到文字。
 
-### KV Cache 不能让未来 100 个 token 一次生成
+### KV Cache 只复用已经确定的历史
 
 缓存复用已经发生的历史计算，不能提前知道尚未生成的 token。
 
@@ -641,7 +641,9 @@ Embedding 的方向是 ID 到向量；Tokenizer Decode 才负责 ID 到文字。
 11. Tokenizer 输出什么？Embedding 输出什么？
 12. 用自己的话复述：用户消息怎样变成下一个 token，再变成用户看到的文字？
 
-### 参考答案
+<details>
+<summary>查看参考答案</summary>
+
 
 1. 不是。消息先经过 Chat Template，加入角色、消息边界和生成起点等内容，然后整体进行 Tokenize。
 2. `推理`、`优化`。
@@ -659,9 +661,11 @@ Embedding 的方向是 ID 到向量；Tokenizer Decode 才负责 ID 到文字。
     Logits；贪心或采样选出下一个 ID；Tokenizer Decode 把生成的 IDs 还原成
     文字。生成完整回答时重复这个过程。
 
-## 15. 试着把生成过程完整说一遍
+</details>
 
-试着不看正文，画出并解释下面这条链路：
+## 15. 自测：从消息讲到下一个 token
+
+不看正文，画出并解释下面这条链路：
 
 ```text
 对话消息

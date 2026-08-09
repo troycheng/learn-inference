@@ -2,18 +2,13 @@
 
 第 2 课已经拆开过 Dense SwiGLU FFN：每个 token 都经过 `gate_proj`、`up_proj`、SiLU、逐元素乘法和 `down_proj`。Qwen3.5-9B 的 32 个 Decoder Layer 都使用这套 Dense FFN。
 
-Qwen3.5-35B-A3B 则在语言模型的 40 个 Decoder Layer 中使用 MoE。RMSNorm、残差连接以及 Gated DeltaNet 和 Full Attention 的排列没有因此消失，替换的是每层的 FFN 子层。
-
-```text
-Dense Decoder Layer：Token Mixer → Dense FFN
-MoE Decoder Layer：  Token Mixer → Sparse MoE
-```
+Qwen3.5-35B-A3B 则在语言模型的 40 个 Decoder Layer 中使用 MoE。RMSNorm、残差连接以及 Gated DeltaNet 和 Full Attention 的排列没有因此消失，模型只是把每层的一套 Dense FFN 换成了 Router 和多套 Expert FFN。
 
 ![Dense 与 MoE 替换的是 FFN 子层](../assets/06-dense-vs-moe.svg)
 
 MoE 中有很多套参数不同的 FFN，通常称为 Expert。Router 根据当前 token 的 Hidden State 选出少数 Routed Experts。Qwen3.5 还为所有 token 固定执行一套 Shared Expert，最后把这些输出合并回 H 维。
 
-## 1. Dense 的意思不是 token 之间全连接
+## 1. Dense 表示每个 token 使用完整 FFN
 
 对一个 token 的 `H` 维输入 `x`，Dense SwiGLU 的计算是：
 
@@ -55,7 +50,7 @@ $$
 
 每个 token 都会使用这些参数。
 
-## 2. 把一套 FFN 换成四套，先看玩具 MoE
+## 2. 把一套 FFN 换成四套
 
 假设一层有 4 个 Routed Experts，每个 Expert 都是一套独立的 SwiGLU FFN：
 
@@ -333,29 +328,29 @@ Total Parameters 决定所有 Expert 权重必须存在哪里。即使单 token 
 
 Shared Expert 可能复制、做 TP，或与 Routed Expert 计算重叠。模型公式只规定它对所有 token 执行，具体优化方式属于 runtime。
 
-## 12. MoE 里最容易说错的几件事
+## 12. MoE 的几个边界
 
-### MoE 不替换 Token Mixer
+### MoE 只替换 FFN
 
 Qwen3.5-MoE 仍按 3 层 Gated DeltaNet 加 1 层 Full Attention 排列。MoE 位于每个语言 Decoder Layer 的 FFN 支路。
 
-### 视觉编码器不使用这套 Sparse MoE
+### 视觉编码器仍使用自己的 Dense MLP
 
 Qwen3.5-35B-A3B 的语言 Decoder 使用 MoE，视觉编码器仍有自己的 Dense Vision MLP。
 
-### Shared Expert 不属于 Top-8
+### Shared Expert 在 Top-8 之外固定执行
 
 每个 token 执行 8 个 Routed Experts，再固定执行 1 个 Shared Expert。Shared Expert 的门控也不与 Top-8 Routing Weights 一起归一化。
 
-### Active Parameters 不等于权重显存
+### Active Parameters 不是权重显存
 
 35B 权重仍需加载或分布在设备上。3B 是官方每 token 激活参数口径，不是模型文件大小。
 
-### Expert 没有人工固定职责
+### Expert 的分工来自训练
 
 Router 和 Expert 权重都由训练形成。可以分析某些路由模式，但不能只凭 Expert ID 给它命名。
 
-### EP 不等于某一种固定 Collective
+### EP 可以采用不同通信实现
 
 无论框架选择 All-to-All、All-Reduce 还是其他实现，都必须把 token 送到相应 Expert，再把 Expert 输出送回原 token。
 
@@ -376,7 +371,9 @@ Router 和 Expert 权重都由训练形成。可以分析某些路由模式，�
 13. EP 与 TP 分别切分什么？
 14. 为什么不能只根据 `EP=8` 断言系统一定使用 All-to-All？
 
-## 14. 参考答案
+<details>
+<summary>查看参考答案</summary>
+
 
 1. 替换语言 Decoder Layer 的 FFN 子层。Token Mixer、RMSNorm、残差连接和层间接口仍然存在。
 2. 不是。Dense 表示每个 token 都使用同一套完整 FFN 参数；FFN 仍逐 token 处理。
@@ -393,9 +390,11 @@ Router 和 Expert 权重都由训练形成。可以分析某些路由模式，�
 13. EP 按 Expert ID 分布权重和工作；TP 切一个 Linear 或 Expert 内部的矩阵维度。
 14. 不同 runtime 的 Dispatch/Combine 可以采用不同 Collective。EP 的语义不能唯一确定通信实现。
 
-## 15. 试着画出一层 MoE
+</details>
 
-应当能够画出一层 MoE 的这条数据流：
+## 14. 自测：画出一层 MoE
+
+不看正文，画出一层 MoE 的数据流：
 
 ```text
 Hidden States [B,T,H]

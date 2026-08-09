@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640" role="img" aria-labelledby="title desc">
+  <title id="title">没有 KV Cache 与使用 KV Cache 的下一轮生成对比</title>
+  <desc id="desc">左侧每轮重新计算完整前缀，右侧读取已经保存的历史 K/V，只为新 token 计算并追加 K/V。两种方式得到相同的下一个 token 分布。</desc>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 30px; font-weight: 700; }
+    .subtitle { font-size: 15px; fill: #6b7280; }
+    .panel-title { font-size: 22px; font-weight: 700; }
+    .label { font-size: 16px; font-weight: 600; }
+    .body { font-size: 14px; fill: #4b5563; }
+    .chip { font-size: 16px; font-weight: 600; text-anchor: middle; }
+    .result { font-size: 17px; font-weight: 700; text-anchor: middle; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="640" fill="#ffffff"/>
+  <text x="48" y="54" class="title">KV Cache 省掉的是对历史前缀的重复计算</text>
+  <text x="48" y="84" class="subtitle">都在生成 y2：左边重新处理 5 个位置，右边只处理新位置 y1，并读取已保存的历史 K/V。</text>
+
+  <rect x="40" y="118" width="540" height="446" rx="14" fill="#fef2f2" stroke="#fecaca" stroke-width="1.5" data-graph-role="decoration"/>
+  <rect x="620" y="118" width="540" height="446" rx="14" fill="#f0fdf4" stroke="#bbf7d0" stroke-width="1.5" data-graph-role="decoration"/>
+
+  <path d="M310 252 L310 278" stroke="#2563eb" stroke-width="2.2" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M310 372 L310 420" stroke="#2563eb" stroke-width="2.2" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M790 252 L790 278" stroke="#16a34a" stroke-width="2.2" fill="none" marker-end="url(#arrow-green)"/>
+  <path d="M1015 252 L1015 278" stroke="#2563eb" stroke-width="2.2" fill="none" marker-end="url(#arrow-blue)"/>
+  <path d="M890 372 L890 420" stroke="#16a34a" stroke-width="2.2" fill="none" marker-end="url(#arrow-green)"/>
+
+  <text x="70" y="158" class="panel-title">没有缓存</text>
+  <text x="70" y="184" class="body">每一轮都把完整已知序列重新送入模型</text>
+
+  <g>
+    <rect x="82" y="202" width="72" height="50" rx="8" fill="#dbeafe" stroke="#93c5fd"/>
+    <rect x="166" y="202" width="72" height="50" rx="8" fill="#dbeafe" stroke="#93c5fd"/>
+    <rect x="250" y="202" width="72" height="50" rx="8" fill="#dbeafe" stroke="#93c5fd"/>
+    <rect x="334" y="202" width="72" height="50" rx="8" fill="#dbeafe" stroke="#93c5fd"/>
+    <rect x="418" y="202" width="72" height="50" rx="8" fill="#ffedd5" stroke="#fdba74"/>
+    <text x="118" y="233" class="chip">p1</text>
+    <text x="202" y="233" class="chip">p2</text>
+    <text x="286" y="233" class="chip">p3</text>
+    <text x="370" y="233" class="chip">p4</text>
+    <text x="454" y="233" class="chip">y1</text>
+  </g>
+
+  <rect x="112" y="278" width="396" height="94" rx="10" fill="#ffffff" stroke="#f87171" stroke-width="1.8"/>
+  <text x="310" y="315" class="result">重新计算 5 个位置</text>
+  <text x="310" y="344" class="body" text-anchor="middle">p1 到 p4 的投影、FFN 和 Attention 又算一遍</text>
+
+  <rect x="172" y="420" width="276" height="72" rx="10" fill="#ffffff" stroke="#d1d5db"/>
+  <text x="310" y="451" class="result">得到 y2 的分布</text>
+  <text x="310" y="477" class="body" text-anchor="middle">结果正确，但历史计算重复</text>
+
+  <text x="650" y="158" class="panel-title">使用 KV Cache</text>
+  <text x="650" y="184" class="body">历史位置已经算过，只处理刚刚确定的 y1</text>
+
+  <rect x="666" y="202" width="248" height="50" rx="8" fill="#dcfce7" stroke="#86efac"/>
+  <text x="790" y="224" class="label" text-anchor="middle">历史 K/V：p1 到 p4</text>
+  <text x="790" y="244" class="body" text-anchor="middle">直接读取</text>
+
+  <rect x="974" y="202" width="82" height="50" rx="8" fill="#ffedd5" stroke="#fdba74"/>
+  <text x="1015" y="233" class="chip">y1</text>
+
+  <rect x="678" y="278" width="224" height="94" rx="10" fill="#ffffff" stroke="#4ade80" stroke-width="1.8"/>
+  <text x="790" y="315" class="result">读取历史 K/V</text>
+  <text x="790" y="344" class="body" text-anchor="middle">不重算 p1 到 p4</text>
+
+  <rect x="924" y="278" width="182" height="94" rx="10" fill="#ffffff" stroke="#60a5fa" stroke-width="1.8"/>
+  <text x="1015" y="315" class="result">只计算 y1</text>
+  <text x="1015" y="344" class="body" text-anchor="middle">产生新 Q、K、V</text>
+
+  <rect x="742" y="420" width="296" height="72" rx="10" fill="#ffffff" stroke="#22c55e" stroke-width="1.8"/>
+  <text x="890" y="451" class="result">得到 y2，并追加 y1 的 K/V</text>
+  <text x="890" y="477" class="body" text-anchor="middle">缓存长度从 4 变成 5</text>
+
+  <rect x="202" y="520" width="796" height="72" rx="12" fill="#eff6ff" stroke="#bfdbfe"/>
+  <text x="600" y="550" class="result">两种方式的模型语义相同</text>
+  <text x="600" y="577" class="body" text-anchor="middle">KV Cache 改变重复计算的多少，不改变自回归顺序</text>
+</svg>

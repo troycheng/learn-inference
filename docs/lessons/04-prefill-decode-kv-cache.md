@@ -1,6 +1,6 @@
 # 第 4 课：模型读完 Prompt 后怎样逐个生成 token
 
-前几课拆开了一次模型前向：Hidden States 怎样经过 Decoder Layer，Attention 怎样读取前文。生成一段回答时，这套计算会反复执行。每轮使用同一套模型权重，但新输入的位置数不同，能够复用的历史状态也不同。
+生成回答时，模型会反复执行同一套 Decoder。第一轮要处理完整 Prompt，后面的每一轮通常只处理刚生成的一个 token。两类计算使用同一套权重，输入规模和可复用状态却不同。
 
 假设 Chat Template 和 Tokenizer 最终产生 4 个 Prompt token：
 
@@ -14,19 +14,11 @@ p1  p2  p3  p4
 y1  y2  y3
 ```
 
-这段生成不是把 7 个 token 一次送进模型。开始时只有 `p1` 到 `p4` 已知，`y1`、`y2`、`y3` 都还不存在。实际执行顺序是：
-
-```text
-输入 p1 p2 p3 p4  → 选出 y1
-输入 y1            → 选出 y2
-输入 y2            → 选出 y3
-```
-
-后两轮之所以只需要输入一个新 token，是因为前面的计算结果已经保存在请求状态中。对 Full Attention 层来说，这份状态主要是 KV Cache。
+模型不能把这 7 个 token 一次算完，因为开始时只有 `p1` 到 `p4` 已知。它先用 Prompt 选出 `y1`，下一轮再用 `y1` 选出 `y2`。历史计算已经保存在请求状态里，所以后续每轮只需送入刚刚确定的新 token。对 Full Attention 层来说，这份状态主要是 KV Cache。
 
 ![一次请求中的 Prefill 和 Decode](../assets/04-generation-timeline.svg)
 
-下面沿着这条时间线来看 Prompt 怎样进入 Prefill，生成 token 怎样推进 Decode，KV Cache 怎样增长，以及服务端怎样把多个请求放进同一轮计算。
+这条时间线里有四个问题：Prefill 做了什么，Decode 为什么只能逐 token 推进，KV Cache 省掉了哪些重复计算，以及多个请求怎样进入同一轮执行。
 
 ## 1. 同一次生成有两类模型计算
 
@@ -169,6 +161,8 @@ p1 p2 p3 p4 y1 y2
 Prefill 已经保存 `p1` 到 `p4` 的历史状态。选出 `y1` 后，下一轮只把 `y1` 送进模型。每个 Full Attention 层为 `y1` 计算新的 Q/K/V，让新 Q 读取历史 K/V，再把新 K/V 追加到缓存。
 
 生成结果在模型语义上没有变化，减少的是对相同历史前缀的重复计算。
+
+![没有 KV Cache 与使用 KV Cache 的计算对比](../assets/04-without-vs-with-kv-cache.svg)
 
 ## 6. 一步 Decode 怎样使用 KV Cache
 
@@ -348,9 +342,9 @@ Prefill 的 Linear 和 FFN 可以把许多 token 行组成较大的矩阵乘法�
 
 Decode 每轮虽然只处理一个新位置，却仍要让这个位置通过所有模型层。每个 Full Attention 层还要读取不断增长的历史 K/V。小 Batch 时，矩阵较窄，权重读取、KV 读取、Kernel Launch 和 CPU 调度更容易进入关键路径；Batch 增大后，同一套权重可以服务更多新位置，计算形态又会变化。
 
-所以不能简单写成“Prefill 一定受计算限制，Decode 一定受带宽限制”。这是常见现象，不是脱离模型、Batch、上下文长度和硬件仍然成立的定律。判断实际瓶颈需要结合矩阵尺寸、缓存长度和执行时间线。
+Prefill 常偏计算，Decode 常偏访存，但这不是定律。模型结构、Batch、上下文长度和硬件都会改变瓶颈。判断实际情况，仍要看矩阵尺寸、缓存长度和执行时间线。
 
-## 9. 请求内串行，不等于服务端只能串行
+## 9. 不同请求的已知 token 可以一起执行
 
 假设服务端同时有三个请求：
 
@@ -362,14 +356,7 @@ Decode 每轮虽然只处理一个新位置，却仍要让这个位置通过所�
 
 A 和 B 各自只能向前推进一个已确认的 token，但这两个请求彼此没有依赖。runtime 可以把它们当前的新位置放进同一轮模型执行。
 
-C 的 Prompt 也已经知道。如果调度器把它切成一段 4-token Prefill Chunk，本轮可以形成：
-
-```text
-A：1 个 Decode token
-B：1 个 Decode token
-C：4 个 Prefill token
-合计：6 个本轮已知 token
-```
+C 的 Prompt 也已经知道。如果调度器取出其中 4 个 token 作为一个 Prefill Chunk，这一轮就有 A、B 各 1 个 Decode token，再加上 C 的 4 个 Prefill token，共 6 个已知位置。
 
 ![不同请求怎样组成同一轮执行](../assets/04-mixed-batch.svg)
 
@@ -427,7 +414,7 @@ Chunked Prefill 改变的是执行和调度方式。Prompt 的 token 顺序、�
 
 ## 12. TTFT、TPOT 和 ITL 分别量到哪里
 
-服务端性能指标把前面的时间过程切成几段。
+服务端性能指标把一次请求的等待和生成过程分成几段。
 
 ![TTFT、TPOT 与 ITL](../assets/04-latency-metrics.svg)
 
@@ -481,29 +468,29 @@ Qwen3.5-9B 的 32 个 Decoder Layer 按下面的顺序重复：
 
 Transformers 的 Qwen3.5 实现使用同一个 Cache 容器管理不同层：Full Attention 层更新 K/V，Gated DeltaNet 层更新卷积状态和 recurrent state。第 5 课会打开 Gated DeltaNet，解释固定 shape 的状态怎样逐步吸收历史。
 
-## 14. 这几组概念很容易混
+## 14. KV Cache 最容易混淆的地方
 
-### KV Cache 不是 Token IDs
+### KV Cache 保存向量，不保存 Token IDs
 
 Token IDs 仍由生成循环保存，用于输出、停止判断或后续处理。KV Cache 是每个 Full Attention 层根据 Hidden States 投影得到的浮点 K/V。
 
-### KV Cache 不是 Hidden States 的完整副本
+### KV Cache 只保留未来 Attention 会读取的 K/V
 
 缓存保存的是未来 Attention 需要读取的 K/V。每层的其他中间值、Attention Score 和 FFN 激活通常不会跨生成轮次保留。
 
-### KV Cache 不是 Prefix Cache
+### Prefix Cache 在不同请求之间复用前缀状态
 
 每个运行中请求都需要自己的历史状态。Prefix Cache 进一步尝试让具有相同前缀的不同请求复用已经算好的状态，还要处理匹配、生命周期和淘汰。二者不是同一个概念。
 
-### KV Cache 不会取消自回归依赖
+### 下一个 Token ID 仍要逐轮确定
 
 缓存只复用已经确定的历史。下一个 Token ID 仍要经过当前轮 Logits 和选择策略才能知道。
 
-### Prefill 不表示每次都处理整个上下文
+### Prefill 本轮可以只处理部分新位置
 
 首次请求常处理完整 Prompt；启用 Prefix Cache、Chunked Prefill 或外部已提供合法缓存时，本轮实际计算的位置可以少于逻辑上下文长度。
 
-### Decode 不表示整个 GPU 只处理一个 token
+### 一轮 Decode 可以包含许多请求
 
 单个请求通常贡献一个新位置。许多请求可以在同一轮各贡献一个位置，形成较大的 Batch。
 
@@ -524,7 +511,9 @@ Token IDs 仍由生成循环保存，用于输出、停止判断或后续处理�
 13. TPOT 和 ITL 有什么区别？
 14. 用自己的话复述：Prompt 为 4 个 token、输出为 3 个 token 时，模型前向和缓存怎样变化。
 
-## 16. 参考答案
+<details>
+<summary>查看参考答案</summary>
+
 
 1. 最后一个 Prompt 位置 `p4` 的最终 Hidden State。它经过 LM Head 后得到预测 `y1` 的 Logits。
 2. Prompt token 的值在执行前已经全部知道，同层可以用因果遮罩限制各位置的读取范围并进行张量并行计算。未来 token 的值取决于前一步实际选择结果，输入尚不存在。
@@ -541,9 +530,11 @@ Token IDs 仍由生成循环保存，用于输出、停止判断或后续处理�
 13. ITL 是每一对相邻输出 token 的实际时间间隔；TPOT 通常是排除首 token 后的平均输出 token 时间。
 14. Prefill 一次处理 `p1` 到 `p4`，建立历史状态，并从 `p4` 的 Logits 选出 `y1`。第一轮 Decode 只输入 `y1`，读取历史状态、追加 `y1` 的状态并选出 `y2`；下一轮只输入 `y2`，追加状态并选出 `y3`。
 
-## 17. 先把生成时间线画出来
+</details>
 
-不看正文，试着画出下面这条时间线：
+## 16. 自测：画出一次生成
+
+不看正文，画出下面这条时间线：
 
 ```text
 Prompt → Prefill → y1 → Decode(y1) → y2 → Decode(y2) → y3

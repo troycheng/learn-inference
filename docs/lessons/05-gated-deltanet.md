@@ -2,17 +2,11 @@
 
 第 4 课讲过，Full Attention 会为每个历史 token 保留 K/V。上下文越长，KV Cache 也越长。Qwen3.5-9B 的 32 个 Decoder Layer 中，只有 8 层这样做；另外 24 层使用 Gated DeltaNet，把历史更新进固定 shape 的状态。
 
-两类 Token Mixer 交替出现：
-
-```text
-Gated DeltaNet → Gated DeltaNet → Gated DeltaNet → Full Attention
-```
-
-这组排列重复 8 次。FFN、RMSNorm 和残差连接仍然存在，变化的是每层中负责联系不同 token 的 Token Mixer。
+模型每经过三层 Gated DeltaNet，就接一层 Full Attention，这组排列重复 8 次。FFN、RMSNorm 和残差连接没有变化，换掉的只是每层中负责联系不同 token 的 Token Mixer。
 
 ![Qwen3.5 的混合 Token Mixer](../assets/05-hybrid-layout.svg)
 
-理解 Gated DeltaNet，要先看它怎样保存历史。Full Attention 留下一排可以逐位置读取的 K/V；Gated DeltaNet 反复修改一张固定大小的状态矩阵。新 token 到来时，它先读出状态对当前 Key 的旧记录，再根据当前 Value 修正这条记录，最后用 Query 从更新后的状态中取回结果。
+Full Attention 留下一排可以逐位置读取的 K/V。Gated DeltaNet 不保留这排历史，而是反复修改一张固定大小的状态矩阵。新 token 到来时，它先读出当前 Key 对应的旧记录，再根据 Value 修正记录，最后用 Query 读取更新后的状态。
 
 ## 1. 为什么要用固定大小的状态
 
@@ -42,7 +36,7 @@ Query 用相似的特征从 S 中读取结果
 
 这只是帮助理解的说法。状态矩阵里没有可读的字符串字段，也没有给某个 token 单独保留一行。多段历史会被压进同一组数值，因此它和 KV Cache 的能力及代价都不同。
 
-## 2. 先看完整数据流
+## 2. 一层 Gated DeltaNet 的数据流
 
 输入仍是 Decoder Layer 传来的 Hidden States：
 
@@ -50,24 +44,7 @@ Query 用相似的特征从 S 中读取结果
 X：[B,T,H]
 ```
 
-Qwen3.5-9B 的一层 Gated DeltaNet 可以先压缩成下面这条主线：
-
-```text
-X
-├─ Linear → 混合 Q/K/V → 因果卷积 → Q、K、V
-├─ Linear → beta          修正幅度
-├─ Linear → g             旧状态衰减
-└─ Linear → z             输出门控
-
-旧 recurrent state
-→ 衰减
-→ 用 K 检查旧记录
-→ 用 V 与旧记录的误差修正状态
-→ 用 Q 读取更新后的状态
-→ RMSNorm 和 SiLU(z)
-→ out_proj
-→ [B,T,H]
-```
+输入 `X` 会分成几条支路：一条产生 Q、K、V，另外三条产生状态衰减、修正幅度和输出门控。旧状态先衰减，再根据当前 K 和 V 修正，最后由 Q 读出结果。下图把这些支路放回同一条数据流：
 
 ![Gated DeltaNet 的完整数据流](../assets/05-gated-deltanet-flow.svg)
 
@@ -366,25 +343,25 @@ Gated DeltaNet 的 `conv_state` 和 `recurrent_state` shape 不随 token 数增�
 
 Gated Delta Rule 的 Chunk Kernel 是算子内部的并行算法。服务端 Chunked Prefill 是调度器把长 Prompt 分成多个执行轮次。两者都使用 Chunk 这个词，但切分层级不同。
 
-## 12. 几个常见误解
+## 12. 固定状态仍要缓存并按顺序更新
 
-### Gated DeltaNet 不是没有 Cache
+### Gated DeltaNet 保存两份请求状态
 
 它不保存逐 token K/V，但 Decode 需要 `conv_state` 和 `recurrent_state`。
 
-### recurrent state 不是一个 token 的 Hidden State
+### recurrent state 是跨 token 更新的状态矩阵
 
 Hidden State 是某个 token 在层间传递的 H 维表示。recurrent state 是一个 Gated DeltaNet 层跨 token 保留的矩阵状态。
 
-### 因果卷积不是图像卷积
+### 因果卷积沿 token 轴滑动
 
 这里沿 token 序列的一维时间轴滑动。深度卷积在每个通道内部处理最近窗口，不是在图片上移动二维卷积核。
 
-### 状态固定不等于计算量为 0
+### 每一步仍要读写固定状态
 
 每步仍要读写整张状态矩阵，并执行本层的 Linear 和门控。固定的是随序列长度增长的那一维。
 
-### Chunk Prefill 没有取消递归关系
+### Chunk Kernel 保持相同的递归结果
 
 Chunk Kernel 用代数变换并行组织已知 token 的计算，最终结果仍遵守前一状态到后一状态的因果顺序。
 
@@ -405,7 +382,9 @@ Chunk Kernel 用代数变换并行组织已知 token 的计算，最终结果仍
 13. Prefill 使用 Chunk Kernel，是否说明不同 token 的状态更新没有依赖？
 14. 复用 Qwen3.5 前缀时，为什么不能只复用 Full Attention 的 KV Cache？
 
-## 14. 参考答案
+<details>
+<summary>查看参考答案</summary>
+
 
 1. 24 层 Gated DeltaNet，8 层 Full Attention，按 3 比 1 重复。
 2. KV Cache 的 `T` 随历史 token 数增长；recurrent state 的 shape 不包含随 `T` 增长的轴，后续 token 原地更新其数值。
@@ -422,9 +401,11 @@ Chunk Kernel 用代数变换并行组织已知 token 的计算，最终结果仍
 13. 不是。Chunk Kernel 并行组织计算，数学结果仍包含前后状态依赖。
 14. 完整前缀状态还包括 24 个 Gated DeltaNet 层的 conv state 和 recurrent state。
 
-## 15. 试着说清两类请求状态
+</details>
 
-合上正文，试着复述一个新 token 进入 Gated DeltaNet 后发生的动作：
+## 14. 自测：比较两类请求状态
+
+不看正文，复述一个新 token 进入 Gated DeltaNet 后发生的动作：
 
 ```text
 Hidden State
