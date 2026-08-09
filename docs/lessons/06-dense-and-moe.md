@@ -66,6 +66,14 @@ Expert 3：FFN_3
 当前 token 的输入向量为 `x:[H]`。Router 是一个 Linear，它根据 `x` 产生 4 个分数：
 
 ```text
+Router 权重 W_router：[4,H]
+x：[H]
+x W_router^T：[4]
+```
+
+`W_router` 的每一行对应一个 Routed Expert。`x` 分别与四行权重点积，得到四个 Router Logits；这一步只负责打分，还没有执行任何 Expert FFN。真实 Qwen3.5-35B-A3B 的 Router 权重是 `[256,2048]`。
+
+```text
 router_logits = [0.2, -0.8, 1.4, 0.0]
 ```
 
@@ -193,7 +201,7 @@ Decoder Layer = 40
 
 令 `M=B×T`，也就是当前这批 token 的总数。MoE 会临时把 `[B,T,H]` 展平为 `[M,H]`：
 
-![Qwen3.5 一层 MoE 的完整流程](../assets/06-qwen35-moe-flow.svg)
+![Qwen3.5 一层 MoE 的完整流程](../assets/06-qwen35-moe-flow.svg?rev=20260809-1)
 
 | 阶段 | shape | 说明 |
 | --- | --- | --- |
