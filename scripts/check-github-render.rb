@@ -9,7 +9,6 @@ files = [
   "docs/roadmap.md",
   "docs/inference-map.md",
   "docs/glossary.md",
-  "docs/model-analysis-method.md",
   "docs/capstone.md",
 ] + Dir["docs/lessons/[0-9][0-9]-*.md"].sort
 

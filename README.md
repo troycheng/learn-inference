@@ -3,11 +3,9 @@
 [![Course checks](https://github.com/troycheng/learn-inference/actions/workflows/course-checks.yml/badge.svg)](https://github.com/troycheng/learn-inference/actions/workflows/course-checks.yml)
 [![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-lightgrey.svg)](LICENSE)
 
-面向推理系统工程师的模型原理课程。从 token、Decoder 和请求状态出发，建立资源估算与优化判断所需的理论主线。
+这门课面向已经参与大模型推理系统研发、希望补齐模型原理的工程师。课程不从框架参数讲起，而是沿一次生成过程解释文字怎样变成 token、token 怎样经过 Decoder、模型怎样读取前文，以及自回归生成为何逐 token 推进。
 
-课程适合已经参与推理系统研发、但模型理论基础还不完整的工程师。它不从框架参数讲起，而是先把 QKV、RoPE、KV Cache、MoE 等概念放回模型计算，再讨论显存、吞吐和首 token 延迟。
-
-课程从一条输入开始，沿生成过程解释文字怎样变成 token、token 怎样经过 Decoder、模型怎样读取前文，以及自回归生成为何逐 token 推进。学完后，你应该能指出 Prefill、Decode、KV Cache、Dense、MoE 分别涉及哪些模型层、张量和请求状态，并据此分析常见优化。
+QKV、RoPE、KV Cache、MoE 等概念会先放回模型计算，再用于分析显存、吞吐和首 token 延迟。学完后，你应该能指出一项优化改变了哪些模型层、张量或请求状态，并判断它在当前工作负载下是否值得验证。
 
 ## 学习目标
 
@@ -39,7 +37,7 @@
 - 用 **Qwen3.5-35B-A3B** 讲 MoE 模型；
 - 用两者共同的 Gated DeltaNet 与 Full Attention 混合结构讲现代模型；
 - 用 Qwen3.5 的视觉输入路径讲视觉编码器与多模态序列；
-- 第一轮只解释因果语言模型目标，不展开反向传播、优化器、CUDA 编程和框架参数清单。
+- 课程只解释理解推理所需的因果语言模型目标，不展开反向传播、优化器、CUDA 编程和框架参数清单。
 
 ## 课程目录
 
@@ -62,8 +60,6 @@
 - [大模型推理链路速查](docs/inference-map.md)
 - [结业案例：从模型配置到优化判断](docs/capstone.md)
 - [课程术语与符号表](docs/glossary.md)
-- [模型接入与优化评审方法](docs/model-analysis-method.md)
-- [课程编写与讲解规范](docs/teaching-method.md)
 
 ## 学习顺序
 
@@ -71,7 +67,7 @@
 
 建议读两遍。第一遍只追踪数据表示、shape 变化和请求需要保留的状态，不必记住 Qwen3.5 的每个配置数字。第二遍再带着真实模型和工作负载回来，用复算程序核对参数、状态和计算量，并完成每课末尾的实践题。
 
-读完第 9 课后，用[结业案例](docs/capstone.md)完成一次不按章节提示的综合分析。再拿一份自己正在部署的模型配置，按照[模型接入与优化评审方法](docs/model-analysis-method.md)写出一页技术结论。每个数字都应能追溯到配置、源码或测量结果。
+读完第 9 课后，用[结业案例](docs/capstone.md)完成一次不按章节提示的综合分析。案例最后给出了一页技术结论的示例。再拿一份自己正在部署的模型配置，完成同样的分析；每个数字都应能追溯到配置、源码或测量结果。
 
 正文用小数字缩短手算过程，向量和矩阵的维度虽然变小，计算顺序与真实模型相同。每课末尾先检查基础概念，再用一组新数据完成查错、计算或判断，参考答案默认折叠。
 
@@ -87,7 +83,7 @@
 
 发现公式、配置数字、图示或引用有误时，请提交[内容纠错](https://github.com/troycheng/learn-inference/issues/new?template=content-error.yml)，注明课程位置、问题和可核对的来源。读到某一步无法继续，也可以提交[学习问题](https://github.com/troycheng/learn-inference/issues/new?template=learning-question.yml)。这类反馈会用来判断正文是否还缺少必要解释。
 
-修改课程前请阅读[贡献说明](CONTRIBUTING.md)。
+修改课程前请阅读[贡献说明](CONTRIBUTING.md)和[课程编写与讲解规范](docs/teaching-method.md)。
 
 ## 许可
 
