@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 720" width="1200" height="720" role="img" aria-labelledby="batching-title batching-desc">
-  <title id="batching-title">请求完成后，Continuous Batching 可以立即补位</title>
-  <desc id="batching-desc">左侧静态批处理等待最长请求 A 完成，右侧连续批处理在 B 和 C 完成后加入 D 和 E。每一列表示一轮生成。</desc>
+  <title id="batching-title">一轮执行结束后，Continuous Batching 可以重组下一轮 Batch</title>
+  <desc id="batching-desc">左侧静态批处理等待最长请求 A 完成，右侧连续批处理在一轮结束后移除已经完成的 B 和 C，并在下一轮加入 D 和 E。每一列表示一轮生成。</desc>
   <style>
     text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei','Microsoft JhengHei','SimHei',sans-serif;fill:#111827}
     .title{font-size:30px;font-weight:700}.sub{font-size:16px;fill:#6b7280}.panel{font-size:22px;font-weight:700;text-anchor:middle}.label{font-size:16px;font-weight:700}.note{font-size:15px;fill:#4b5563;text-anchor:middle}.summary{font-size:16px;font-weight:600;text-anchor:middle}
   </style>
   <rect width="1200" height="720" fill="#fff" data-graph-role="canvas"/>
   <g data-graph-role="title-block">
-    <text x="48" y="56" class="title">请求完成后，Continuous Batching 可以立即补位</text>
+    <text x="48" y="56" class="title">一轮执行结束后，Continuous Batching 可以重组下一轮 Batch</text>
     <text x="48" y="88" class="sub">每一列是一轮生成，彩色方块表示一个请求占用的执行位置。</text>
   </g>
 
@@ -43,7 +43,7 @@
       <g fill="#f472b6"><rect x="204" y="120" width="62" height="44"/><rect x="272" y="120" width="62" height="44"/></g>
     </g>
     <rect x="680" y="454" width="424" height="112" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
-    <text x="892" y="493" class="summary">B、C 的空位立即加入 D、E</text>
+    <text x="892" y="493" class="summary">下一轮移除 B、C，再加入 D、E</text>
     <text x="892" y="529" class="note">新请求仍可能排队，混批也需额外支持</text>
   </g>
 

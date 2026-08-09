@@ -51,7 +51,7 @@
 | 对话模型 | Chat / Post-trained Model | 经过指令或偏好后训练、按指定对话格式响应的模型 |
 | 分词器 | Tokenizer | 在文字与 Token ID 之间转换 |
 | token | Token | Tokenizer 使用的文本片段或特殊符号 |
-| Token ID | Token ID / `input_ids` | token 在词表中的整数编号 |
+| Token ID | Token ID / `input_ids` 中的元素 | token 在词表中的整数编号；`input_ids` 是由这些编号组成的张量 |
 | 嵌入 | Embedding | 根据 Token ID 取得的初始向量 |
 | 隐藏状态 | Hidden State | 当前 token 位置经过模型层后的上下文表示 |
 | Decoder-only 语言模型 | Decoder-only Language Model | 语言主干使用因果约束，根据已有 token 预测下一个 token 的模型架构 |
@@ -188,7 +188,7 @@
 
 | 正文用词 | 英文或代码名 | 简短含义 |
 | --- | --- | --- |
-| 权重量化 | Weight Quantization | 用更低位格式保存和计算模型权重 |
+| 权重量化 | Weight Quantization | 用更低比特格式编码权重，并由相应 Kernel 读取和参与计算 |
 | KV 量化 | KV Cache Quantization | 用更低位格式保存 Full Attention 的历史 K/V |
 | 闪存注意力 | FlashAttention | 分块在片上计算精确 Attention，减少中间矩阵的 HBM 读写 |
 | 语义缓存 | Semantic Cache | 根据输入语义相似性复用最终结果或上层结果，不等同于 Prefix Cache |

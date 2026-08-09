@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 880" width="1200" height="880" role="img" aria-labelledby="optimization-map-title optimization-map-desc">
   <title id="optimization-map-title">常见优化分别改了什么</title>
-  <desc id="optimization-map-desc">按权重与模型切分、全注意力、专家计算、服务调度和目标模型验证五类，标出常见优化直接改变的工作。</desc>
+  <desc id="optimization-map-desc">按权重与模型切分、Attention 与请求状态、专家计算、服务调度和目标模型验证五类，标出常见优化直接改变的工作。</desc>
   <style>
     text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei','Microsoft JhengHei','SimHei',sans-serif;fill:#111827}
     .title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.row-title{font-size:19px;font-weight:700}.method{font-size:16px;font-weight:700}.detail{font-size:14px;fill:#4b5563}.footer{font-size:17px;font-weight:600;fill:#fff;text-anchor:middle}
@@ -20,12 +20,12 @@
     <text x="860" y="203" class="method">PP</text><text x="900" y="203" class="detail">按层切分阶段</text>
   </g>
 
-  <g data-graph-role="node" aria-label="Full Attention">
+  <g data-graph-role="node" aria-label="Attention 与请求状态">
     <rect x="48" y="262" width="1104" height="112" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-    <text x="78" y="299" class="row-title">Full Attention</text>
-    <text x="78" y="335" class="method">FlashAttention</text><text x="225" y="335" class="detail">少写中间矩阵</text>
-    <text x="445" y="335" class="method">KV 量化</text><text x="535" y="335" class="detail">减少 Cache 字节</text>
-    <text x="755" y="335" class="method">Prefix Cache</text><text x="890" y="335" class="detail">跳过命中前缀的 Prefill</text>
+    <text x="78" y="299" class="row-title">Attention 与请求状态</text>
+    <text x="78" y="335" class="method">FlashAttention</text><text x="225" y="335" class="detail">减少 Full Attention 中间读写</text>
+    <text x="505" y="335" class="method">KV 量化</text><text x="595" y="335" class="detail">减少 Full Attention Cache 字节</text>
+    <text x="875" y="335" class="method">Prefix Cache</text><text x="1010" y="335" class="detail">复用完整前缀状态</text>
   </g>
 
   <g data-graph-role="node" aria-label="MoE Expert">

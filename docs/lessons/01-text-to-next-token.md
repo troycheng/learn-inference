@@ -255,11 +255,11 @@ Embedding 是训练得到的模型参数，包含基础的词义、语法和相�
 
 进入 Decoder 前，“苹果”的 Token ID 相同，取到的初始 Embedding 也相同。经过模型层后，两个位置的 Hidden State 会因为上下文不同而不同。
 
-| 对象 | 是否经过训练得到 | 是否结合当前上下文 | 含义 |
+| 对象 | 来源 | 是否结合当前上下文 | 含义 |
 | --- | --- | --- | --- |
-| Token ID | 否 | 否 | 词表中的离散编号 |
-| Embedding | 是 | 否 | token 的初始、静态表示 |
-| Hidden State | 运行时计算 | 是 | 当前位置结合上下文后的表示 |
+| Token ID | Tokenizer 的词表和切分规则 | 否 | 词表中的离散编号，不是模型的连续参数 |
+| Embedding | 模型训练得到的参数表 | 否 | token 的初始、静态表示 |
+| Hidden State | 模型在当前请求中计算 | 是 | 当前位置结合上下文后的表示 |
 
 Embedding 和 Hidden State 可以具有相同 shape，但不是同一个概念。
 
