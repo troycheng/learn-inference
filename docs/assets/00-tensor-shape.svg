@@ -1,41 +1,92 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 430" width="960" height="430" role="img" aria-labelledby="title desc">
-  <title id="title">怎样读 B、T、H 三个轴</title>
-  <desc id="desc">张量 shape 为 B、T、H，分别表示批中的序列数、每条序列的 token 位置数和每个位置的特征数。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" width="1200" height="700" role="img" aria-labelledby="title desc">
+  <title id="title">从 B、T、H 定位一个 token 向量</title>
+  <desc id="desc">一个 shape 为 2、3、4 的张量包含两条序列，每条三个 token 位置，每个位置四个数。图中高亮 X 的第 1 条序列第 2 个位置。</desc>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#ea580c"/>
+    </marker>
+  </defs>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
-    .title { font-size: 22px; font-weight: 600; }
+    .title { font-size: 30px; font-weight: 700; }
+    .subtitle { font-size: 16px; fill: #6b7280; }
+    .heading { font-size: 18px; font-weight: 700; }
     .label { font-size: 15px; font-weight: 600; }
-    .sub { font-size: 13px; fill: #6b7280; }
-    .cell { font-size: 12px; fill: #374151; }
+    .value { font-size: 15px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-anchor: middle; }
+    .note { font-size: 14px; fill: #4b5563; }
+    .code { font-size: 17px; font-weight: 700; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
   </style>
-  <rect width="960" height="430" fill="#ffffff"/>
-  <text x="40" y="42" class="title">怎样读 [B, T, H]</text>
-  <text x="40" y="68" class="sub">从外到内：一批序列 → 每条序列的 token 位置 → 每个位置的特征坐标</text>
+  <rect width="1200" height="700" fill="#ffffff"/>
+  <text x="50" y="55" class="title">从 [B,T,H] 定位一个 token 向量</text>
+  <text x="50" y="84" class="subtitle">教学用小张量 X.shape=[2,3,4]：2 条序列，每条 3 个位置，每个位置用 4 个数表示</text>
 
-  <rect x="44" y="100" width="872" height="272" rx="14" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
-  <text x="66" y="130" class="label">B = 2：一批有 2 条序列</text>
+  <rect x="50" y="120" width="525" height="360" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="76" y="154" class="heading">b=0　第一条序列</text>
+  <text x="76" y="184" class="note">T 轴：沿着一条序列的 token 位置向下</text>
 
-  <rect x="74" y="150" width="390" height="190" rx="12" fill="#ffffff" stroke="#60a5fa" stroke-width="1.5"/>
-  <text x="94" y="178" class="label">序列 0</text>
-  <rect x="96" y="198" width="158" height="106" rx="8" fill="#f0fdf4" stroke="#86efac"/>
-  <text x="112" y="224" class="label">token 0</text>
-  <text x="112" y="250" class="cell">[ x0, x1, …, x(H-1) ]</text>
-  <text x="112" y="278" class="sub">H 个特征坐标</text>
-  <rect x="274" y="198" width="158" height="106" rx="8" fill="#f0fdf4" stroke="#86efac"/>
-  <text x="290" y="224" class="label">token 1 …</text>
-  <text x="290" y="250" class="cell">[ x0, x1, …, x(H-1) ]</text>
-  <text x="290" y="278" class="sub">共 T 个位置</text>
+  <text x="78" y="235" class="label">t=0</text>
+  <g transform="translate(145 205)">
+    <rect x="0" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="44" y="33" class="value">0.1</text>
+    <rect x="96" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="140" y="33" class="value">0.2</text>
+    <rect x="192" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="236" y="33" class="value">0.3</text>
+    <rect x="288" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="332" y="33" class="value">0.4</text>
+  </g>
 
-  <rect x="496" y="150" width="390" height="190" rx="12" fill="#ffffff" stroke="#60a5fa" stroke-width="1.5"/>
-  <text x="516" y="178" class="label">序列 1</text>
-  <rect x="518" y="198" width="158" height="106" rx="8" fill="#f0fdf4" stroke="#86efac"/>
-  <text x="534" y="224" class="label">token 0</text>
-  <text x="534" y="250" class="cell">[ x0, x1, …, x(H-1) ]</text>
-  <text x="534" y="278" class="sub">H 个特征坐标</text>
-  <rect x="696" y="198" width="158" height="106" rx="8" fill="#f0fdf4" stroke="#86efac"/>
-  <text x="712" y="224" class="label">token 1 …</text>
-  <text x="712" y="250" class="cell">[ x0, x1, …, x(H-1) ]</text>
-  <text x="712" y="278" class="sub">共 T 个位置</text>
+  <text x="78" y="318" class="label">t=1</text>
+  <g transform="translate(145 288)">
+    <rect x="0" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="44" y="33" class="value">1.1</text>
+    <rect x="96" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="140" y="33" class="value">1.2</text>
+    <rect x="192" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="236" y="33" class="value">1.3</text>
+    <rect x="288" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="332" y="33" class="value">1.4</text>
+  </g>
 
-  <text x="480" y="406" text-anchor="middle" class="label">[B, T, H] = [2, T, H]</text>
+  <text x="78" y="401" class="label">t=2</text>
+  <g transform="translate(145 371)">
+    <rect x="0" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="44" y="33" class="value">2.1</text>
+    <rect x="96" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="140" y="33" class="value">2.2</text>
+    <rect x="192" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="236" y="33" class="value">2.3</text>
+    <rect x="288" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#93c5fd"/><text x="332" y="33" class="value">2.4</text>
+  </g>
+
+  <rect x="625" y="120" width="525" height="360" rx="16" fill="#f8fafc" stroke="#94a3b8" stroke-width="2"/>
+  <text x="651" y="154" class="heading">b=1　第二条序列</text>
+  <text x="651" y="184" class="note">H 轴：同一个 token 位置中的 4 个坐标</text>
+
+  <text x="653" y="235" class="label">t=0</text>
+  <g transform="translate(720 205)">
+    <rect x="0" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#cbd5e1"/><text x="44" y="33" class="value">3.1</text>
+    <rect x="96" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#cbd5e1"/><text x="140" y="33" class="value">3.2</text>
+    <rect x="192" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#cbd5e1"/><text x="236" y="33" class="value">3.3</text>
+    <rect x="288" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#cbd5e1"/><text x="332" y="33" class="value">3.4</text>
+  </g>
+
+  <text x="653" y="318" class="label">t=1</text>
+  <g transform="translate(720 288)">
+    <rect x="0" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#cbd5e1"/><text x="44" y="33" class="value">4.1</text>
+    <rect x="96" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#cbd5e1"/><text x="140" y="33" class="value">4.2</text>
+    <rect x="192" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#cbd5e1"/><text x="236" y="33" class="value">4.3</text>
+    <rect x="288" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#cbd5e1"/><text x="332" y="33" class="value">4.4</text>
+  </g>
+
+  <text x="653" y="401" class="label" fill="#c2410c">t=2</text>
+  <g transform="translate(720 371)">
+    <rect x="-6" y="-6" width="388" height="64" rx="10" fill="#fff7ed" stroke="#f97316" stroke-width="3"/>
+    <rect x="0" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#fdba74"/><text x="44" y="33" class="value">5.1</text>
+    <rect x="96" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#fdba74"/><text x="140" y="33" class="value">5.2</text>
+    <rect x="192" y="0" width="88" height="52" rx="7" fill="#ffffff" stroke="#fdba74"/><text x="236" y="33" class="value">5.3</text>
+    <rect x="288" y="0" width="88" height="52" rx="7" fill="#ffedd5" stroke="#f97316" stroke-width="2"/><text x="332" y="33" class="value">5.4</text>
+  </g>
+
+  <path d="M908 492 V515 H735" fill="none" stroke="#ea580c" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  <rect x="335" y="515" width="450" height="68" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="360" y="545" class="code">X[1,2,:] = [5.1,5.2,5.3,5.4]</text>
+  <text x="360" y="570" class="note">取出一整条 token 向量 → shape=[4]</text>
+
+  <path d="M1052 492 V615 H840" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <rect x="470" y="610" width="370" height="62" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="495" y="640" class="code">X[1,2,3] = 5.4</text>
+  <text x="495" y="660" class="note">三个轴都指定后，只剩一个标量</text>
 </svg>

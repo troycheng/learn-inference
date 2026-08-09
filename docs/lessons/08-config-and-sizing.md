@@ -19,7 +19,28 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 
 ## 1. 从 `config.json` 还原模型结构
 
-第一次打开 `config.json`，不用逐行读。先找下面四组字段。
+第一次打开 `config.json`，不用逐行读。先看 Qwen3.5-9B 文本模型中的一组真实字段。下面省略了与本节无关的配置：
+
+```json
+{
+  "vocab_size": 248320,
+  "hidden_size": 4096,
+  "num_hidden_layers": 32,
+  "num_attention_heads": 16,
+  "num_key_value_heads": 4,
+  "head_dim": 256,
+  "intermediate_size": 12288,
+  "full_attention_interval": 4
+}
+```
+
+这些字段不是一串孤立数字。把它们代回前几课的结构，就能还原出 Embedding、层数、Attention 头和 Dense FFN 的主要 shape：
+
+![从 Qwen3.5-9B 配置还原文本模型结构](../assets/08-config-to-questions.svg?rev=20260809-2)
+
+例如，`hidden_size=4096` 同时规定了 Embedding 输出宽度、层与层之间的接口宽度以及 LM Head 的输入宽度；`num_attention_heads=16`、`head_dim=256` 说明 16 个 Query 头合计宽度为 4096；`num_key_value_heads=4` 则说明 K/V 头少于 Query 头，这是 GQA。`full_attention_interval=4` 要与总层数一起读：32 层中每四层出现一次 Full Attention，因此共有 8 层 Full Attention，其余 24 层是 Gated DeltaNet。
+
+掌握这次映射后，再把字段归纳成下面四组。
 
 ### 1.1 模型接口配置
 
@@ -51,8 +72,6 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 | `E` | `num_experts` | Routed Expert 总数 |
 | `K` | `num_experts_per_tok` | 每 token 选几个 Routed Experts |
 | `I_moe` | `moe_intermediate_size` | 每个 Expert 的中间宽度 |
-
-![从配置字段推导权重、计算、请求状态和并行切分](../assets/08-config-to-questions.svg?rev=20260809-1)
 
 下面是两个模型的主配置：
 

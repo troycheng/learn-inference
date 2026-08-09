@@ -150,9 +150,11 @@ Qwen3.5-35B-A3B 还有一套 Shared Expert。所有 token 都会经过它：
 
 ```text
 shared_output = shared_expert(x)   [H]
-shared_gate   = sigmoid(w_s x)     [1]
+shared_gate   = sigmoid(x w_s^T)   [1]，其中 w_s:[1,H]
 gated_shared  = shared_gate × shared_output
 ```
+
+`x` 与 `w_s` 的唯一一行做点积，先得到一个标量，再经过 Sigmoid 变成门控系数。这沿用了第 0 课统一使用的行向量写法 `y=xW^T`。
 
 最终结果是：
 

@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 670" width="1280" height="670" role="img" aria-labelledby="title desc">
+  <title id="title">一个图像 Patch 怎样投影成向量</title>
+  <desc id="desc">把一个二乘二灰度 Patch 展平成四个数，再与三行权重逐行点积，得到一条三维向量。真实 Qwen3.5 使用相同计算把 1536 维 Patch 投影到 1152 维。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 30px; font-weight: 700; }
+    .subtitle { font-size: 16px; fill: #6b7280; }
+    .heading { font-size: 18px; font-weight: 700; text-anchor: middle; }
+    .label { font-size: 15px; fill: #374151; }
+    .value { font-size: 17px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-anchor: middle; }
+    .small { font-size: 14px; fill: #4b5563; }
+    .formula { font-size: 16px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+  <rect width="1280" height="670" fill="#ffffff"/>
+  <text x="50" y="55" class="title">一个 Patch 怎样变成一条向量</text>
+  <text x="50" y="85" class="subtitle">先看教学用的 4→3 投影：展平像素，再让同一组权重与每个 Patch 做矩阵乘法</text>
+
+  <text x="155" y="145" class="heading">2×2 Patch</text>
+  <g transform="translate(65 175)">
+    <rect x="0" y="0" width="90" height="90" fill="#e0f2fe" stroke="#38bdf8" stroke-width="2"/>
+    <rect x="90" y="0" width="90" height="90" fill="#bae6fd" stroke="#38bdf8" stroke-width="2"/>
+    <rect x="0" y="90" width="90" height="90" fill="#7dd3fc" stroke="#38bdf8" stroke-width="2"/>
+    <rect x="90" y="90" width="90" height="90" fill="#38bdf8" stroke="#0284c7" stroke-width="2"/>
+    <text x="45" y="55" class="value">0.2</text>
+    <text x="135" y="55" class="value">0.4</text>
+    <text x="45" y="145" class="value">0.6</text>
+    <text x="135" y="145" class="value">0.8</text>
+  </g>
+
+  <path d="M265 265 H355" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="310" y="245" class="small" text-anchor="middle">展平</text>
+
+  <text x="465" y="145" class="heading">像素向量 p</text>
+  <rect x="365" y="215" width="200" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="465" y="258" class="value">[0.2, 0.4,</text>
+  <text x="465" y="288" class="value"> 0.6, 0.8]</text>
+  <text x="465" y="345" class="small" text-anchor="middle">shape=[4]</text>
+
+  <text x="750" y="145" class="heading">权重 W_patch</text>
+  <rect x="620" y="175" width="260" height="180" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="750" y="222" class="value">[1, 0, 0, 0]</text>
+  <line x1="650" y1="238" x2="850" y2="238" stroke="#fed7aa"/>
+  <text x="750" y="275" class="value">[0, 1, 1, 0]</text>
+  <line x1="650" y1="291" x2="850" y2="291" stroke="#fed7aa"/>
+  <text x="750" y="328" class="value">[0, 0, 0, 0.5]</text>
+  <text x="750" y="385" class="small" text-anchor="middle">shape=[3,4]；每一行产生一个输出</text>
+
+  <path d="M900 265 H990" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="945" y="238" class="small" text-anchor="middle">逐行点积</text>
+
+  <text x="1110" y="145" class="heading">输出向量</text>
+  <rect x="1010" y="210" width="200" height="110" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+  <text x="1110" y="265" class="value">[0.2, 1.0, 0.4]</text>
+  <text x="1110" y="345" class="small" text-anchor="middle">shape=[3]</text>
+
+  <rect x="65" y="440" width="1145" height="120" rx="14" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="95" y="480" class="formula">第 1 个输出：0.2×1 + 0.4×0 + 0.6×0 + 0.8×0   = 0.2</text>
+  <text x="95" y="515" class="formula">第 2 个输出：0.2×0 + 0.4×1 + 0.6×1 + 0.8×0   = 1.0</text>
+  <text x="95" y="550" class="formula">第 3 个输出：0.2×0 + 0.4×0 + 0.6×0 + 0.8×0.5 = 0.4</text>
+
+  <rect x="65" y="600" width="1145" height="42" rx="9" fill="#eff6ff"/>
+  <text x="640" y="628" class="label" text-anchor="middle">教学示例：4→3　　Qwen3.5 实际：p:[1536] × W_patchᵀ:[1536,1152] → x_patch:[1152]</text>
+</svg>
