@@ -48,17 +48,17 @@ X：[B,T,H]
 
 输入 `X` 会分成几条支路：一条产生 Q、K、V，另外三条产生状态衰减、修正幅度和输出门控。旧状态先衰减，再根据当前 K 和 V 修正，最后由 Q 读出结果。下图画出了各条支路及其汇合位置：
 
-![Gated DeltaNet 的完整数据流](../assets/05-gated-deltanet-flow.svg)
+![Gated DeltaNet 的完整数据流](../assets/05-gated-deltanet-flow.svg?rev=20260809-1)
 
 三组控制量作用在不同位置：
 
 | 名称 | 代码来源 | 控制什么 |
 | --- | --- | --- |
-| 状态衰减 `alpha` | `a → g → exp(g)` | 旧状态保留多少 |
-| 修正幅度 `beta` | `b → sigmoid(b)` | 当前误差写入多少 |
+| 状态保留系数 `alpha` | `a → g → alpha=exp(g)` | 旧状态保留多少 |
+| 修正幅度 `beta` | `b → beta=sigmoid(b)` | 当前误差写入多少 |
 | 输出门控 `z` | `in_proj_z` | 状态读出结果有多少进入层输出 |
 
-Q、K、V、`beta`、`g` 和 `z` 都由当前 Hidden State 经过训练得到的 Linear 产生。它们不是 runtime 手工设置的参数。
+Q、K、V 以及原始控制量 `a`、`b`、`z` 都来自当前 Hidden State 的 Linear 投影。实现随后由 `a` 算出 `g` 和 `alpha`，由 `b` 算出 `beta`；这些数都不是 runtime 手工设置的参数。
 
 ## 3. 因果卷积与局部顺序特征
 

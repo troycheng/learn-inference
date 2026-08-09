@@ -2,9 +2,9 @@
   <title id="title">MoE 总参数和单 token 激活参数不同</title>
   <desc id="desc">检查点保存全部 Expert 权重，而一个 token 只计算 Top-K Routed Experts 和 Shared Expert。</desc>
   <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.panel{font-size:24px;font-weight:700;text-anchor:middle}.h{font-size:18px;font-weight:700;text-anchor:middle}.t{font-size:15px;text-anchor:middle}</style>
-  <rect width="1400" height="760" fill="#fff"/><text x="55" y="58" class="title">MoE 的 Total 和 Active 回答不同问题</text><text x="55" y="92" class="sub">一层保存 256 个路由专家；一个 token 只执行其中 8 个，再执行共享专家。</text>
+  <rect width="1400" height="760" fill="#fff"/><text x="55" y="58" class="title">MoE 的总参数与单 token 激活参数</text><text x="55" y="92" class="sub">一层保存 256 个路由专家；一个 token 只执行其中 8 个，再执行共享专家。</text>
   <rect x="55" y="135" width="610" height="545" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/><rect x="735" y="135" width="610" height="545" rx="20" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
-  <text x="360" y="185" class="panel">Total Parameters</text><text x="1040" y="185" class="panel">Active Parameters / token</text>
+  <text x="360" y="185" class="panel">总参数（Total Parameters）</text><text x="1040" y="185" class="panel">单 token 激活参数</text>
   <rect x="105" y="235" width="510" height="210" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="360" y="282" class="h">256 个 Routed Experts</text><text x="360" y="326" class="t">805.31M</text><text x="360" y="370" class="h">+ Shared Expert + Router + Gate</text><text x="360" y="414" class="t">一层合计 808.98M</text>
   <rect x="785" y="235" width="510" height="210" rx="16" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1040" y="282" class="h">Top-8 Routed Experts</text><text x="1040" y="326" class="t">25.17M</text><text x="1040" y="370" class="h">+ Shared Expert + Router + Gate</text><text x="1040" y="414" class="t">一层合计 28.84M</text>
   <rect x="105" y="500" width="510" height="105" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="360" y="540" class="h">决定全部 Expert 权重存储</text><text x="360" y="575" class="t">40 层 MoE 约 32.359B</text>

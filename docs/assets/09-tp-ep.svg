@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 740" width="1200" height="740" role="img" aria-labelledby="tp-ep-title tp-ep-desc">
-  <title id="tp-ep-title">TP 切矩阵，EP 分 Expert</title>
+  <title id="tp-ep-title">TP 切分矩阵，EP 分配专家</title>
   <desc id="tp-ep-desc">TP 让同一批 token 在多个矩阵分片上计算，再用集合通信合并部分结果。EP 按 Router 选出的 Expert ID 分发 token，专家计算后再把结果送回原 token 位置。</desc>
   <defs>
     <marker id="tp-ep-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
@@ -10,8 +10,8 @@
   </style>
   <rect width="1200" height="740" fill="#fff" data-graph-role="canvas"/>
   <g data-graph-role="title-block">
-    <text x="48" y="56" class="title">TP 切矩阵，EP 分 Expert</text>
-    <text x="48" y="88" class="sub">TP 每卡保存一块矩阵；EP 每卡保存一组 Experts。两者的通信发生在不同位置。</text>
+    <text x="48" y="56" class="title">TP 切分矩阵，EP 分配专家</text>
+    <text x="48" y="88" class="sub">TP 让每张卡保存一块矩阵；EP 让每张卡保存一组专家。两者的通信位置不同。</text>
   </g>
 
   <g data-graph-role="container" aria-label="Tensor Parallel">

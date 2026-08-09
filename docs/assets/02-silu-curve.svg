@@ -19,5 +19,5 @@
   <circle cx="290" cy="344" r="5" fill="#2563eb"/><circle cx="390" cy="320" r="5" fill="#2563eb"/><circle cx="490" cy="254" r="5" fill="#2563eb"/><circle cx="690" cy="63" r="5" fill="#2563eb"/>
   <text x="250" y="375" class="label">SiLU(-1)≈-0.269</text><text x="413" y="309" class="label">0</text><text x="498" y="240" class="label">0.731</text><text x="624" y="93" class="label">2.858</text>
   <rect x="88" y="390" width="584" height="42" rx="8" fill="#eff6ff" stroke="#bfdbfe"/>
-  <text x="380" y="416" text-anchor="middle" class="label">SiLU 是平滑的非线性函数，不是只能输出 0 或 1 的开关</text>
+  <text x="380" y="416" text-anchor="middle" class="label">SiLU 的输出连续变化，门值并不限于 0 或 1</text>
 </svg>

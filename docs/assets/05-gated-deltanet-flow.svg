@@ -43,9 +43,9 @@
   <rect x="315" y="145" width="170" height="104" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
   <text x="400" y="183" class="h">Q/K/V 投影</text><text x="400" y="216" class="s">H → 8192</text>
   <rect x="315" y="285" width="170" height="80" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
-  <text x="400" y="317" class="h">beta</text><text x="400" y="345" class="s">修正幅度</text>
+  <text x="400" y="317" class="h">b → β</text><text x="400" y="345" class="s">β = sigmoid(b)</text>
   <rect x="315" y="385" width="170" height="80" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
-  <text x="400" y="417" class="h">g</text><text x="400" y="445" class="s">旧状态衰减</text>
+  <text x="400" y="417" class="h">a → g → α</text><text x="400" y="445" class="s">α = exp(g)</text>
   <rect x="315" y="485" width="170" height="80" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
   <text x="400" y="517" class="h">z</text><text x="400" y="545" class="s">输出门控</text>
 
@@ -64,7 +64,7 @@
   <rect x="1135" y="335" width="140" height="120" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
   <text x="1205" y="375" class="h">RMSNorm</text><text x="1205" y="407" class="t">× SiLU(z)</text><text x="1205" y="435" class="s">输出门控</text>
   <rect x="1310" y="350" width="80" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-  <text x="1350" y="385" class="h">输出</text><text x="1350" y="415" class="s">H 维</text>
+  <text x="1350" y="385" class="t" font-weight="700">out_proj</text><text x="1350" y="415" class="s">H 维输出</text>
 
   <rect x="205" y="620" width="325" height="95" rx="14" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
   <text x="367" y="657" class="h">上一 token 留下的状态</text><text x="367" y="690" class="s">conv_state + recurrent_state</text>

@@ -13,7 +13,7 @@
     <marker id="green-arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#16a34a"/></marker>
   </defs>
   <rect width="960" height="480" fill="#ffffff"/>
-  <text x="40" y="42" class="title">默认归约：被指定的轴消失</text>
+  <text x="40" y="42" class="title">归约后，被合并的轴消失</text>
   <text x="40" y="68" class="sub">同一个 [2,3] 矩阵，选择不同轴会保留不同数量的结果</text>
 
   <g transform="translate(70,130)">

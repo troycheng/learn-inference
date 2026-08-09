@@ -38,7 +38,11 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 
 ![从 Qwen3.5-9B 配置还原文本模型结构](../assets/08-config-to-questions.svg?rev=20260809-2)
 
-例如，`hidden_size=4096` 同时规定了 Embedding 输出宽度、层与层之间的接口宽度以及 LM Head 的输入宽度；`num_attention_heads=16`、`head_dim=256` 说明 16 个 Query 头合计宽度为 4096；`num_key_value_heads=4` 则说明 K/V 头少于 Query 头，这是 GQA。`full_attention_interval=4` 要与总层数一起读：32 层中每四层出现一次 Full Attention，因此共有 8 层 Full Attention，其余 24 层是 Gated DeltaNet。
+`hidden_size=4096` 规定了三处公共宽度：Embedding 的输出、层与层之间的接口，以及 LM Head 的输入。
+
+Attention 的头数要和头宽一起读。`num_attention_heads=16`、`head_dim=256` 表示 16 个 Query 头合计宽度为 4096；`num_key_value_heads=4` 表示 K/V 头少于 Query 头，因此这里使用 GQA。
+
+层类型还要结合总层数计算。`full_attention_interval=4` 表示每四层出现一次 Full Attention；32 层中共有 8 层 Full Attention，其余 24 层是 Gated DeltaNet。
 
 掌握这次映射后，再把字段归纳成下面四组。
 
@@ -300,7 +304,7 @@ $$
 
 代入后约 28.84M 激活 FFN 参数，40 层约 1.154B。再加 Token Mixer、LM Head 等模块，官方用约 3B Active 表示整条单 token 路径。
 
-![MoE 的总参数与激活参数](../assets/08-total-vs-active.svg)
+![MoE 的总参数与激活参数](../assets/08-total-vs-active.svg?rev=20260809-1)
 
 检查点总数为：
 
@@ -436,7 +440,7 @@ Transformers 参考实现中，递归状态用 FP32，卷积状态沿用模型�
 35B-A3B，30 个 GDN 层： 约 61.9 MiB / 请求
 ```
 
-![KV Cache 与 Gated DeltaNet 状态怎样增长](../assets/08-state-growth.svg)
+![KV Cache 与 Gated DeltaNet 状态怎样增长](../assets/08-state-growth.svg?rev=20260809-1)
 
 KV 随每个请求的长度 `T` 线性增长；Gated DeltaNet 状态 shape 固定，但两者都随并发请求数增长。高性能 runtime 可能使用不同 dtype、布局或内存复用，部署前仍要检查真实分配。
 

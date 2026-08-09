@@ -67,5 +67,5 @@
     <rect x="131" y="220" width="72" height="54" rx="9" class="kv"/><text x="167" y="254" text-anchor="middle" class="label">V4</text>
     <text x="117" y="307" text-anchor="middle" class="note">共享一组 K/V</text>
   </g>
-  <text x="600" y="540" text-anchor="middle" class="note">相同 Head Dimension 下，K/V 的宽度和缓存元素数是 16 组 K/V 时的 1/4</text>
+  <text x="600" y="540" text-anchor="middle" class="note">Head Dimension 相同时，4 个 K/V 头的投影宽度和缓存元素数都是 16 个 K/V 头的 1/4</text>
 </svg>

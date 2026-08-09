@@ -23,7 +23,7 @@
     </style>
   </defs>
   <rect width="1200" height="700" fill="#FFFFFF"/>
-  <text x="60" y="58" class="title">RoPE 的用处：让点积看见两个 token 相差多少位置</text>
+  <text x="60" y="58" class="title">RoPE 如何把相对位置写入 Q/K 点积</text>
   <text x="60" y="94" class="note">位置决定各自旋转多少；Attention 比较 Q 和 K 时，真正留下的是两次旋转的差。</text>
 
   <rect x="45" y="125" width="340" height="455" rx="18" class="panel"/>
@@ -71,5 +71,5 @@
   <text x="985" y="531" text-anchor="middle" class="note">夹角仍是 2θ</text>
 
   <rect x="45" y="612" width="1110" height="58" rx="12" fill="#EEF2FF" stroke="#A5B4FC"/>
-  <text x="600" y="649" text-anchor="middle" class="label">共同旋转在点积里抵消：R(m)^T × R(n) = R(n-m)，位置影响只通过相对距离 n-m 进入</text>
+  <text x="600" y="649" text-anchor="middle" class="label">共同旋转在点积中抵消：R(m)ᵀR(n) = R(n−m)，位置影响只通过相对距离 n−m 进入</text>
 </svg>

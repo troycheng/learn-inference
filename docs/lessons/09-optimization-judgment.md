@@ -218,7 +218,7 @@ PP 能让单个模型跨越多张卡或多个节点，但不会让同一个 toke
 
 EP 把 Routed Experts 分布到不同设备。Router 选完 Top-K 后，token 特征被送到持有相应 Expert 的设备；Expert 算完，再把结果送回原 token 位置。
 
-![TP 与 EP 的通信位置](../assets/09-tp-ep.svg)
+![TP 与 EP 的通信位置](../assets/09-tp-ep.svg?rev=20260809-1)
 
 低并发时，每个 Expert 可能只收到少量 token，小 GEMM 和通信延迟占主导。热点 Expert 若集中在少数 Rank，整层还要等待最慢设备。Top-K 越大，每个 token 的路由分配和通信通常也越多。
 
