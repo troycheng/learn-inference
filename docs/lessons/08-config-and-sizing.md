@@ -557,7 +557,19 @@ $$
 AI_{KV}\approx\frac{131072T}{32768T}=4\ FLOPs/Byte
 $$
 
-这个例子只给出数量级。TP 下应换成每 Rank 的物理 KV 字节；最终判断还要看实际 Kernel 时间、有效带宽和端到端指标。
+这个例子只给出数量级。TP 下应把 FLOPs 和 KV 字节都换成每 Rank 口径；最终判断还要看实际 Kernel 时间、有效带宽和端到端指标。
+
+分子和分母必须使用同一口径。以 `TP=8` 为例，9B 每 Rank 通常计算 2 个 Query 头，并保存 1 个复制后的 K/V 头：
+
+$$
+FLOPs_{rank}\approx4\times8\times2\times256\times T=16384T
+$$
+
+$$
+KV\ Bytes_{rank}=2\times8\times1\times256\times2\times T=8192T
+$$
+
+所以这个布局下每 Rank 的近似算术强度是 `2 FLOPs/Byte`。不能拿全模型的 `131072T FLOPs` 除以单 Rank 的 `8192T Byte`；那会把八张卡的计算量和一张卡的数据量混在一起。
 
 ## 12. “两倍参数量”估算法的适用范围
 

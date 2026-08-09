@@ -47,6 +47,10 @@ def logical_kv_bytes_per_token(config: ModelConfig, element_bytes: int) -> int:
 
 def kv_bytes_per_rank_token(config: ModelConfig, element_bytes: int, tensor_parallel: int) -> int:
     """按第 8 课引用的 vLLM 规则，估算单个 TP Rank 保存的 K/V。"""
+    if tensor_parallel <= 0:
+        raise ValueError("TP 必须是正整数")
+    if config.kv_heads >= tensor_parallel and config.kv_heads % tensor_parallel != 0:
+        raise ValueError("本例要求 K/V 头数能被 TP 整除，或由多个 Rank 复制同一个 K/V 头")
     kv_heads_per_rank = max(1, config.kv_heads // tensor_parallel)
     return 2 * config.full_attention_layers * kv_heads_per_rank * config.head_dimension * element_bytes
 
@@ -54,6 +58,14 @@ def kv_bytes_per_rank_token(config: ModelConfig, element_bytes: int, tensor_para
 def attention_flops(config: ModelConfig, cached_tokens: int) -> int:
     """单步 Decode 中，全部 Full Attention 层 QK 和 AV 的近似 FLOPs。"""
     return 4 * config.full_attention_layers * config.query_heads * config.head_dimension * cached_tokens
+
+
+def attention_flops_per_rank(config: ModelConfig, cached_tokens: int, tensor_parallel: int) -> int:
+    """Query 头均匀切分时，单个 TP Rank 的 Attention 长度项。"""
+    if tensor_parallel <= 0 or config.query_heads % tensor_parallel != 0:
+        raise ValueError("本例要求 Query 头数能被 TP 整除")
+    query_heads_per_rank = config.query_heads // tensor_parallel
+    return 4 * config.full_attention_layers * query_heads_per_rank * config.head_dimension * cached_tokens
 
 
 def gated_deltanet_state_bytes(config: ModelConfig) -> int:
@@ -66,12 +78,14 @@ def gated_deltanet_state_bytes(config: ModelConfig) -> int:
 for model in (QWEN_9B, QWEN_35B):
     logical_kv = logical_kv_bytes_per_token(model, element_bytes=2)
     rank_kv = kv_bytes_per_rank_token(model, element_bytes=2, tensor_parallel=8)
+    rank_attention_flops = attention_flops_per_rank(model, cached_tokens=1, tensor_parallel=8)
     fixed_state = gated_deltanet_state_bytes(model)
 
     print(model.name)
     print(f"  检查点权重有效载荷：{model.checkpoint_payload_bytes / GIB:.2f} GiB")
     print(f"  BF16 逻辑 KV：{logical_kv / KIB:.0f} KiB / 请求 / 位置")
     print(f"  TP=8 时每 Rank KV：{rank_kv / KIB:.0f} KiB / 请求 / 位置")
+    print(f"  TP=8 时每 Rank KV 读取的近似算术强度：{rank_attention_flops / rank_kv:.1f} FLOPs/Byte")
     print(f"  Gated DeltaNet 固定状态：{fixed_state / MIB:.1f} MiB / 请求")
     for length in (4096, 131072):
         flops = attention_flops(model, cached_tokens=length)
@@ -90,3 +104,5 @@ assert gated_deltanet_state_bytes(QWEN_9B) == int(49.5 * MIB)
 assert gated_deltanet_state_bytes(QWEN_35B) == int(61.875 * MIB)
 assert attention_flops(QWEN_9B, 4096) == 536_870_912
 assert attention_flops(QWEN_35B, 131072) == 21_474_836_480
+assert attention_flops_per_rank(QWEN_9B, 1, tensor_parallel=8) == 16_384
+assert attention_flops_per_rank(QWEN_9B, 1, tensor_parallel=8) / (8 * KIB) == 2

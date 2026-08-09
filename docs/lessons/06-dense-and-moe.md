@@ -63,7 +63,7 @@ Expert 2：FFN_2
 Expert 3：FFN_3
 ```
 
-当前 token 的输入向量为 `x:[H]`。Router 是一个 Linear，它根据 `x` 产生 4 个分数：
+当前 token 进入 FFN 子层前，会先经过 RMSNorm。这里用 `x:[H]` 表示归一化后的向量。Router 是一个 Linear，它根据 `x` 产生 4 个分数：
 
 ```text
 Router 权重 W_router：[4,H]

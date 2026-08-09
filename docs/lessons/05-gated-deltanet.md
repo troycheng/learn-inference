@@ -245,6 +245,8 @@ $$
 0.2\times2+0.3\times5+0.5\times1=2.4
 $$
 
+![计算 p3 时，因果卷积只读取 p1、p2 和 p3](../assets/05-causal-convolution.svg)
+
 实际权重由训练得到。Qwen3.5 的窗口宽度是 4，并在卷积后使用 SiLU。
 
 深度卷积（Depthwise Convolution）表示每个通道分别沿 token 轴卷积，不在这一步混合不同通道。前面的 Linear 已经负责重组特征；这次卷积让 Q/K/V 的每个通道先带上很近的局部顺序信息。
