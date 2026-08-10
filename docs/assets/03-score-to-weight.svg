@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 540" width="1200" height="540" role="img" aria-labelledby="title desc">
   <title id="title">一行 Attention 分数经过 Softmax 变成权重</title>
-  <desc id="desc">位置 3 对三个位置的分数是 0.707、0、0.354，Softmax 后得到权重 0.456、0.225、0.320。</desc>
+  <desc id="desc">位置 3 对三个位置的分数是 0.707、1.414、0.707，Softmax 后得到权重 0.248、0.503、0.248。</desc>
   <style>
     text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #111827; }
     .title { font-size: 34px; font-weight: 600; }
@@ -29,9 +29,9 @@
   <text class="body" x="102" y="283">位置 1：“小明”</text>
   <text class="number" x="382" y="283" text-anchor="end">0.707</text>
   <text class="body" x="102" y="329">位置 2：“杯子”</text>
-  <text class="number" x="382" y="329" text-anchor="end">0</text>
+  <text class="number" x="382" y="329" text-anchor="end">1.414</text>
   <text class="body" x="102" y="375">位置 3：“它”</text>
-  <text class="number" x="382" y="375" text-anchor="end">0.354</text>
+  <text class="number" x="382" y="375" text-anchor="end">0.707</text>
 
   <rect x="535" y="224" width="130" height="114" rx="57" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
   <text class="label" x="600" y="276" text-anchor="middle">Softmax</text>
@@ -41,11 +41,11 @@
   <text class="label" x="958" y="194" text-anchor="middle">用于汇总 V 的权重</text>
   <text class="small" x="958" y="225" text-anchor="middle">都不小于 0，并且总和为 1</text>
   <text class="body" x="818" y="283">位置 1：“小明”</text>
-  <text class="number" x="1098" y="283" text-anchor="end">0.456</text>
+  <text class="number" x="1098" y="283" text-anchor="end">0.248</text>
   <text class="body" x="818" y="329">位置 2：“杯子”</text>
-  <text class="number" x="1098" y="329" text-anchor="end">0.225</text>
+  <text class="number" x="1098" y="329" text-anchor="end">0.503</text>
   <text class="body" x="818" y="375">位置 3：“它”</text>
-  <text class="number" x="1098" y="375" text-anchor="end">0.320</text>
+  <text class="number" x="1098" y="375" text-anchor="end">0.248</text>
 
   <rect x="276" y="448" width="648" height="58" rx="10" fill="#f9fafb" stroke="#d1d5db" stroke-width="1.5"/>
   <text class="body" x="600" y="484" text-anchor="middle">分数决定相对大小，Softmax 把它们整理成可直接加权的比例。</text>

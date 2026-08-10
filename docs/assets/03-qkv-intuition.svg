@@ -1,60 +1,74 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
-  <title id="title">用一次软检索理解 Q K V</title>
-  <desc id="desc">当前 token 它生成查询 Q，所有可见 token 生成键 K 和值 V。查询与键计算权重，再按权重汇总值。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
+  <title id="title">位置 3 的一次 Attention 读取</title>
+  <desc id="desc">位置 3 的查询向量与三个键向量比较，得到三个权重。每个权重分别乘对应的值向量，三项相加后得到位置 3 的单头输出。</desc>
   <defs>
     <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2563EB"/></marker>
-    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#EA580C"/></marker>
     <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#16A34A"/></marker>
     <style>
       text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #111827; }
-      .title { font-size: 30px; font-weight: 700; }
-      .head { font-size: 21px; font-weight: 650; }
-      .label { font-size: 18px; font-weight: 600; }
-      .note { font-size: 16px; fill: #6B7280; }
-      .token { fill: #FFFFFF; stroke: #D1D5DB; stroke-width: 2; }
+      .title { font-size: 32px; font-weight: 700; }
+      .section { font-size: 22px; font-weight: 700; }
+      .label { font-size: 19px; font-weight: 600; }
+      .note { font-size: 16px; fill: #64748B; }
       .query { fill: #EFF6FF; stroke: #2563EB; stroke-width: 2; }
       .key { fill: #FFF7ED; stroke: #EA580C; stroke-width: 2; }
+      .weight { fill: #F8FAFC; stroke: #94A3B8; stroke-width: 2; }
       .value { fill: #F0FDF4; stroke: #16A34A; stroke-width: 2; }
     </style>
   </defs>
-  <rect width="1200" height="680" fill="#FFFFFF"/>
-  <text x="55" y="58" class="title">以“它”为例：先匹配 K，再汇总 V</text>
-  <text x="55" y="92" class="note">每个 token 都有 Q、K、V。图中只展开“它”的一次查询。</text>
 
-  <text x="65" y="150" class="head">1  当前 token 发出 Q</text>
-  <rect x="65" y="185" width="170" height="86" rx="10" class="token"/>
-  <text x="150" y="220" text-anchor="middle" class="label">位置 3：“它”</text>
-  <text x="150" y="248" text-anchor="middle" class="note">隐藏状态 x3</text>
-  <path d="M235 228 H290" fill="none" stroke="#2563EB" stroke-width="3" marker-end="url(#arrow-blue)"/>
-  <rect x="290" y="175" width="210" height="106" rx="10" class="query"/>
-  <text x="395" y="215" text-anchor="middle" class="head">查询 Q3</text>
-  <text x="395" y="246" text-anchor="middle" class="note">“我需要找什么信息？”</text>
+  <rect width="1200" height="650" fill="#FFFFFF"/>
+  <text x="54" y="58" class="title">位置 3 的一次读取：先算权重，再汇总 V</text>
+  <text x="54" y="92" class="note">Q/K 只负责匹配；得到的一整行权重才会分别乘到 V1、V2、V3 上。</text>
 
-  <text x="565" y="150" class="head">2  所有可见 token 提供 K 和 V</text>
-  <rect x="565" y="190" width="150" height="70" rx="8" class="token"/><text x="640" y="232" text-anchor="middle" class="label">位置 1：小明</text>
-  <rect x="565" y="300" width="150" height="70" rx="8" fill="#DBEAFE" stroke="#2563EB" stroke-width="2"/><text x="640" y="342" text-anchor="middle" class="label">位置 2：杯子</text>
-  <rect x="565" y="410" width="150" height="70" rx="8" class="token"/><text x="640" y="452" text-anchor="middle" class="label">位置 3：它</text>
+  <text x="54" y="145" class="section">1  Q3 与每条 K 比较</text>
+  <rect x="54" y="190" width="205" height="96" rx="12" class="query"/>
+  <text x="156" y="226" text-anchor="middle" class="label">位置 3：“它”</text>
+  <text x="156" y="258" text-anchor="middle" class="label">查询 Q3</text>
 
-  <rect x="755" y="190" width="155" height="70" rx="8" class="key"/><text x="832" y="232" text-anchor="middle" class="label">K1</text>
-  <rect x="755" y="300" width="155" height="70" rx="8" fill="#FED7AA" stroke="#EA580C" stroke-width="3"/><text x="832" y="328" text-anchor="middle" class="label">K2</text><text x="832" y="352" text-anchor="middle" class="note">匹配较强</text>
-  <rect x="755" y="410" width="155" height="70" rx="8" class="key"/><text x="832" y="452" text-anchor="middle" class="label">K3</text>
+  <path d="M259 238 H310 V167 H374" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M310 238 H374" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M310 238 V309 H374" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
 
-  <rect x="950" y="190" width="155" height="70" rx="8" class="value"/><text x="1027" y="232" text-anchor="middle" class="label">V1</text>
-  <rect x="950" y="300" width="155" height="70" rx="8" fill="#DCFCE7" stroke="#16A34A" stroke-width="3"/><text x="1027" y="328" text-anchor="middle" class="label">V2</text><text x="1027" y="352" text-anchor="middle" class="note">贡献较多</text>
-  <rect x="950" y="410" width="155" height="70" rx="8" class="value"/><text x="1027" y="452" text-anchor="middle" class="label">V3</text>
+  <rect x="374" y="132" width="210" height="70" rx="10" class="key"/>
+  <text x="479" y="160" text-anchor="middle" class="label">小明的 K1</text>
+  <text x="479" y="184" text-anchor="middle" class="note">候选位置 1</text>
+  <rect x="374" y="203" width="210" height="70" rx="10" class="key"/>
+  <text x="479" y="231" text-anchor="middle" class="label">杯子的 K2</text>
+  <text x="479" y="255" text-anchor="middle" class="note">候选位置 2</text>
+  <rect x="374" y="274" width="210" height="70" rx="10" class="key"/>
+  <text x="479" y="302" text-anchor="middle" class="label">“它”的 K3</text>
+  <text x="479" y="326" text-anchor="middle" class="note">候选位置 3</text>
 
-  <path d="M500 228 H530 V515 H735 V225 M735 225 V445" fill="none" stroke="#EA580C" stroke-width="3"/>
-  <path d="M735 225 H755" fill="none" stroke="#EA580C" stroke-width="2" marker-end="url(#arrow-orange)"/>
-  <path d="M735 335 H755" fill="none" stroke="#EA580C" stroke-width="2" marker-end="url(#arrow-orange)"/>
-  <path d="M735 445 H755" fill="none" stroke="#EA580C" stroke-width="2" marker-end="url(#arrow-orange)"/>
-  <text x="545" y="507" class="note">Q3 与每条 K 点积</text>
-  <path d="M910 335 H950" fill="none" stroke="#16A34A" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <path d="M584 167 H678" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M584 238 H678" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <path d="M584 309 H678" fill="none" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <rect x="678" y="132" width="220" height="70" rx="10" class="weight"/>
+  <text x="788" y="174" text-anchor="middle" class="label">位置 1 分数 → w1</text>
+  <rect x="678" y="203" width="220" height="70" rx="10" fill="#FEF3C7" stroke="#D97706" stroke-width="2.5"/>
+  <text x="788" y="245" text-anchor="middle" class="label">位置 2 分数 → w2</text>
+  <rect x="678" y="274" width="220" height="70" rx="10" class="weight"/>
+  <text x="788" y="316" text-anchor="middle" class="label">位置 3 分数 → w3</text>
+  <text x="932" y="220" class="note">三个权重经过</text>
+  <text x="932" y="247" class="note">Softmax 后总和为 1</text>
 
-  <rect x="260" y="555" width="680" height="70" rx="10" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="600" y="584" text-anchor="middle" class="head">3  用 Q/K 得到的权重汇总所有 V</text>
-  <text x="600" y="611" text-anchor="middle" class="note">输出会写回位置 3 的表示；“杯子”权重较高只是示意，不是人工规则</text>
+  <line x1="54" y1="383" x2="1146" y2="383" stroke="#E2E8F0" stroke-width="2"/>
+  <text x="54" y="430" class="section">2  每个权重乘对应的 V，三项相加</text>
 
-  <line x1="65" y1="660" x2="100" y2="660" stroke="#2563EB" stroke-width="3" marker-end="url(#arrow-blue)"/><text x="112" y="665" class="note">查询</text>
-  <line x1="205" y1="660" x2="240" y2="660" stroke="#EA580C" stroke-width="3" marker-end="url(#arrow-orange)"/><text x="252" y="665" class="note">匹配</text>
-  <line x1="345" y1="660" x2="380" y2="660" stroke="#16A34A" stroke-width="3" marker-end="url(#arrow-green)"/><text x="392" y="665" class="note">信息汇总</text>
+  <rect x="54" y="465" width="250" height="84" rx="11" class="value"/>
+  <text x="179" y="498" text-anchor="middle" class="label">小明的 V1 × w1</text>
+  <text x="179" y="526" text-anchor="middle" class="note">位置 1 的贡献</text>
+  <rect x="344" y="465" width="250" height="84" rx="11" fill="#DCFCE7" stroke="#16A34A" stroke-width="2.5"/>
+  <text x="469" y="498" text-anchor="middle" class="label">杯子的 V2 × w2</text>
+  <text x="469" y="526" text-anchor="middle" class="note">位置 2 的贡献</text>
+  <rect x="634" y="465" width="250" height="84" rx="11" class="value"/>
+  <text x="759" y="498" text-anchor="middle" class="label">“它”的 V3 × w3</text>
+  <text x="759" y="526" text-anchor="middle" class="note">位置 3 的贡献</text>
+
+  <path d="M304 507 C360 507 350 588 918 588" fill="none" stroke="#16A34A" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <path d="M594 507 C650 507 640 588 918 588" fill="none" stroke="#16A34A" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <path d="M884 507 C918 507 900 588 918 588" fill="none" stroke="#16A34A" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="918" y="546" width="228" height="84" rx="12" fill="#DCFCE7" stroke="#16A34A" stroke-width="3"/>
+  <text x="1032" y="581" text-anchor="middle" class="label">位置 3 的单头输出</text>
+  <text x="1032" y="609" text-anchor="middle" class="note">O3 = w1V1 + w2V2 + w3V3</text>
 </svg>

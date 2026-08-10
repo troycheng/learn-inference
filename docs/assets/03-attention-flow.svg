@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="650" viewBox="0 0 1200 650" role="img" aria-labelledby="title desc">
-  <title id="title">Attention 从单头结果到完整子层输出</title>
+  <title id="title">缩放点积 Attention 的主计算</title>
   <desc id="desc">同一组隐藏状态分别产生查询、键和值，查询和键计算分数，经过因果遮罩和 Softmax 后得到权重。每头汇总值后得到 [B,T,D]，所有查询头拼接并经过输出投影后才得到完整子层输出 [B,T,H]。</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
@@ -18,7 +18,7 @@
     </style>
   </defs>
   <rect width="1200" height="650" fill="#FFFFFF"/>
-  <text x="60" y="62" class="title">Attention：从单头结果到完整子层输出</text>
+  <text x="60" y="62" class="title">缩放点积 Attention 的主计算</text>
   <text x="60" y="96" class="small">先判断应该关注哪些位置，再按权重取回这些位置携带的信息</text>
 
   <rect x="55" y="255" width="180" height="90" class="box blue"/>
