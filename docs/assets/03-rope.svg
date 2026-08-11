@@ -69,5 +69,5 @@
   <text x="985" y="531" text-anchor="middle" class="note">夹角仍是 θ</text>
 
   <rect x="45" y="612" width="1110" height="58" rx="12" fill="#EEF2FF" stroke="#A5B4FC"/>
-  <text x="600" y="649" text-anchor="middle" class="label">共同旋转在点积中抵消：R(m)ᵀR(n) = R(n−m)，位置影响只通过相对距离 n−m 进入</text>
+  <text x="600" y="649" text-anchor="middle" class="label">转置是反向旋转：R(m)ᵀ = R(-m)；连续旋转角度相加：R(-m)R(n) = R(n−m)</text>
 </svg>
