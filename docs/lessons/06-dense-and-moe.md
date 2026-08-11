@@ -400,4 +400,4 @@ $$
 
 ---
 
-[上一课：Gated DeltaNet 的状态更新机制](05-gated-deltanet.md) · [返回课程路线](../roadmap.md) · [下一课：多模态输入与视觉编码](07-multimodal-input.md)
+[上一课：Gated DeltaNet 的状态读写](05-gated-deltanet.md) · [返回课程路线](../roadmap.md) · [下一课：多模态输入与视觉编码](07-multimodal-input.md)

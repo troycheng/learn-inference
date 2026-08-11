@@ -48,7 +48,7 @@
 | 2 | [第 2 课：Decoder Layer 的结构与计算](docs/lessons/02-inside-a-decoder-layer.md) | 解释 RMSNorm、残差连接和 SwiGLU FFN |
 | 3 | [第 3 课：Attention 的计算原理](docs/lessons/03-attention.md) | 手算一次 Attention 并解释 RoPE、GQA |
 | 4 | [第 4 课：Prefill、Decode 与 KV Cache](docs/lessons/04-prefill-decode-kv-cache.md) | 解释生成阶段、缓存复用和批处理 |
-| 5 | [第 5 课：Gated DeltaNet 的状态更新机制](docs/lessons/05-gated-deltanet.md) | 区分固定状态与随长度增长的 KV Cache |
+| 5 | [第 5 课：Gated DeltaNet 的状态读写](docs/lessons/05-gated-deltanet.md) | 区分固定状态与随长度增长的 KV Cache |
 | 6 | [第 6 课：Dense FFN 与 MoE 的结构差异](docs/lessons/06-dense-and-moe.md) | 解释路由器、Top-K、共享专家和激活参数 |
 | 7 | [第 7 课：多模态输入与视觉编码](docs/lessons/07-multimodal-input.md) | 从像素和 Patch 推导到 Decoder 输入 |
 | 8 | [第 8 课：模型配置与资源估算](docs/lessons/08-config-and-sizing.md) | 估算权重、请求状态和主要计算量 |

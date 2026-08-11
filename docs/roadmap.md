@@ -50,7 +50,7 @@
 | [2](lessons/02-inside-a-decoder-layer.md) | Decoder Layer 的结构与计算 | 解释 RMSNorm、Token Mixer、残差和 SwiGLU FFN |
 | [3](lessons/03-attention.md) | Attention 的计算原理 | 手算 QK 点积、因果遮罩、Softmax 和 V 的加权求和 |
 | [4](lessons/04-prefill-decode-kv-cache.md) | Prefill、Decode 与 KV Cache | 解释生成阶段、缓存复用和服务端批处理 |
-| [5](lessons/05-gated-deltanet.md) | Gated DeltaNet 的状态更新机制 | 区分固定状态、因果卷积和 Full Attention KV |
+| [5](lessons/05-gated-deltanet.md) | Gated DeltaNet 的状态读写 | 区分固定状态、因果卷积和 Full Attention KV |
 | [6](lessons/06-dense-and-moe.md) | Dense FFN 与 MoE 的结构差异 | 解释路由器、Top-K、共享专家、总参数和激活参数 |
 | [7](lessons/07-multimodal-input.md) | 多模态输入与视觉编码 | 从像素、Patch 和视觉编码器推导到 `[B,T,H]` |
 | [8](lessons/08-config-and-sizing.md) | 模型配置与资源估算 | 区分保存、计算与累加 dtype，估算参数、权重、请求状态和计算量 |

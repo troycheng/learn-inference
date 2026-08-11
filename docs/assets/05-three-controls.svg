@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 550" width="960" height="550" role="img" aria-labelledby="title desc">
+  <title id="title">α、β、z 在 Gated DeltaNet 中的作用位置</title>
+  <desc id="desc">α 在状态更新前衰减旧状态，β 控制当前误差的写入幅度，z 在状态读出后调节本次输出。</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#16a34a"/></marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
+  </defs>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 27px; font-weight: 700; }
+    .sub { font-size: 15px; fill: #6b7280; }
+    .row { font-size: 17px; font-weight: 700; }
+    .head { font-size: 17px; font-weight: 700; text-anchor: middle; }
+    .body { font-size: 14px; text-anchor: middle; }
+    .small { font-size: 13px; fill: #6b7280; text-anchor: middle; }
+    .flow { fill: none; stroke-width: 2.5; }
+  </style>
+
+  <rect width="960" height="550" fill="#ffffff"/>
+  <text x="40" y="48" class="title">α、β、z 分别作用在哪里</text>
+  <text x="40" y="78" class="sub">α 和 β 改变状态更新；z 不改状态，只调节当前 token 的输出。</text>
+
+  <!-- State update arrows -->
+  <path d="M170 180 H210" class="flow" stroke="#16a34a" marker-end="url(#arrow-green)"/>
+  <path d="M350 180 H390" class="flow" stroke="#16a34a" marker-end="url(#arrow-green)"/>
+  <path d="M520 180 H560" class="flow" stroke="#16a34a" marker-end="url(#arrow-green)"/>
+  <path d="M750 180 H790" class="flow" stroke="#16a34a" marker-end="url(#arrow-green)"/>
+
+  <!-- Output arrows -->
+  <path d="M170 420 H210" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
+  <path d="M350 420 H390" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
+  <path d="M520 420 H560" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
+  <path d="M750 420 H790" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
+
+  <text x="40" y="115" class="row">1. 更新状态</text>
+  <rect x="40" y="140" width="130" height="80" rx="11" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+  <rect x="210" y="130" width="140" height="100" rx="11" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <rect x="390" y="140" width="130" height="80" rx="11" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+  <rect x="560" y="130" width="190" height="100" rx="11" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <rect x="790" y="140" width="130" height="80" rx="11" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
+
+  <text x="105" y="176" class="head">旧状态</text>
+  <text x="105" y="202" class="body">S<tspan baseline-shift="sub" font-size="11">t-1</tspan></text>
+  <text x="280" y="165" class="head">α</text>
+  <text x="280" y="190" class="body">整张状态衰减</text>
+  <text x="280" y="213" class="small">保留多少过去</text>
+  <text x="455" y="176" class="head">衰减后</text>
+  <text x="455" y="202" class="body">S̄<tspan baseline-shift="sub" font-size="11">t</tspan></text>
+  <text x="655" y="165" class="head">β</text>
+  <text x="655" y="190" class="body">沿当前 K 写入误差</text>
+  <text x="655" y="213" class="small">本次修正写多少</text>
+  <text x="855" y="176" class="head">新状态</text>
+  <text x="855" y="202" class="body">S<tspan baseline-shift="sub" font-size="11">t</tspan></text>
+
+  <line x1="40" y1="275" x2="920" y2="275" stroke="#e5e7eb" stroke-width="1.5"/>
+
+  <text x="40" y="335" class="row">2. 产生当前输出</text>
+  <rect x="40" y="380" width="130" height="80" rx="11" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
+  <rect x="210" y="370" width="140" height="100" rx="11" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <rect x="390" y="380" width="130" height="80" rx="11" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <rect x="560" y="370" width="190" height="100" rx="11" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <rect x="790" y="380" width="130" height="80" rx="11" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+
+  <text x="105" y="416" class="head">新状态</text>
+  <text x="105" y="442" class="body">S<tspan baseline-shift="sub" font-size="11">t</tspan></text>
+  <text x="280" y="407" class="head">Query 读取</text>
+  <text x="280" y="435" class="body">o = qS<tspan baseline-shift="sub" font-size="11">t</tspan></text>
+  <text x="280" y="457" class="small">状态本身不再改变</text>
+  <text x="455" y="416" class="head">RMSNorm</text>
+  <text x="455" y="443" class="small">稳定输出尺度</text>
+  <text x="655" y="405" class="head">z</text>
+  <text x="655" y="432" class="body">逐元素乘 SiLU(z)</text>
+  <text x="655" y="456" class="small">调节本次输出特征</text>
+  <text x="855" y="416" class="head">层输出</text>
+  <text x="855" y="443" class="small">送入 out_proj</text>
+
+  <text x="480" y="520" text-anchor="middle" class="sub">记忆方法：α 管过去，β 管这次写入，z 管这次输出。</text>
+</svg>

@@ -17,8 +17,8 @@
     </style>
   </defs>
   <rect width="1200" height="650" fill="#FFFFFF"/>
-  <text x="55" y="58" class="title">同一套模型，先处理 Prompt，再逐个生成</text>
-  <text x="55" y="94" class="note">箭头表示已确认 token 的依赖。缓存让后续轮次不用重新计算整个前缀。</text>
+  <text x="55" y="58" class="title">一次生成要经过多次模型前向</text>
+  <text x="55" y="94" class="note">每次前向只处理已经确定的 token。橙色 token 要到下一轮才会写入 Cache。</text>
 
   <rect x="45" y="130" width="330" height="410" rx="18" class="stage"/>
   <text x="210" y="171" text-anchor="middle" class="head">Prefill</text>
@@ -32,7 +32,7 @@
   <rect x="95" y="330" width="230" height="58" rx="10" fill="#EFF6FF" stroke="#BFDBFE" stroke-width="1.5"/>
   <text x="210" y="366" text-anchor="middle" class="label">一次模型前向</text>
   <path d="M210 295V325" class="flow"/>
-  <rect x="88" y="428" width="145" height="52" rx="9" class="cache"/><text x="160" y="460" text-anchor="middle" class="label">Cache 长度 4</text>
+  <rect x="88" y="428" width="145" height="52" rx="9" class="cache"/><text x="160" y="460" text-anchor="middle" class="label">Cache：p1 至 p4</text>
   <rect x="253" y="428" width="72" height="52" rx="9" class="output"/><text x="289" y="461" text-anchor="middle" class="label">y1</text>
   <path d="M210 388V416H160V423" class="flow"/>
   <path d="M210 388V416H289V423" class="flow"/>
@@ -45,7 +45,7 @@
   <text x="600" y="354" text-anchor="middle" class="label">读取历史 Cache</text>
   <text x="600" y="377" text-anchor="middle" class="note">只计算新位置</text>
   <path d="M600 295V325" class="flow"/>
-  <rect x="478" y="428" width="145" height="52" rx="9" class="cache"/><text x="550" y="460" text-anchor="middle" class="label">Cache 长度 5</text>
+  <rect x="478" y="428" width="145" height="52" rx="9" class="cache"/><text x="550" y="460" text-anchor="middle" class="label">Cache：再加 y1</text>
   <rect x="643" y="428" width="72" height="52" rx="9" class="output"/><text x="679" y="461" text-anchor="middle" class="label">y2</text>
   <path d="M600 388V416H550V423" class="flow"/>
   <path d="M600 388V416H679V423" class="flow"/>
@@ -58,7 +58,7 @@
   <text x="990" y="354" text-anchor="middle" class="label">读取历史 Cache</text>
   <text x="990" y="377" text-anchor="middle" class="note">只计算新位置</text>
   <path d="M990 295V325" class="flow"/>
-  <rect x="868" y="428" width="145" height="52" rx="9" class="cache"/><text x="940" y="460" text-anchor="middle" class="label">Cache 长度 6</text>
+  <rect x="868" y="428" width="145" height="52" rx="9" class="cache"/><text x="940" y="460" text-anchor="middle" class="label">Cache：再加 y2</text>
   <rect x="1033" y="428" width="72" height="52" rx="9" class="output"/><text x="1069" y="461" text-anchor="middle" class="label">y3</text>
   <path d="M990 388V416H940V423" class="flow"/>
   <path d="M990 388V416H1069V423" class="flow"/>
@@ -66,5 +66,5 @@
   <path d="M325 454H418V266H559" class="flow"/>
   <path d="M715 454H808V266H949" class="flow"/>
   <rect x="55" y="574" width="1090" height="48" rx="10" fill="#F8FAFC" stroke="#D1D5DB"/>
-  <text x="600" y="605" text-anchor="middle" class="label">Prefill 建立历史状态；每轮 Decode 只推进一个已经确认的新位置</text>
+  <text x="600" y="605" text-anchor="middle" class="label">y1 被选出时还不在 Cache；输入下一轮后才会写入</text>
 </svg>
