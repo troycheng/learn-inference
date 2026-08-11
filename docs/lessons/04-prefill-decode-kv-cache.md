@@ -364,10 +364,9 @@ Prompt 是 `p1 p2 p3 p4`，模型最终生成 `y1 y2 y3`。补全下表：
 
 Decode 第 2 轮结束后，Cache 中有 6 个位置。`y3` 刚从 Logits 中选出，还没有进入下一次模型前向，因此不在 Cache 中。
 
-$$
-2\times2\times1\times6\times2\times4\times2
-=384\ \text{Byte}
-$$
+```text
+2 × 2 × 1 × 6 × 2 × 4 × 2 = 384 Byte
+```
 
 这些因子依次表示 K/V 两份、2 个 Full Attention 层、1 条序列、6 个缓存位置、2 个 K/V 头、每头 4 维和 BF16 每元素 2 Byte。
 

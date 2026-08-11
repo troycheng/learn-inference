@@ -617,21 +617,21 @@ Tensor Parallel         = 8
 
 每位置 KV 为：
 
-$$
-2\times8\times4\times256\times2=32768\ Byte=32\ KiB
-$$
+```text
+2 × 8 × 4 × 256 × 2 = 32768 Byte = 32 KiB
+```
 
 每请求共有 `4096+256=4352` 个位置：
 
-$$
-4352\times32\ KiB=136\ MiB
-$$
+```text
+4352 × 32 KiB = 136 MiB
+```
 
 TP=8 大于 `Nkv=4`，每 Rank 保存一个 K/V 头，因此每 Rank、每位置为：
 
-$$
-2\times8\times1\times256\times2=8192\ Byte=8\ KiB
-$$
+```text
+2 × 8 × 1 × 256 × 2 = 8192 Byte = 8 KiB
+```
 
 容量对比如下：
 

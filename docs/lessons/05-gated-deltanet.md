@@ -424,35 +424,31 @@ $$
 
 旧状态先衰减：
 
-$$
-\bar S_t=0.5S_{t-1}=
-\begin{bmatrix}1&0.5\\0&1.5\end{bmatrix}
-$$
+```text
+S_bar = 0.5 × S_prev = [[1, 0.5], [0, 1.5]]
+```
 
 Key 读取旧值：
 
-$$
-\hat v_t=k\bar S_t=[1,0.5]
-$$
+```text
+v_old = k × S_bar = [1, 0.5]
+```
 
 计算误差并写入一半：
 
-$$
-e_t=0.5([4,2]-[1,0.5])=[1.5,0.75]
-$$
+```text
+e = 0.5 × ([4, 2] - [1, 0.5]) = [1.5, 0.75]
+```
 
-$$
-S_t=\bar S_t+k^Te_t=
-\begin{bmatrix}2.5&1.25\\0&1.5\end{bmatrix}
-$$
+```text
+S = S_bar + kᵀ × e = [[2.5, 1.25], [0, 1.5]]
+```
 
-Query 读取并按 `\sqrt{D_k}` 缩放：
+Query 读取并按 `√D_k` 缩放：
 
-$$
-o_t=\frac{qS_t}{\sqrt{2}}
-=\frac{[2.5,1.25]}{\sqrt{2}}
-\approx[1.768,0.884]
-$$
+```text
+o = q × S / √2 = [2.5, 1.25] / √2 ≈ [1.768, 0.884]
+```
 
 上下文翻倍时，`recurrent_state` 的数值会继续更新，shape 不会翻倍。Qwen3.5 仍有 8 个 Full Attention 层保存随长度增长的 KV Cache，所以整个请求状态并非常数大小。
 

@@ -18,6 +18,22 @@ endpoint = URI("https://api.github.com/markdown")
 errors = []
 
 files.each do |file|
+  in_details = false
+  File.readlines(file, chomp: true).each_with_index do |line, index|
+    in_details = true if line.match?(/<details(?:\s|>)/)
+
+    if in_details
+      stripped = line.strip
+      has_display_math = stripped == "$$" || stripped.start_with?("```math")
+      has_inline_math = line.match?(/(?<!\\)\$(?!\$).+?(?<!\\)\$/)
+      if has_display_math || has_inline_math
+        errors << "#{file}:#{index + 1}: math inside <details> is not rendered by GitHub"
+      end
+    end
+
+    in_details = false if line.include?("</details>")
+  end
+
   request = Net::HTTP::Post.new(endpoint)
   request["Accept"] = "application/vnd.github+json"
   request["User-Agent"] = "learn-inference-course-check"
