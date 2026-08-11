@@ -96,7 +96,7 @@ Qwen3.5-9B 的 Full Attention 头维度是 `D=256`，缩放系数为 `1/√256=1
 
 位置 3 没有需要遮住的未来位置。三个缩放分数经过 Softmax 后得到：
 
-![一行分数经过 Softmax 变成权重](../assets/03-score-to-weight.svg?rev=20260810-1)
+![一行分数经过 Softmax 变成权重](../assets/03-score-to-weight.svg?rev=20260811-1)
 
 未截断的权重是：
 
