@@ -515,7 +515,7 @@ $$
 
 这里的撇号只表示“准备好进入 Attention 的数据”。V 不参与 Q/K 打分，所以不旋转。
 
-![RoPE 在 Attention 计算流程中的位置](../assets/03-rope-in-attention.svg?rev=20260811-1)
+![RoPE 在 Attention 计算流程中的位置](../assets/03-rope-in-attention.svg?rev=20260811-2)
 
 真正进入 Attention 分数的是旋转后的 Q 和 K：
 
