@@ -1,71 +1,76 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610" role="img" aria-labelledby="title desc">
-  <title id="title">Qwen3.5 的分组查询注意力</title>
-  <desc id="desc">Qwen3.5 有十六个查询头和四个键值头，每四个查询头共享一组键和值。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
+  <title id="title">多头注意力与 GQA 的 K/V 共享方式</title>
+  <desc id="desc">普通多头注意力为每个查询头配一组键值头。GQA 让多个查询头共享同一组键和值。共享的键值头仍然包含序列中所有 token 位置的 K 和 V。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#64748B"/></marker>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2563EB"/></marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#16A34A"/></marker>
     <style>
-      text { font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill: #0F172A; }
-      .title { font-size: 30px; font-weight: 700; }
-      .group { font-size: 21px; font-weight: 650; }
-      .label { font-size: 18px; font-weight: 650; }
-      .note { font-size: 17px; fill: #475569; }
+      text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #111827; }
+      .title { font-size: 31px; font-weight: 700; }
+      .head { font-size: 22px; font-weight: 700; }
+      .label { font-size: 18px; font-weight: 600; }
+      .note { font-size: 16px; fill: #64748B; }
+      .panel { fill: #F8FAFC; stroke: #CBD5E1; stroke-width: 2; }
       .q { fill: #EFF6FF; stroke: #2563EB; stroke-width: 2; }
       .kv { fill: #F0FDF4; stroke: #16A34A; stroke-width: 2; }
-      .frame { fill: #F8FAFC; stroke: #CBD5E1; stroke-width: 2; }
-      .line { stroke: #64748B; stroke-width: 2; marker-end: url(#arrow); }
+      .actual { fill: #FFF7ED; stroke: #EA580C; stroke-width: 2; }
+      .qline { fill: none; stroke: #2563EB; stroke-width: 2.2; marker-end: url(#arrow-blue); }
     </style>
   </defs>
-  <rect width="1200" height="610" fill="#FFFFFF"/>
-  <text x="55" y="60" class="title">Qwen3.5-9B：16 个查询头，4 组键值头</text>
-  <text x="55" y="96" class="note">每 4 个查询头共享同一组 K 和 V。共享的是历史 K/V，不是查询 Q。</text>
 
-  <g transform="translate(55 145)">
-    <rect width="260" height="330" rx="14" class="frame"/>
-    <text x="130" y="42" text-anchor="middle" class="group">第 1 组</text>
-    <rect x="25" y="75" width="48" height="48" rx="8" class="q"/><text x="49" y="106" text-anchor="middle" class="label">Q1</text>
-    <rect x="85" y="75" width="48" height="48" rx="8" class="q"/><text x="109" y="106" text-anchor="middle" class="label">Q2</text>
-    <rect x="145" y="75" width="48" height="48" rx="8" class="q"/><text x="169" y="106" text-anchor="middle" class="label">Q3</text>
-    <rect x="205" y="75" width="48" height="48" rx="8" class="q"/><text x="229" y="106" text-anchor="middle" class="label">Q4</text>
-    <line x1="130" y1="140" x2="130" y2="205" class="line"/>
-    <rect x="44" y="220" width="72" height="54" rx="9" class="kv"/><text x="80" y="254" text-anchor="middle" class="label">K1</text>
-    <rect x="144" y="220" width="72" height="54" rx="9" class="kv"/><text x="180" y="254" text-anchor="middle" class="label">V1</text>
-    <text x="130" y="307" text-anchor="middle" class="note">共享一组 K/V</text>
-  </g>
-  <g transform="translate(340 145)">
-    <rect width="260" height="330" rx="14" class="frame"/>
-    <text x="130" y="42" text-anchor="middle" class="group">第 2 组</text>
-    <rect x="25" y="75" width="48" height="48" rx="8" class="q"/><text x="49" y="106" text-anchor="middle" class="label">Q5</text>
-    <rect x="85" y="75" width="48" height="48" rx="8" class="q"/><text x="109" y="106" text-anchor="middle" class="label">Q6</text>
-    <rect x="145" y="75" width="48" height="48" rx="8" class="q"/><text x="169" y="106" text-anchor="middle" class="label">Q7</text>
-    <rect x="205" y="75" width="48" height="48" rx="8" class="q"/><text x="229" y="106" text-anchor="middle" class="label">Q8</text>
-    <line x1="130" y1="140" x2="130" y2="205" class="line"/>
-    <rect x="44" y="220" width="72" height="54" rx="9" class="kv"/><text x="80" y="254" text-anchor="middle" class="label">K2</text>
-    <rect x="144" y="220" width="72" height="54" rx="9" class="kv"/><text x="180" y="254" text-anchor="middle" class="label">V2</text>
-    <text x="130" y="307" text-anchor="middle" class="note">共享一组 K/V</text>
-  </g>
-  <g transform="translate(625 145)">
-    <rect width="260" height="330" rx="14" class="frame"/>
-    <text x="130" y="42" text-anchor="middle" class="group">第 3 组</text>
-    <rect x="25" y="75" width="48" height="48" rx="8" class="q"/><text x="49" y="106" text-anchor="middle" class="label">Q9</text>
-    <rect x="85" y="75" width="48" height="48" rx="8" class="q"/><text x="109" y="106" text-anchor="middle" class="label">Q10</text>
-    <rect x="145" y="75" width="48" height="48" rx="8" class="q"/><text x="169" y="106" text-anchor="middle" class="label">Q11</text>
-    <rect x="205" y="75" width="48" height="48" rx="8" class="q"/><text x="229" y="106" text-anchor="middle" class="label">Q12</text>
-    <line x1="130" y1="140" x2="130" y2="205" class="line"/>
-    <rect x="44" y="220" width="72" height="54" rx="9" class="kv"/><text x="80" y="254" text-anchor="middle" class="label">K3</text>
-    <rect x="144" y="220" width="72" height="54" rx="9" class="kv"/><text x="180" y="254" text-anchor="middle" class="label">V3</text>
-    <text x="130" y="307" text-anchor="middle" class="note">共享一组 K/V</text>
-  </g>
-  <g transform="translate(910 145)">
-    <rect width="235" height="330" rx="14" class="frame"/>
-    <text x="117" y="42" text-anchor="middle" class="group">第 4 组</text>
-    <rect x="12" y="75" width="48" height="48" rx="8" class="q"/><text x="36" y="106" text-anchor="middle" class="label">Q13</text>
-    <rect x="67" y="75" width="48" height="48" rx="8" class="q"/><text x="91" y="106" text-anchor="middle" class="label">Q14</text>
-    <rect x="122" y="75" width="48" height="48" rx="8" class="q"/><text x="146" y="106" text-anchor="middle" class="label">Q15</text>
-    <rect x="177" y="75" width="48" height="48" rx="8" class="q"/><text x="201" y="106" text-anchor="middle" class="label">Q16</text>
-    <line x1="117" y1="140" x2="117" y2="205" class="line"/>
-    <rect x="31" y="220" width="72" height="54" rx="9" class="kv"/><text x="67" y="254" text-anchor="middle" class="label">K4</text>
-    <rect x="131" y="220" width="72" height="54" rx="9" class="kv"/><text x="167" y="254" text-anchor="middle" class="label">V4</text>
-    <text x="117" y="307" text-anchor="middle" class="note">共享一组 K/V</text>
-  </g>
-  <text x="600" y="540" text-anchor="middle" class="note">Head Dimension 相同时，4 个 K/V 头的投影宽度和缓存元素数都是 16 个 K/V 头的 1/4</text>
+  <rect width="1200" height="720" fill="#FFFFFF"/>
+  <text x="54" y="58" class="title">GQA 共享的是 K/V 头，不是 token 位置</text>
+  <text x="54" y="92" class="note">下标 h 表示查询头，g 表示 K/V 头，j 表示 token 位置。一个 K/V 头中仍有 K(g,1)…K(g,T) 和 V(g,1)…V(g,T)。</text>
+
+  <rect x="54" y="130" width="515" height="400" rx="14" class="panel"/>
+  <text x="82" y="169" class="head">普通多头注意力（MHA）</text>
+  <text x="82" y="197" class="note">4 个查询头，各有自己的 K/V 头</text>
+
+  <rect x="82" y="235" width="92" height="54" rx="9" class="q"/><text x="128" y="268" text-anchor="middle" class="label">Q 头 h1</text>
+  <rect x="82" y="311" width="92" height="54" rx="9" class="q"/><text x="128" y="344" text-anchor="middle" class="label">Q 头 h2</text>
+  <rect x="82" y="387" width="92" height="54" rx="9" class="q"/><text x="128" y="420" text-anchor="middle" class="label">Q 头 h3</text>
+  <rect x="82" y="463" width="92" height="54" rx="9" class="q"/><text x="128" y="496" text-anchor="middle" class="label">Q 头 h4</text>
+
+  <path d="M174 262 H225" class="qline"/><path d="M174 338 H225" class="qline"/><path d="M174 414 H225" class="qline"/><path d="M174 490 H225" class="qline"/>
+
+  <rect x="225" y="225" width="310" height="74" rx="9" class="kv"/>
+  <text x="380" y="255" text-anchor="middle" class="label">K/V 头 g1</text><text x="380" y="280" text-anchor="middle" class="note">K(g1,1…T)，V(g1,1…T)</text>
+  <rect x="225" y="301" width="310" height="74" rx="9" class="kv"/>
+  <text x="380" y="331" text-anchor="middle" class="label">K/V 头 g2</text><text x="380" y="356" text-anchor="middle" class="note">K(g2,1…T)，V(g2,1…T)</text>
+  <rect x="225" y="377" width="310" height="74" rx="9" class="kv"/>
+  <text x="380" y="407" text-anchor="middle" class="label">K/V 头 g3</text><text x="380" y="432" text-anchor="middle" class="note">K(g3,1…T)，V(g3,1…T)</text>
+  <rect x="225" y="453" width="310" height="64" rx="9" class="kv"/>
+  <text x="380" y="480" text-anchor="middle" class="label">K/V 头 g4</text><text x="380" y="503" text-anchor="middle" class="note">K(g4,1…T)，V(g4,1…T)</text>
+
+  <rect x="631" y="130" width="515" height="400" rx="14" class="panel"/>
+  <text x="659" y="169" class="head">分组查询注意力（GQA）</text>
+  <text x="659" y="197" class="note">4 个查询头，共用 1 个 K/V 头</text>
+
+  <rect x="659" y="235" width="92" height="54" rx="9" class="q"/><text x="705" y="268" text-anchor="middle" class="label">Q 头 h1</text>
+  <rect x="659" y="311" width="92" height="54" rx="9" class="q"/><text x="705" y="344" text-anchor="middle" class="label">Q 头 h2</text>
+  <rect x="659" y="387" width="92" height="54" rx="9" class="q"/><text x="705" y="420" text-anchor="middle" class="label">Q 头 h3</text>
+  <rect x="659" y="463" width="92" height="54" rx="9" class="q"/><text x="705" y="496" text-anchor="middle" class="label">Q 头 h4</text>
+
+  <path d="M751 262 C790 262 812 315 850 315" class="qline"/>
+  <path d="M751 338 C790 338 812 345 850 345" class="qline"/>
+  <path d="M751 414 C790 414 812 375 850 375" class="qline"/>
+  <path d="M751 490 C790 490 812 405 850 405" class="qline"/>
+
+  <rect x="850" y="290" width="260" height="140" rx="12" class="kv"/>
+  <text x="980" y="326" text-anchor="middle" class="head">共享 K/V 头 g1</text>
+  <text x="980" y="358" text-anchor="middle" class="label">K(g1,1)，…，K(g1,T)</text>
+  <text x="980" y="389" text-anchor="middle" class="label">V(g1,1)，…，V(g1,T)</text>
+  <text x="980" y="416" text-anchor="middle" class="note">包含全部 token 位置</text>
+  <text x="888" y="465" text-anchor="middle" class="note">Q 不同</text>
+  <text x="888" y="489" text-anchor="middle" class="note">权重和输出仍可不同</text>
+
+  <text x="54" y="580" class="head">Qwen3.5-9B 的实际分组</text>
+  <rect x="54" y="610" width="250" height="70" rx="10" class="actual"/>
+  <text x="179" y="638" text-anchor="middle" class="label">Q 头 h1～h4</text><text x="179" y="663" text-anchor="middle" class="note">共享 K/V 头 g1</text>
+  <rect x="335" y="610" width="250" height="70" rx="10" class="actual"/>
+  <text x="460" y="638" text-anchor="middle" class="label">Q 头 h5～h8</text><text x="460" y="663" text-anchor="middle" class="note">共享 K/V 头 g2</text>
+  <rect x="616" y="610" width="250" height="70" rx="10" class="actual"/>
+  <text x="741" y="638" text-anchor="middle" class="label">Q 头 h9～h12</text><text x="741" y="663" text-anchor="middle" class="note">共享 K/V 头 g3</text>
+  <rect x="897" y="610" width="249" height="70" rx="10" class="actual"/>
+  <text x="1021" y="638" text-anchor="middle" class="label">Q 头 h13～h16</text><text x="1021" y="663" text-anchor="middle" class="note">共享 K/V 头 g4</text>
 </svg>
