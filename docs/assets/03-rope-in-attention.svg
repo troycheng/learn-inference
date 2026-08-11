@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="800" viewBox="0 0 1200 800" role="img" aria-labelledby="title desc">
+  <title id="title">RoPE 在 Attention 计算流程中的位置</title>
+  <desc id="desc">隐藏状态经过 Q、K、V 投影。Q 和 K 按头整理并归一化后，根据各自位置应用 RoPE；V 不旋转。旋转后的 Q 和 K 计算 Attention 分数，Softmax 权重再汇总 V。</desc>
+  <defs>
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#2563EB"/></marker>
+    <marker id="arrow-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#7C3AED"/></marker>
+    <style>
+      text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #111827; }
+      .title { font-size: 31px; font-weight: 700; }
+      .label { font-size: 18px; font-weight: 600; }
+      .note { font-size: 15px; fill: #64748B; }
+      .input { fill: #EFF6FF; stroke: #2563EB; stroke-width: 2; }
+      .process { fill: #FFF7ED; stroke: #EA580C; stroke-width: 2; }
+      .rope { fill: #FAF5FF; stroke: #7C3AED; stroke-width: 2; }
+      .value { fill: #F0FDF4; stroke: #16A34A; stroke-width: 2; }
+      .main-line { fill: none; stroke: #2563EB; stroke-width: 2.5; marker-end: url(#arrow-blue); }
+      .position-line { fill: none; stroke: #7C3AED; stroke-width: 2.25; stroke-dasharray: 7 5; marker-end: url(#arrow-purple); }
+    </style>
+  </defs>
+
+  <rect width="1200" height="800" fill="#FFFFFF"/>
+  <text x="54" y="58" class="title">RoPE 插在 Q/K 投影与 Attention 打分之间</text>
+  <text x="54" y="92" class="note">它不修改 Hidden States，也不作用于 V；它根据位置编号改变 Q/K 的数值，但不改变 shape。</text>
+
+  <!-- main data-flow edges -->
+  <path d="M190 325 C215 325 215 225 240 225" class="main-line"/>
+  <path d="M190 350 H220 V365 H240" class="main-line"/>
+  <path d="M190 375 C215 375 215 505 240 505" class="main-line"/>
+  <path d="M390 225 H440" class="main-line"/>
+  <path d="M600 225 H650" class="main-line"/>
+  <path d="M810 225 H850" class="main-line"/>
+  <path d="M390 365 H440" class="main-line"/>
+  <path d="M600 365 H650" class="main-line"/>
+  <path d="M810 365 H850" class="main-line"/>
+  <path d="M390 505 H440" class="main-line"/>
+  <path d="M600 505 H650" class="main-line"/>
+  <path d="M810 505 H850" class="main-line"/>
+
+  <!-- position ids provide sin/cos only to the two RoPE operations -->
+  <path d="M730 163 V190" class="position-line"/>
+  <path d="M810 137 H825 V365 H810" class="position-line"/>
+
+  <!-- routes from prepared Q/K/V into one-head Attention -->
+  <path d="M1010 225 H1040 V565 H455 V620" class="main-line"/>
+  <path d="M1010 365 H1080 V590 H525 V620" class="main-line"/>
+  <path d="M1010 505 H1160 V610 H1020 V620" class="main-line"/>
+  <path d="M600 665 H660" class="main-line"/>
+  <path d="M830 665 H900" class="main-line"/>
+
+  <!-- source hidden state -->
+  <rect data-graph-role="node" data-node-id="hidden-x" x="40" y="300" width="150" height="100" rx="12" class="input"/>
+  <text x="115" y="340" text-anchor="middle" class="label">隐藏状态 X</text>
+  <text x="115" y="370" text-anchor="middle" class="note">[B,T,H]</text>
+
+  <!-- position input -->
+  <rect data-graph-role="node" data-node-id="positions" x="650" y="105" width="160" height="58" rx="10" class="rope"/>
+  <text x="730" y="130" text-anchor="middle" class="label">位置编号 m / n</text>
+  <text x="730" y="151" text-anchor="middle" class="note">生成 cos / sin</text>
+
+  <!-- Q row -->
+  <rect data-graph-role="node" data-node-id="q-proj" x="240" y="190" width="150" height="70" rx="10" class="input"/>
+  <text x="315" y="220" text-anchor="middle" class="label">q_proj</text>
+  <text x="315" y="244" text-anchor="middle" class="note">取出 Q 分支</text>
+  <rect data-graph-role="node" data-node-id="q-norm" x="440" y="190" width="160" height="70" rx="10" class="process"/>
+  <text x="520" y="220" text-anchor="middle" class="label">按查询头整理</text>
+  <text x="520" y="244" text-anchor="middle" class="note">每头 RMSNorm</text>
+  <rect data-graph-role="node" data-node-id="q-rope" x="650" y="190" width="160" height="70" rx="10" class="rope"/>
+  <text x="730" y="220" text-anchor="middle" class="label">RoPE(m)</text>
+  <text x="730" y="244" text-anchor="middle" class="note">Q 使用自己的位置</text>
+  <rect data-graph-role="node" data-node-id="q-ready" x="850" y="190" width="160" height="70" rx="10" class="value"/>
+  <text x="930" y="220" text-anchor="middle" class="label">旋转后的 Q'</text>
+  <text x="930" y="244" text-anchor="middle" class="note">本轮用于打分</text>
+
+  <!-- K row -->
+  <rect data-graph-role="node" data-node-id="k-proj" x="240" y="330" width="150" height="70" rx="10" class="input"/>
+  <text x="315" y="360" text-anchor="middle" class="label">k_proj</text>
+  <text x="315" y="384" text-anchor="middle" class="note">Linear 得到 K</text>
+  <rect data-graph-role="node" data-node-id="k-norm" x="440" y="330" width="160" height="70" rx="10" class="process"/>
+  <text x="520" y="360" text-anchor="middle" class="label">按 K 头整理</text>
+  <text x="520" y="384" text-anchor="middle" class="note">每头 RMSNorm</text>
+  <rect data-graph-role="node" data-node-id="k-rope" x="650" y="330" width="160" height="70" rx="10" class="rope"/>
+  <text x="730" y="360" text-anchor="middle" class="label">RoPE(n)</text>
+  <text x="730" y="384" text-anchor="middle" class="note">K 使用自己的位置</text>
+  <rect data-graph-role="node" data-node-id="k-ready" x="850" y="330" width="160" height="70" rx="10" class="value"/>
+  <text x="930" y="360" text-anchor="middle" class="label">旋转后的 K'</text>
+  <text x="930" y="384" text-anchor="middle" class="note">写入 KV Cache</text>
+
+  <!-- V row -->
+  <rect data-graph-role="node" data-node-id="v-proj" x="240" y="470" width="150" height="70" rx="10" class="input"/>
+  <text x="315" y="500" text-anchor="middle" class="label">v_proj</text>
+  <text x="315" y="524" text-anchor="middle" class="note">Linear 得到 V</text>
+  <rect data-graph-role="node" data-node-id="v-shape" x="440" y="470" width="160" height="70" rx="10" class="process"/>
+  <text x="520" y="500" text-anchor="middle" class="label">按 V 头整理</text>
+  <text x="520" y="524" text-anchor="middle" class="note">只调整 shape</text>
+  <rect data-graph-role="node" data-node-id="v-no-rope" x="650" y="470" width="160" height="70" rx="10" class="value"/>
+  <text x="730" y="500" text-anchor="middle" class="label">不做 RoPE</text>
+  <text x="730" y="524" text-anchor="middle" class="note">V 不参与打分</text>
+  <rect data-graph-role="node" data-node-id="v-ready" x="850" y="470" width="160" height="70" rx="10" class="value"/>
+  <text x="930" y="500" text-anchor="middle" class="label">未旋转的 V</text>
+  <text x="930" y="524" text-anchor="middle" class="note">写入 KV Cache</text>
+
+  <!-- one-head Attention after RoPE -->
+  <rect data-graph-role="node" data-node-id="score" x="350" y="620" width="250" height="90" rx="11" class="process"/>
+  <text x="475" y="654" text-anchor="middle" class="label">计算 Attention 分数</text>
+  <text x="475" y="683" text-anchor="middle" class="note">Q' · K' / √D + 因果遮罩</text>
+  <rect data-graph-role="node" data-node-id="softmax" x="660" y="620" width="170" height="90" rx="11" class="process"/>
+  <text x="745" y="654" text-anchor="middle" class="label">Softmax</text>
+  <text x="745" y="683" text-anchor="middle" class="note">分数变成权重</text>
+  <rect data-graph-role="node" data-node-id="output" x="900" y="620" width="240" height="90" rx="11" class="value"/>
+  <text x="1020" y="654" text-anchor="middle" class="label">权重汇总 V</text>
+  <text x="1020" y="683" text-anchor="middle" class="note">得到单头输出 O=[B,T,D]</text>
+
+  <line x1="54" y1="758" x2="94" y2="758" stroke="#2563EB" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
+  <text x="108" y="764" class="note">张量计算路径</text>
+  <line x1="250" y1="758" x2="290" y2="758" stroke="#7C3AED" stroke-width="2.25" stroke-dasharray="7 5" marker-end="url(#arrow-purple)"/>
+  <text x="304" y="764" class="note">位置编号提供 cos / sin</text>
+  <text x="600" y="764" class="note">Qwen3.5-9B Full Attention 每头只旋转前 64 维，其余 192 维原样通过。</text>
+</svg>

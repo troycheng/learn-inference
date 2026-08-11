@@ -495,7 +495,62 @@ $$
 
 这条公式不能读成“Attention 分数只由距离决定”。`q` 和 `k` 仍然来自 token 内容；RoPE 只是让位置影响通过 `n-m` 进入点积。内容和相对位置共同决定分数。
 
-### 6.3 为什么使用多种旋转速度
+### 6.3 RoPE 在 Attention 中的位置
+
+把 RoPE 放回 Attention 主计算，位置就很明确了：它在 Q/K 投影之后、Q/K 点积之前。
+
+先由三组 Linear 得到还没有应用本层 RoPE 的 Q、K、V：
+
+$$
+Q=XW_Q^T,\qquad K=XW_K^T,\qquad V=XW_V^T
+$$
+
+Qwen3.5 的 `q_proj` 还会同时产生 Attention 输出门控；这里先只跟踪进入 RoPE 的 Q 分支，门控仍在第 7 节的完整流程中处理。
+
+Qwen3.5 接下来把 Q、K、V 整理成按头的 shape，并对每个 Q/K 头做 RMSNorm。然后才根据各自的位置应用 RoPE：
+
+$$
+Q'_m=R_mQ_m,\qquad K'_n=R_nK_n,\qquad V'_n=V_n
+$$
+
+这里的撇号只表示“准备好进入 Attention 的数据”。V 不参与 Q/K 打分，所以不旋转。
+
+![RoPE 在 Attention 计算流程中的位置](../assets/03-rope-in-attention.svg?rev=20260811-1)
+
+真正进入 Attention 分数的是旋转后的 Q 和 K：
+
+$$
+S_{m,n}=\frac{Q'_m\cdot K'_n}{\sqrt D}+M_{m,n}
+$$
+
+再继续执行原来的 Softmax 和 V 汇总：
+
+$$
+A_{m,:}=\mathrm{softmax}(S_{m,:}),\qquad O_m=\sum_n A_{m,n}V_n
+$$
+
+因此，RoPE 没有替换 Attention 的任何一步。它只是在算 `QK^T` 之前，先按位置改写 Q/K 的部分数值：
+
+```text
+X
+→ Q/K/V Linear
+→ Q/K 按头 RMSNorm
+→ Q/K 应用 RoPE，V 原样通过
+→ QK 点积、遮罩、Softmax
+→ 权重汇总 V
+```
+
+推理时还要注意缓存顺序：
+
+- Prefill 中，每个 Prompt 位置的 K 按自己的位置旋转后，再写入 KV Cache；V 原样写入。
+- Decode 中，新 token 只计算当前的 Q/K/V。当前 Q、K 使用新位置 `t` 做 RoPE，旋转后的 K 追加到 Cache，当前 Q 再与缓存中的历史 K 计算分数。
+- 已缓存的历史 K 已经带有自己的位置旋转，后续 Decode 不会把它们重新旋转一遍。
+
+换句话说，KV Cache 保存的是“做过 RoPE 的 K”和“没有做 RoPE 的 V”。这也是复用 Prefix Cache 时必须保持位置编号一致的原因。
+
+Qwen3.5-9B 只有 Full Attention 层走这条 RoPE 路径；Gated DeltaNet 层不使用这组 Q/K 旋转。
+
+### 6.4 为什么使用多种旋转速度
 
 真实 Q/K 不止二维。RoPE 把参与旋转的维度分成许多二维组，每组采用不同的旋转速度。可以把它们想成一排快慢不同的钟表：
 
@@ -507,13 +562,13 @@ $$
 
 这些维度没有被人工指定为“近距离通道”或“远距离通道”。模型会在训练中学习怎样使用不同频率。RoPE 也不保证附近 token 的权重一定更高，最终权重仍取决于 Q/K 内容、相对位置和训练结果。
 
-### 6.4 RoPE 为什么只作用于 Q 和 K
+### 6.5 RoPE 为什么只作用于 Q 和 K
 
 RoPE 要改变的是位置之间的匹配分数，而分数来自 Q 与 K 的点积，所以旋转放在 Q/K 上。V 负责携带匹配后要汇总的信息，不参与打分。
 
 旋转不会增加 token 数，也不会改变 Q/K 的 shape，只会改变其中的数值。
 
-### 6.5 Qwen3.5-9B 只旋转部分维度
+### 6.6 Qwen3.5-9B 只旋转部分维度
 
 Qwen3.5-9B 的每个 Full Attention 头有 `256` 维。配置项 `text_config.rope_parameters.partial_rotary_factor=0.25` 表示只有前 `64` 维参与 RoPE，后 `192` 维原样通过：
 
