@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc" data-min-container-gutter="20">
-  <title id="title">同一位置在不同二维组中采用不同的旋转角度</title>
-  <desc id="desc">四维向量分成两个二维组。位置二时，第一组按每位置三十度累计旋转六十度，第二组按每位置三度累计旋转六度，最后重新拼成四维向量。</desc>
+  <title id="title">Qwen rotate_half 的四维缩小示例</title>
+  <desc id="desc">四维旋转区先切成前后两半，再按相同索引配成两组。位置二时，第零组累计旋转六十度，第一组累计旋转六度，结果按前后半区的顺序放回。</desc>
   <defs>
     <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
       <path d="M0 0L10 5L0 10z" fill="#2563EB"/>
@@ -25,8 +25,8 @@
   </defs>
 
   <rect width="1200" height="680" fill="#FFFFFF"/>
-  <text x="54" y="58" class="title">同一个位置，两组特征转过的角度不同</text>
-  <text x="54" y="92" class="subtitle">“旋转速度”指位置每增加 1，该二维组增加多少角度。下面的 30° 和 3° 只用于演示。</text>
+  <text x="54" y="58" class="title">4 个旋转维度怎样配成两组</text>
+  <text x="54" y="92" class="subtitle">实际实现先切成前后两半，再按相同索引配对。下面的 30° 和 3° 只用于演示。</text>
 
   <!-- panel backgrounds -->
   <rect data-graph-role="container" x="70" y="260" width="500" height="270" rx="14" class="fast"/>
@@ -39,36 +39,36 @@
 
   <!-- input vector -->
   <rect data-graph-role="node" data-node-id="q-input" x="430" y="120" width="340" height="90" rx="12" class="input"/>
-  <text x="600" y="154" text-anchor="middle" class="heading">q = [ 1, 0  |  1, 0 ]</text>
-  <text x="520" y="184" text-anchor="middle" class="note">第 1 组</text>
-  <text x="680" y="184" text-anchor="middle" class="note">第 2 组</text>
+  <text x="600" y="154" text-anchor="middle" class="heading">q_rot = [ 1, 1  |  0, 0 ]</text>
+  <text x="520" y="184" text-anchor="middle" class="note">前半区：a0, a1</text>
+  <text x="680" y="184" text-anchor="middle" class="note">后半区：b0, b1</text>
 
   <!-- fast group -->
-  <text x="100" y="300" class="heading">第 1 组：每个位置增加 30°</text>
+  <text x="100" y="300" class="heading">第 0 组：(a0,b0) = (1,0)</text>
   <circle cx="210" cy="405" r="68" class="guide"/>
   <line x1="210" y1="405" x2="274" y2="405" class="baseline"/>
   <path d="M210 405 L242 350" class="vector"/>
   <circle cx="210" cy="405" r="4" fill="#2563EB"/>
   <text x="210" y="494" text-anchor="middle" class="note">从 [1,0] 转到 60°</text>
   <text x="330" y="355" class="label">位置 m = 2</text>
-  <text x="330" y="393" class="label">2 × 30° = 60°</text>
+  <text x="330" y="393" class="label">θ0=30°，2 × θ0 = 60°</text>
   <text x="330" y="432" class="note">[1,0] → [cos 60°, sin 60°]</text>
   <text x="330" y="466" class="label">≈ [0.500, 0.866]</text>
 
   <!-- slow group -->
-  <text x="660" y="300" class="heading">第 2 组：每个位置增加 3°</text>
+  <text x="660" y="300" class="heading">第 1 组：(a1,b1) = (1,0)</text>
   <circle cx="770" cy="405" r="68" class="guide"/>
   <line x1="770" y1="405" x2="834" y2="405" class="baseline"/>
   <path d="M770 405 L833 398" class="vector"/>
   <circle cx="770" cy="405" r="4" fill="#2563EB"/>
   <text x="770" y="494" text-anchor="middle" class="note">从 [1,0] 转到 6°</text>
   <text x="890" y="355" class="label">位置 m = 2</text>
-  <text x="890" y="393" class="label">2 × 3° = 6°</text>
+  <text x="890" y="393" class="label">θ1=3°，2 × θ1 = 6°</text>
   <text x="890" y="432" class="note">[1,0] → [cos 6°, sin 6°]</text>
   <text x="890" y="466" class="label">≈ [0.995, 0.105]</text>
 
   <!-- combined result -->
   <rect data-graph-role="node" data-node-id="q-output" x="140" y="570" width="920" height="74" rx="12" class="result"/>
-  <text x="600" y="600" text-anchor="middle" class="heading">位置 2 的 q′ ≈ [ 0.500, 0.866  |  0.995, 0.105 ]</text>
-  <text x="600" y="628" text-anchor="middle" class="note">位置编号都是 2；不同的是每组每前进一步所增加的角度。</text>
+  <text x="600" y="600" text-anchor="middle" class="heading">按 [a0′,a1′ | b0′,b1′] 放回：q_rot′ ≈ [ 0.500, 0.995 | 0.866, 0.105 ]</text>
+  <text x="600" y="628" text-anchor="middle" class="note">真实 64 维旋转区采用同样布局：前 32 维与后 32 维按索引组成 32 对。</text>
 </svg>
