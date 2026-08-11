@@ -29,7 +29,7 @@
   <rect x="45" y="125" width="340" height="455" rx="18" class="panel"/>
   <text x="70" y="165" class="panel-title">1. 先明确目标</text>
   <text x="70" y="205" class="label">当前位置：它</text>
-  <text x="70" y="239" class="note">候选 A：前 2 个 token 的“杯子”</text>
+  <text x="70" y="239" class="note">候选 A：前 1 个 token 的“杯子”</text>
   <text x="70" y="271" class="note">候选 B：前 2000 个 token 的“杯子”</text>
   <rect x="70" y="307" width="290" height="102" rx="12" fill="#FFFFFF" stroke="#CBD5E1"/>
   <text x="215" y="344" text-anchor="middle" class="label">内容可以相似</text>
@@ -44,15 +44,14 @@
     <circle cx="0" cy="0" r="112" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
     <line x1="-132" y1="0" x2="132" y2="0" class="axis"/>
     <line x1="0" y1="132" x2="0" y2="-132" class="axis"/>
-    <line x1="0" y1="0" x2="-54" y2="-94" class="q"/>
+    <line x1="0" y1="0" x2="0" y2="-108" class="q"/>
     <line x1="0" y1="0" x2="54" y2="-94" class="k"/>
-    <path d="M45 -78 A90 90 0 0 0 -45 -78" class="arc"/>
-    <text x="-129" y="-100" class="label" fill="#2563EB">Q：位置 4</text>
+    <path d="M45 -78 A90 90 0 0 0 0 -90" class="arc"/>
+    <text x="-129" y="-100" class="label" fill="#2563EB">Q：位置 3</text>
     <text x="74" y="-100" class="label" fill="#EA580C">K：位置 2</text>
-    <text x="0" y="-57" text-anchor="middle" class="label">相差 2 步</text>
   </g>
   <text x="600" y="500" text-anchor="middle" class="note">假设每前进 1 个位置多转 θ</text>
-  <text x="600" y="531" text-anchor="middle" class="note">两根箭头的夹角就是 2θ</text>
+  <text x="600" y="531" text-anchor="middle" class="note">两根箭头的夹角就是 θ</text>
 
   <rect x="815" y="125" width="340" height="455" rx="18" class="panel"/>
   <text x="840" y="165" class="panel-title">3. 一起移动，关系不变</text>
@@ -60,15 +59,14 @@
     <circle cx="0" cy="0" r="112" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
     <line x1="-132" y1="0" x2="132" y2="0" class="axis"/>
     <line x1="0" y1="132" x2="0" y2="-132" class="axis"/>
-    <line x1="0" y1="0" x2="108" y2="0" class="q"/>
+    <line x1="0" y1="0" x2="94" y2="-54" class="q"/>
     <line x1="0" y1="0" x2="54" y2="-94" class="k"/>
-    <path d="M82 0 A82 82 0 0 0 41 -71" class="arc"/>
-    <text x="54" y="34" class="label" fill="#2563EB">Q：位置 14</text>
+    <path d="M71 -41 A82 82 0 0 0 41 -71" class="arc"/>
+    <text x="42" y="76" class="label" fill="#2563EB">Q：位置 13</text>
     <text x="56" y="-100" class="label" fill="#EA580C">K：位置 12</text>
-    <text x="56" y="-40" class="label">仍相差 2 步</text>
   </g>
   <text x="985" y="500" text-anchor="middle" class="note">绝对角度都变了</text>
-  <text x="985" y="531" text-anchor="middle" class="note">夹角仍是 2θ</text>
+  <text x="985" y="531" text-anchor="middle" class="note">夹角仍是 θ</text>
 
   <rect x="45" y="612" width="1110" height="58" rx="12" fill="#EEF2FF" stroke="#A5B4FC"/>
   <text x="600" y="649" text-anchor="middle" class="label">共同旋转在点积中抵消：R(m)ᵀR(n) = R(n−m)，位置影响只通过相对距离 n−m 进入</text>

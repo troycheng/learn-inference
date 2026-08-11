@@ -30,7 +30,7 @@
   <rect x="54" y="302" width="1092" height="140" rx="14" class="group"/>
   <text x="78" y="330" class="head">三组投影</text>
   <rect x="54" y="463" width="1092" height="110" rx="14" class="group"/>
-  <text x="78" y="491" class="head">进入 Attention 前的处理</text>
+  <text x="78" y="491" class="head">按头整理</text>
   <rect x="54" y="600" width="1092" height="150" rx="14" class="group"/>
   <text x="78" y="628" class="head">单头计算</text>
   <text x="78" y="732" class="note">GQA 映射：h1～h4 使用 g1，h5～h8 使用 g2，依此类推</text>
