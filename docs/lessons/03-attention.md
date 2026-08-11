@@ -371,7 +371,50 @@ V： 4 × 256 = 1024
 
 优化实现可以让四个查询头直接读取共享 K/V。朴素实现也可能在逻辑上把 K/V 展开到 16 头。两种实现的 Attention 结果相同，内存访问和临时数据量不同。
 
-MLA 通常指 Multi-head Latent Attention。它会进一步把 K/V 压缩到潜在空间，结构和缓存方式与 GQA 不同。Qwen3.5-9B 的 Full Attention 使用 GQA，本课不把 MLA 混入这条计算链。
+### 5.3 扩展阅读：MLA 怎样压缩 KV Cache
+
+Qwen3.5-9B 的 Full Attention 使用 GQA，本课后续仍按 GQA 计算。只想理解 Qwen3.5 的读者，可以跳过这一节。
+
+GQA 和多头潜在注意力（Multi-head Latent Attention，MLA）都能缩小 KV Cache，但两者压缩的位置不同：
+
+```text
+GQA
+Hidden State → 较少的 K 头和 V 头 → 缓存 K、V
+
+MLA
+Hidden State → K/V 联合降维 → 压缩表示 c_KV → 缓存 c_KV
+                         └→ 单独保留带 RoPE 的位置部分
+```
+
+GQA 缓存的仍是 K 和 V，只是让多个查询头共享它们。每层、每个 token 的缓存元素数为：
+
+$$
+2\times N_{kv}\times D
+$$
+
+MLA 换了一种保存方法。它先把当前 token 的 Hidden State 投影成较窄的潜在向量：
+
+$$
+c_t^{KV}=W^{DKV}h_t
+$$
+
+这条 `c_KV` 不是某几个 K/V 头，也不是从原始 K/V 中截取一段；它是模型学习出的 K/V 联合压缩表示。概念上，模型可以从它得到各头需要的内容 K 和 V：
+
+$$
+k_t^C=W^{UK}c_t^{KV},\qquad v_t^C=W^{UV}c_t^{KV}
+$$
+
+优化后的推理实现还可以把这两次上投影吸收到 Q 投影和输出投影中，不必真的在显存里恢复完整 K/V。RoPE 带有位置信息，不能按同样方式完全吸收，因此 DeepSeek-V2 的 MLA 另外保留一小段带 RoPE 的 Key。其每层、每个 token 的缓存可以概括为：
+
+$$
+d_c+d_h^R
+$$
+
+其中，$d_c$ 是 K/V 联合压缩后的宽度，$d_h^R$ 是单独保存的 RoPE Key 宽度。
+
+可以这样区分两者：GQA 减少 **K/V 头的份数**；MLA 改变 **缓存中保存的内容**。MLA 也不是部署时把 GQA 打开一个开关就能得到的功能，它会改变模型权重、RoPE 处理、Cache 布局和 Attention Kernel。
+
+以上结构来自 [DeepSeek-V2 的 MLA 设计](https://arxiv.org/abs/2405.04434)。
 
 ## 6. RoPE 如何把相对位置加入分数
 
@@ -717,6 +760,7 @@ Attention Score: [1,16,1,101]
 - [Attention Is All You Need](https://arxiv.org/abs/1706.03762)
 - [RoFormer：Rotary Position Embedding](https://arxiv.org/abs/2104.09864)
 - [GQA：Grouped-Query Attention](https://arxiv.org/abs/2305.13245)
+- [DeepSeek-V2：Multi-head Latent Attention](https://arxiv.org/abs/2405.04434)
 
 本课的讲解顺序和图示还参考了以下资料：
 
