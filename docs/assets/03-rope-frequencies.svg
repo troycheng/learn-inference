@@ -1,65 +1,74 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="610" viewBox="0 0 1200 610" role="img" aria-labelledby="title desc">
-  <title id="title">RoPE 使用多种旋转速度</title>
-  <desc id="desc">RoPE 把旋转维度分成多个二维特征组，不同组使用不同旋转速度。Qwen3.5 每个头 256 维，其中前 64 维参与旋转。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc" data-min-container-gutter="20">
+  <title id="title">同一位置在不同二维组中采用不同的旋转角度</title>
+  <desc id="desc">四维向量分成两个二维组。位置二时，第一组按每位置三十度累计旋转六十度，第二组按每位置三度累计旋转六度，最后重新拼成四维向量。</desc>
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <marker id="arrow-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
       <path d="M0 0L10 5L0 10z" fill="#2563EB"/>
     </marker>
     <style>
-      text { font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; fill: #0F172A; }
-      .title { font-size: 32px; font-weight: 700; }
-      .head { font-size: 22px; font-weight: 700; }
-      .label { font-size: 18px; font-weight: 600; }
-      .note { font-size: 17px; fill: #475569; }
-      .clock { fill: #FFFFFF; stroke: #CBD5E1; stroke-width: 3; }
-      .hand { stroke: #2563EB; stroke-width: 5; marker-end: url(#arrow); }
-      .tick { stroke: #94A3B8; stroke-width: 2; }
+      text { font-family: "Helvetica Neue", Helvetica, Arial, "PingFang SC", "Microsoft YaHei", sans-serif; fill: #111827; }
+      .title { font-size: 31px; font-weight: 700; }
+      .subtitle { font-size: 15px; fill: #64748B; }
+      .heading { font-size: 20px; font-weight: 700; }
+      .label { font-size: 17px; font-weight: 600; }
+      .note { font-size: 15px; fill: #64748B; }
+      .input { fill: #EFF6FF; stroke: #2563EB; stroke-width: 2; }
+      .fast { fill: #FFF7ED; stroke: #EA580C; stroke-width: 2; }
+      .slow { fill: #FAF5FF; stroke: #7C3AED; stroke-width: 2; }
+      .result { fill: #F0FDF4; stroke: #16A34A; stroke-width: 2; }
+      .guide { fill: none; stroke: #CBD5E1; stroke-width: 2; }
+      .baseline { fill: none; stroke: #94A3B8; stroke-width: 2; }
+      .vector { fill: none; stroke: #2563EB; stroke-width: 4; marker-end: url(#arrow-blue); }
+      .route { fill: none; stroke: #2563EB; stroke-width: 2.5; }
+      .line { fill: none; stroke: #2563EB; stroke-width: 2.5; marker-end: url(#arrow-blue); }
     </style>
   </defs>
-  <rect width="1200" height="610" fill="#FFFFFF"/>
-  <text x="60" y="58" class="title">为什么不只用一种旋转速度</text>
-  <text x="60" y="94" class="note">每个二维特征组都像一只表。位置增加相同步数，快表和慢表会转过不同角度。</text>
 
-  <text x="215" y="153" text-anchor="middle" class="head">转得快</text>
-  <g transform="translate(215 270)">
-    <circle r="92" class="clock"/>
-    <line x1="0" y1="-78" x2="0" y2="-92" class="tick"/><line x1="78" y1="0" x2="92" y2="0" class="tick"/><line x1="0" y1="78" x2="0" y2="92" class="tick"/><line x1="-78" y1="0" x2="-92" y2="0" class="tick"/>
-    <line x1="0" y1="0" x2="-58" y2="-48" class="hand"/>
-  </g>
-  <text x="215" y="391" text-anchor="middle" class="note">少量位置变化</text>
-  <text x="215" y="420" text-anchor="middle" class="note">角度就明显改变</text>
+  <rect width="1200" height="680" fill="#FFFFFF"/>
+  <text x="54" y="58" class="title">同一个位置，两组特征转过的角度不同</text>
+  <text x="54" y="92" class="subtitle">“旋转速度”指位置每增加 1，该二维组增加多少角度。下面的 30° 和 3° 只用于演示。</text>
 
-  <text x="510" y="153" text-anchor="middle" class="head">中等速度</text>
-  <g transform="translate(510 270)">
-    <circle r="92" class="clock"/>
-    <line x1="0" y1="-78" x2="0" y2="-92" class="tick"/><line x1="78" y1="0" x2="92" y2="0" class="tick"/><line x1="0" y1="78" x2="0" y2="92" class="tick"/><line x1="-78" y1="0" x2="-92" y2="0" class="tick"/>
-    <line x1="0" y1="0" x2="64" y2="-39" class="hand"/>
-  </g>
-  <text x="510" y="391" text-anchor="middle" class="note">同一个位置差</text>
-  <text x="510" y="420" text-anchor="middle" class="note">形成另一种相位</text>
+  <!-- panel backgrounds -->
+  <rect data-graph-role="container" x="70" y="260" width="500" height="270" rx="14" class="fast"/>
+  <rect data-graph-role="container" x="630" y="260" width="500" height="270" rx="14" class="slow"/>
 
-  <text x="805" y="153" text-anchor="middle" class="head">转得慢</text>
-  <g transform="translate(805 270)">
-    <circle r="92" class="clock"/>
-    <line x1="0" y1="-78" x2="0" y2="-92" class="tick"/><line x1="78" y1="0" x2="92" y2="0" class="tick"/><line x1="0" y1="78" x2="0" y2="92" class="tick"/><line x1="-78" y1="0" x2="-92" y2="0" class="tick"/>
-    <line x1="0" y1="0" x2="15" y2="-74" class="hand"/>
-  </g>
-  <text x="805" y="391" text-anchor="middle" class="note">变化更缓慢</text>
-  <text x="805" y="420" text-anchor="middle" class="note">保留更长尺度的差别</text>
+  <!-- connectors -->
+  <path d="M600 210 V235 M300 235 H900" class="route"/>
+  <path d="M300 235 V250" class="line"/>
+  <path d="M900 235 V250" class="line"/>
 
-  <rect x="965" y="145" width="185" height="290" rx="16" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="2"/>
-  <text x="1058" y="184" text-anchor="middle" class="head">一起使用</text>
-  <text x="1058" y="226" text-anchor="middle" class="note">一只表会周期重合</text>
-  <text x="1058" y="258" text-anchor="middle" class="note">多种速度共同提供</text>
-  <text x="1058" y="290" text-anchor="middle" class="note">更丰富的距离特征</text>
-  <text x="1058" y="342" text-anchor="middle" class="note">模型再结合内容</text>
-  <text x="1058" y="374" text-anchor="middle" class="note">学习怎样使用它们</text>
+  <!-- input vector -->
+  <rect data-graph-role="node" data-node-id="q-input" x="430" y="120" width="340" height="90" rx="12" class="input"/>
+  <text x="600" y="154" text-anchor="middle" class="heading">q = [ 1, 0  |  1, 0 ]</text>
+  <text x="520" y="184" text-anchor="middle" class="note">第 1 组</text>
+  <text x="680" y="184" text-anchor="middle" class="note">第 2 组</text>
 
-  <text x="60" y="493" class="head">Qwen3.5-9B 的一个 Full Attention 头</text>
-  <rect x="60" y="520" width="1080" height="52" rx="10" fill="#E2E8F0"/>
-  <rect x="60" y="520" width="270" height="52" rx="10" fill="#BFDBFE"/>
-  <path d="M320 520H340V572H320" fill="#BFDBFE"/>
-  <text x="195" y="553" text-anchor="middle" class="label">前 64 维：RoPE</text>
-  <text x="735" y="553" text-anchor="middle" class="label">后 192 维：原样通过</text>
-  <text x="1140" y="553" text-anchor="end" class="note">共 256 维</text>
+  <!-- fast group -->
+  <text x="100" y="300" class="heading">第 1 组：每个位置增加 30°</text>
+  <circle cx="210" cy="405" r="68" class="guide"/>
+  <line x1="210" y1="405" x2="274" y2="405" class="baseline"/>
+  <path d="M210 405 L242 350" class="vector"/>
+  <circle cx="210" cy="405" r="4" fill="#2563EB"/>
+  <text x="210" y="494" text-anchor="middle" class="note">从 [1,0] 转到 60°</text>
+  <text x="330" y="355" class="label">位置 m = 2</text>
+  <text x="330" y="393" class="label">2 × 30° = 60°</text>
+  <text x="330" y="432" class="note">[1,0] → [cos 60°, sin 60°]</text>
+  <text x="330" y="466" class="label">≈ [0.500, 0.866]</text>
+
+  <!-- slow group -->
+  <text x="660" y="300" class="heading">第 2 组：每个位置增加 3°</text>
+  <circle cx="770" cy="405" r="68" class="guide"/>
+  <line x1="770" y1="405" x2="834" y2="405" class="baseline"/>
+  <path d="M770 405 L833 398" class="vector"/>
+  <circle cx="770" cy="405" r="4" fill="#2563EB"/>
+  <text x="770" y="494" text-anchor="middle" class="note">从 [1,0] 转到 6°</text>
+  <text x="890" y="355" class="label">位置 m = 2</text>
+  <text x="890" y="393" class="label">2 × 3° = 6°</text>
+  <text x="890" y="432" class="note">[1,0] → [cos 6°, sin 6°]</text>
+  <text x="890" y="466" class="label">≈ [0.995, 0.105]</text>
+
+  <!-- combined result -->
+  <rect data-graph-role="node" data-node-id="q-output" x="140" y="570" width="920" height="74" rx="12" class="result"/>
+  <text x="600" y="600" text-anchor="middle" class="heading">位置 2 的 q′ ≈ [ 0.500, 0.866  |  0.995, 0.105 ]</text>
+  <text x="600" y="628" text-anchor="middle" class="note">位置编号都是 2；不同的是每组每前进一步所增加的角度。</text>
 </svg>
