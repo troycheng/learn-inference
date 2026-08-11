@@ -452,7 +452,7 @@ K 经过 RoPE 后才写入 KV Cache，所以缓存复用必须保持位置编号
 
 前面的章节依次解释了单头计算、多头拼接、GQA 和 RoPE。把它们放回 Qwen3.5-9B 的一个 Full Attention 子层，完整顺序如下：
 
-![Qwen3.5-9B 多头 Attention 的完整流程](../assets/03-qwen-attention-full-flow.svg?rev=20260811-2)
+![Qwen3.5-9B 多头 Attention 的完整流程](../assets/03-qwen-attention-full-flow.svg?rev=20260811-3)
 
 第 `h` 个查询头先找到对应的 K/V 头 `g`，再完成：
 
