@@ -255,7 +255,9 @@ $$
 A=\mathrm{softmax}\left(\frac{QK^T}{\sqrt{D}}+M\right),\qquad O=AV
 $$
 
-![缩放点积 Attention 的主计算](../assets/03-attention-flow.svg?rev=20260810-1)
+![缩放点积 Attention 的主计算](../assets/03-attention-flow.svg?rev=20260811-1)
+
+这张图到一个 Attention 头的输出 `O:[B,T,D]` 为止。实际模型有多个头，每个头都会各自算出一份 `O`；这些结果怎样合并，以及 `o_proj` 做什么，放到下一节再讲。
 
 | 公式部分 | 对应计算 |
 | --- | --- |
