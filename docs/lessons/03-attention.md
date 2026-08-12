@@ -552,7 +552,7 @@ Qwen3.5 使用 MRoPE。上面的内容先按纯文本的一维位置理解；图
 
 前面的章节依次解释了单头计算、多头拼接、GQA 和 RoPE。把它们放回 Qwen3.5-9B 的一个 Full Attention 子层，完整顺序如下：
 
-![Qwen3.5-9B 多头 Attention 的完整流程](../assets/03-qwen-attention-full-flow.svg?rev=20260811-3)
+![Qwen3.5-9B 多头 Attention 的完整流程](../assets/03-qwen-attention-full-flow.svg?rev=20260812-1)
 
 第 `h` 个查询头先找到对应的 K/V 头 `g`，再完成：
 
@@ -575,7 +575,9 @@ Qwen3.5 在拼接结果进入 `o_proj` 前还会乘一组输出门控。`o_proj`
 | 阶段 | shape | 含义 |
 | --- | --- | --- |
 | 输入 X | `[B,T,4096]` | Attention 子层收到的隐藏状态 |
+| `q_proj` 输出 | `[B,T,8192]` | 每个查询头同时产生 256 维 Q 和 256 维 Gate |
 | 查询 Q | `[B,16,T,256]` | 16 个查询头 |
+| 输出门控 Gate | `[B,T,4096]` | 16 组 256 维 Gate 展平后的结果 |
 | 键 K | `[B,4,T,256]` | 4 个 K 头 |
 | 值 V | `[B,4,T,256]` | 4 个 V 头 |
 | 分数矩阵 | 逻辑上为 `[B,16,T,T]` | 每个查询位置给所有可见位置打分 |
@@ -593,12 +595,42 @@ Qwen3.5 在拼接结果进入 `o_proj` 前还会乘一组输出门控。`o_proj`
 2. 每个头只有前 64 维参与 RoPE。
 3. 各头拼接后乘 `Sigmoid(Gate)`，再进入 `o_proj`。
 
-Transformers 实现中的 `q_proj` 一次产生 `[B,T,8192]`，随后拆成两半：
+这里的 `q_proj` 与普通 Q 投影不同。它把每个 token 的 `4096` 维输入投影成 `8192` 个数：
 
 ```text
-前 4096 个数 → 16 个查询头的 Q
-后 4096 个数 → Attention 输出门控
+输入                    [B,T,4096]
+q_proj                  [B,T,8192]
+按 16 个查询头整理       [B,T,16,512]
+每个头沿最后一维拆分     Q [B,T,16,256]
+                        Gate [B,T,16,256]
 ```
+
+关键是：**模型在每个头内部拆分 Q 和 Gate**，不是把整个 `8192` 维向量的前一半当作 Q、后一半当作 Gate。输出的排列可以写成：
+
+```text
+[Q₁ 256维 | Gate₁ 256维 | Q₂ 256维 | Gate₂ 256维 | ...]
+```
+
+用 2 个头、每头 3 维的缩小例子看，会更清楚：
+
+```text
+q_proj 输出 12 个数
+→ [Q₁:3 | Gate₁:3 | Q₂:3 | Gate₂:3]
+→ 按头整理为 [2,6]
+→ 每行从中间拆开
+→ Q    [2,3]
+→ Gate [2,3]
+```
+
+真实模型只是把 `2` 个头换成 `16` 个头，把每头 `3` 维换成 `256` 维。Q 随后转成 Attention 使用的 `[B,16,T,256]`；Gate 暂时展平为 `[B,T,4096]`，留到 16 个 Attention 头完成计算并拼接之后使用：
+
+```text
+Attention 各头输出 → Concat [B,T,4096]
+Gate [B,T,4096] → Sigmoid
+两者逐元素相乘 → o_proj
+```
+
+因此，Gate 不参与 Q/K 打分，也不决定 Softmax 权重。它调节的是已经从各头取回并拼接好的 `4096` 维输出。对应实现见 [`Qwen3_5Attention.forward`](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L630-L689)。
 
 这组门控与 SwiGLU 的门控属于不同子层：
 

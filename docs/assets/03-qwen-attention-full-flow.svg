@@ -70,9 +70,9 @@
 
   <!-- projections -->
   <rect data-graph-role="node" data-node-id="q-proj" x="130" y="370" width="240" height="90" rx="10" class="input"/>
-  <text x="250" y="402" text-anchor="middle" class="label">q_proj → 拆成 Q 和 Gate</text>
-  <text x="250" y="430" text-anchor="middle" class="note">Q [B,16,T,256]</text>
-  <text x="250" y="452" text-anchor="middle" class="note">Gate [B,T,4096]</text>
+  <text x="250" y="397" text-anchor="middle" class="label">q_proj：每个头内拆分</text>
+  <text x="250" y="424" text-anchor="middle" class="note">[B,T,16,512]</text>
+  <text x="250" y="449" text-anchor="middle" class="note">每头 = Q 256 + Gate 256</text>
   <rect data-graph-role="node" data-node-id="k-proj" x="480" y="370" width="240" height="90" rx="10" class="input"/>
   <text x="600" y="405" text-anchor="middle" class="label">k_proj</text>
   <text x="600" y="435" text-anchor="middle" class="note">K [B,4,T,256]</text>
