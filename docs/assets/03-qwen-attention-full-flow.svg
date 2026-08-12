@@ -11,6 +11,7 @@
       .head { font-size: 21px; font-weight: 700; }
       .label { font-size: 18px; font-weight: 600; }
       .note { font-size: 16px; fill: #64748B; }
+      .mini { font-size: 14px; font-weight: 600; }
       .input { fill: #EFF6FF; stroke: #2563EB; stroke-width: 2; }
       .process { fill: #FFF7ED; stroke: #EA580C; stroke-width: 2; }
       .value { fill: #F0FDF4; stroke: #16A34A; stroke-width: 2; }
@@ -42,7 +43,7 @@
   <path d="M250 305 V370" class="blue-line"/>
   <path d="M600 305 V370" class="blue-line"/>
   <path d="M950 305 V370" class="blue-line"/>
-  <path d="M250 460 V570" class="blue-line"/>
+  <path d="M250 475 V570" class="blue-line"/>
   <path d="M600 460 V570" class="blue-line"/>
   <path d="M950 460 V570" class="blue-line"/>
   <path d="M250 635 V675 H300 V755" class="blue-line"/>
@@ -57,7 +58,7 @@
   <path d="M600 1225 V1250" class="blue-line"/>
   <path d="M600 1310 V1330" class="blue-line"/>
 
-  <path d="M130 415 H30 V1084 H465" class="purple-line"/>
+  <path d="M327.5 462 V495 H30 V1084 H465" class="purple-line"/>
   <path d="M690 154 H1170 V1280 H630" class="gray-line"/>
 
   <!-- input and normalization -->
@@ -69,10 +70,13 @@
   <text x="936" y="143" class="note">残差路径保留原输入 X</text>
 
   <!-- projections -->
-  <rect data-graph-role="node" data-node-id="q-proj" x="130" y="370" width="240" height="90" rx="10" class="input"/>
-  <text x="250" y="397" text-anchor="middle" class="label">q_proj：每个头内拆分</text>
-  <text x="250" y="424" text-anchor="middle" class="note">[B,T,16,512]</text>
-  <text x="250" y="449" text-anchor="middle" class="note">每头 = Q 256 + Gate 256</text>
+  <rect data-graph-role="node" data-node-id="q-proj" x="90" y="360" width="320" height="115" rx="10" fill="#FFFFFF" stroke="#2563EB" stroke-width="2"/>
+  <text x="250" y="388" text-anchor="middle" class="label">q_proj 输出 [B,T,8192]</text>
+  <text x="250" y="413" text-anchor="middle" class="note">整理为 [B,T,16,512]，再按每个头拆分</text>
+  <rect x="105" y="429" width="135" height="33" rx="7" class="input"/>
+  <text x="172.5" y="451" text-anchor="middle" class="mini">Q [B,T,16,256]</text>
+  <rect x="260" y="429" width="135" height="33" rx="7" class="gate"/>
+  <text x="327.5" y="451" text-anchor="middle" class="mini" fill="#6D28D9">Gate [B,T,16,256]</text>
   <rect data-graph-role="node" data-node-id="k-proj" x="480" y="370" width="240" height="90" rx="10" class="input"/>
   <text x="600" y="405" text-anchor="middle" class="label">k_proj</text>
   <text x="600" y="435" text-anchor="middle" class="note">K [B,4,T,256]</text>
@@ -110,7 +114,7 @@
   <rect data-graph-role="node" data-node-id="concat" x="465" y="935" width="270" height="78" rx="11" class="value"/>
   <text x="600" y="964" text-anchor="middle" class="head">调整轴顺序并 Concat</text>
   <text x="600" y="992" text-anchor="middle" class="note">[B,T,16×256] = [B,T,4096]</text>
-  <text x="54" y="1028" class="note" fill="#7C3AED">q_proj 产生的 Gate 沿左侧送到这里</text>
+  <text x="54" y="1028" class="note" fill="#7C3AED">Gate 展平为 [B,T,4096]，绕过打分与 Softmax</text>
   <rect data-graph-role="node" data-node-id="output-gate" x="465" y="1045" width="270" height="78" rx="11" class="gate"/>
   <text x="600" y="1074" text-anchor="middle" class="head">乘 Sigmoid(Gate)</text>
   <text x="600" y="1102" text-anchor="middle" class="note">逐元素调节拼接后的特征</text>

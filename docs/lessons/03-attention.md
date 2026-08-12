@@ -552,7 +552,7 @@ Qwen3.5 使用 MRoPE。上面的内容先按纯文本的一维位置理解；图
 
 前面的章节依次解释了单头计算、多头拼接、GQA 和 RoPE。把它们放回 Qwen3.5-9B 的一个 Full Attention 子层，完整顺序如下：
 
-![Qwen3.5-9B 多头 Attention 的完整流程](../assets/03-qwen-attention-full-flow.svg?rev=20260812-1)
+![Qwen3.5-9B 多头 Attention 的完整流程](../assets/03-qwen-attention-full-flow.svg?rev=20260812-2)
 
 第 `h` 个查询头先找到对应的 K/V 头 `g`，再完成：
 
