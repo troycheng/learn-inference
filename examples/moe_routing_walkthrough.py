@@ -1,4 +1,4 @@
-"""复算第 6 课的 Router、Top-2 和 Shared Expert 小例子。"""
+"""复算第 5 课的 Router、Top-2 和 Shared Expert 小例子。"""
 
 from math import exp
 

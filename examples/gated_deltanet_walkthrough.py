@@ -1,4 +1,4 @@
-"""复算第 5 课的三次 Gated DeltaNet 状态更新。"""
+"""复算第 4 课的三次 Gated DeltaNet 状态更新。"""
 
 from math import sqrt
 

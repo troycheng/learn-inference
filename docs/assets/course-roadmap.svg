@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 650" width="1280" height="650" role="img" aria-labelledby="course-roadmap-title course-roadmap-desc">
   <title id="course-roadmap-title">课程学习路线</title>
-  <desc id="course-roadmap-desc">课程分为三个阶段：第零至第四课建立大模型生成和状态缓存的计算主线，第五至第七课理解 Gated DeltaNet、MoE 和多模态输入，第八至第九课学习资源估算和优化评审，最后完成长上下文扩容案例。</desc>
+  <desc id="course-roadmap-desc">课程分为三个阶段：第零至第三课建立基础计算主线，第四至第七课补全现代模型结构、推理执行和多模态输入，第八至第九课学习资源估算和优化评审。</desc>
   <style>
     text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei','Microsoft JhengHei','SimHei',sans-serif;fill:#111827}
     .title{font-size:34px;font-weight:700}.subtitle{font-size:17px;fill:#64748b}
@@ -16,7 +16,7 @@
   <rect width="1280" height="650" fill="#ffffff" data-graph-role="canvas"/>
   <g data-graph-role="title-block">
     <text x="54" y="58" class="title">课程学习路线</text>
-    <text x="54" y="89" class="subtitle">先把一次生成算清楚，再理解现代模型结构，最后用这些原理分析资源与优化方案。</text>
+    <text x="54" y="89" class="subtitle">先理解模型怎样计算，再看完整推理怎样执行，最后分析资源与优化方案。</text>
   </g>
 
   <g data-graph-role="edge" data-source="stage-one" data-target="stage-two">
@@ -40,8 +40,8 @@
     <text x="96" y="400" class="detail">RMSNorm、残差连接与 FFN</text>
     <text x="78" y="438" class="lesson">第 3 课　Attention</text>
     <text x="96" y="461" class="detail">QKV、RoPE、因果遮罩与 GQA</text>
-    <text x="78" y="499" class="lesson">第 4 课　生成阶段与缓存</text>
-    <text x="96" y="522" class="detail">Prefill、Decode 与 KV Cache</text>
+    <rect x="78" y="482" width="320" height="42" rx="10" fill="#ffffff" stroke="#93c5fd" stroke-width="1.4"/>
+    <text x="238" y="508" class="outcome" text-anchor="middle">掌握 Decoder 的基础计算</text>
   </g>
 
   <g data-graph-role="node" id="stage-two" aria-label="第二阶段：理解现代模型结构">
@@ -50,15 +50,17 @@
     <text x="521" y="168" class="stage-number" text-anchor="middle" fill="#6d28d9">第二阶段</text>
     <text x="483" y="210" class="stage-title">理解现代模型结构</text>
 
-    <text x="483" y="266" class="lesson">第 5 课　Gated DeltaNet</text>
-    <text x="501" y="290" class="detail">用固定状态记录历史信息</text>
-    <text x="483" y="345" class="lesson">第 6 课　Dense FFN 与 MoE</text>
-    <text x="501" y="369" class="detail">路由器、Top-K、共享专家与通信</text>
-    <text x="483" y="424" class="lesson">第 7 课　多模态输入</text>
-    <text x="501" y="448" class="detail">从图像 Patch 到 Decoder 输入向量</text>
+    <text x="483" y="250" class="lesson">第 4 课　Gated DeltaNet</text>
+    <text x="501" y="273" class="detail">状态矩阵、Delta Rule 与门控</text>
+    <text x="483" y="316" class="lesson">第 5 课　Dense FFN 与 MoE</text>
+    <text x="501" y="339" class="detail">Router、Top-K、专家与激活参数</text>
+    <text x="483" y="382" class="lesson">第 6 课　推理阶段与状态复用</text>
+    <text x="501" y="405" class="detail">Prefill、Decode 与 KV Cache</text>
+    <text x="483" y="448" class="lesson">第 7 课　多模态输入</text>
+    <text x="501" y="471" class="detail">从图像 Patch 到 Decoder 输入向量</text>
 
-    <rect x="483" y="482" width="320" height="42" rx="10" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.4"/>
-    <text x="643" y="508" class="outcome" text-anchor="middle">读懂 Qwen3.5 的混合模型结构</text>
+    <rect x="483" y="493" width="320" height="42" rx="10" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.4"/>
+    <text x="643" y="519" class="outcome" text-anchor="middle">读懂 Qwen3.5 的模型结构与执行过程</text>
   </g>
 
   <g data-graph-role="node" id="stage-three" aria-label="第三阶段：资源估算与优化评估">

@@ -10,7 +10,7 @@ Embedding 输出
 
 本课分析其中一个 Decoder Layer。它接收一组 token 向量，输出同样 shape 的一组向量。中间完成两类计算：先让 token 之间交换信息，再分别加工每个 token。两次计算的结果都通过残差连接加回各自的输入。
 
-负责 token 间信息交换的模块有 Attention 和 Gated DeltaNet。本课先把两者统称为 Token Mixer，第 3 课和第 5 课再分别分析其内部计算。
+负责 token 间信息交换的模块有 Attention 和 Gated DeltaNet。本课先把两者统称为 Token Mixer，第 3 课和第 4 课再分别分析其内部计算。
 
 如果遇到中英文名称或 shape 符号不确定，可以查看[课程术语与符号表](../glossary.md)。
 
@@ -530,7 +530,7 @@ RMSNorm → Token Mixer → Residual
 → RMSNorm → 路由器 + 少量专家 FFN → Residual
 ```
 
-Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 课完整对比。
+Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 5 课完整对比。
 
 ## 12. Prefill 与 Decode 的层输入
 
@@ -543,7 +543,7 @@ Token Mixer、RMSNorm 和残差骨架仍然存在。Dense 与 MoE 会在第 6 �
 
 Linear 和 FFN 对每个 token 使用同一套权重。模型、dtype、状态和调度条件允许时，runtime 可以把多个位置合并成更大的矩阵计算。Chunked Prefill 把部分 Prefill token 与 Decode token 放进同一轮时，FFN 部分就可以这样合并。
 
-但不能只看 FFN 就断言整个 Decoder Layer 可以随意拼接。Token Mixer 还必须正确处理每个序列的因果关系、位置和缓存边界。第 4 课再展开这部分。
+但不能只看 FFN 就断言整个 Decoder Layer 可以随意拼接。Token Mixer 还必须正确处理每个序列的因果关系、位置和缓存边界。第 6 课再展开这部分。
 
 ## 13. Decoder 相关术语
 

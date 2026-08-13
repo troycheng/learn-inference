@@ -6,9 +6,9 @@
 
 | 底稿 | 用途 |
 | --- | --- |
-| [Prefill、Decode 与推理状态](lesson-04-prefill-decode-kv-cache.md) | 核对生成时间线、KV Cache 和服务指标边界 |
-| [Gated DeltaNet](lesson-05-gated-deltanet.md) | 核对状态更新公式、门控和请求状态 |
-| [Dense FFN 与 MoE](lesson-06-dense-moe.md) | 核对 Router、Expert、参数口径和通信边界 |
+| [Gated DeltaNet](lesson-04-gated-deltanet.md) | 核对状态更新公式、门控和请求状态 |
+| [Dense FFN 与 MoE](lesson-05-dense-moe.md) | 核对 Router、Expert、参数口径和通信边界 |
+| [Prefill、Decode 与推理状态](lesson-06-inference-phases-and-state-reuse.md) | 核对生成时间线、KV Cache 和服务指标边界 |
 | [多模态输入](lesson-07-multimodal-input.md) | 核对 Patch、视觉编码器、Merger 和 MRoPE |
 | [配置与资源估算](lesson-08-config-and-sizing.md) | 核对参数量、状态量和 FLOPs |
 | [优化分析](lesson-09-optimization-judgment.md) | 核对常见优化的收益条件和失效边界 |

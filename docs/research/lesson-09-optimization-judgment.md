@@ -86,6 +86,12 @@ Qwen3.5-9B 只有 8 个 Full Attention 层，35B-A3B 只有 10 个。评估 KV �
 
 需要检查 scale 是静态还是动态、按 tensor/头/块怎样分组，Kernel 是否原生读取量化 Cache，以及长上下文质量是否退化。若并发主要受固定 shape 的 Gated DeltaNet 状态限制，只量化 KV 的收益会小于对纯 Transformer 的直觉。
 
+### PagedAttention 改变的是显存管理
+
+KV Cache 定义模型要为历史位置保存的 K/V。PagedAttention 不改变这些张量的含义，而是将它们分成固定大小的块，再通过块表映射到显存。请求增长时按需分配新块，可以减少按最大输出长度预留导致的浪费，也更容易共享相同前缀的块。[PagedAttention v1](https://arxiv.org/abs/2309.06180v1)
+
+评估 PagedAttention 应看可容纳的并发请求数、Cache 利用率、尾块浪费、块表开销和目标 Attention Kernel 吞吐，不能将它说成减少了 Attention 必须读取的有效历史。
+
 ## 3. FlashAttention：改变数据搬运，不改变 Attention 含义
 
 标准实现容易把 `QK^T` 分数和 Softmax 概率矩阵写回 HBM。FlashAttention 把 Q/K/V 分块装入片上 SRAM，在块内维护 Softmax 统计量并直接累计输出，避免在 HBM 完整物化巨大的 `T x T` 中间矩阵。它是精确 Attention，不是近似 Attention。[FlashAttention 原论文 v2](https://arxiv.org/abs/2205.14135v2)

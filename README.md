@@ -26,7 +26,7 @@
 
 ## 课程主线
 
-第 1 至第 4 课沿着“用户输入 → 模型输入向量 → 多层 Decoder → Logits → 下一个 token → 下一轮 Decode”展开。第 7 课再加入图片和视频。两类输入最终都会变成与语言模型 Hidden Size 对齐的向量，进入同一个 Decoder 主干。
+第 1 至第 6 课沿着一次文本生成展开：先看 token 怎样进入 Decoder，再拆解 Full Attention、Gated DeltaNet、Dense FFN 和 MoE，最后比较 Prefill 与 Decode 怎样执行这些模块并维护请求状态。第 7 课再加入图片和视频。
 
 需要复习完整数据流、Decoder Layer 内部结构和两类请求状态时，可以打开带图的[大模型推理链路速查](docs/inference-map.md)。
 
@@ -47,9 +47,9 @@
 | 1 | [第 1 课：大模型生成下一个 token 的过程](docs/lessons/01-text-to-next-token.md) | 区分文本、Token ID、向量、Logit 和概率，解释因果训练目标 |
 | 2 | [第 2 课：Decoder Layer 的结构与计算](docs/lessons/02-inside-a-decoder-layer.md) | 解释 RMSNorm、残差连接和 SwiGLU FFN |
 | 3 | [第 3 课：Attention 的计算原理](docs/lessons/03-attention.md) | 手算一次 Attention 并解释 RoPE、GQA |
-| 4 | [第 4 课：Prefill、Decode 与 KV Cache](docs/lessons/04-prefill-decode-kv-cache.md) | 解释生成阶段、缓存复用和批处理 |
-| 5 | [第 5 课：Gated DeltaNet 的状态读写](docs/lessons/05-gated-deltanet.md) | 区分固定状态与随长度增长的 KV Cache |
-| 6 | [第 6 课：Dense FFN 与 MoE 的结构差异](docs/lessons/06-dense-and-moe.md) | 解释路由器、Top-K、共享专家和激活参数 |
+| 4 | [第 4 课：Gated DeltaNet 的状态更新机制](docs/lessons/04-gated-deltanet.md) | 解释状态矩阵、Delta Rule、门控和因果卷积 |
+| 5 | [第 5 课：Dense FFN 与 MoE 的结构差异](docs/lessons/05-dense-and-moe.md) | 解释路由器、Top-K、共享专家和激活参数 |
+| 6 | [第 6 课：自回归推理的执行阶段与状态复用](docs/lessons/06-inference-phases-and-state-reuse.md) | 解释 Prefill、Decode 和两类层状态的生命周期 |
 | 7 | [第 7 课：多模态输入与视觉编码](docs/lessons/07-multimodal-input.md) | 从像素和 Patch 推导到 Decoder 输入 |
 | 8 | [第 8 课：模型配置与资源估算](docs/lessons/08-config-and-sizing.md) | 估算权重、请求状态和主要计算量 |
 | 9 | [第 9 课：推理优化的分析与评估](docs/lessons/09-optimization-judgment.md) | 判断优化改了什么、何时有效、怎样验证 |
@@ -65,7 +65,7 @@
 
 如果还不能熟练解释 `[B,T,H]`、沿轴归约和 Linear 的 shape，先读第 0 课；已经熟悉这些内容，可以从第 1 课开始，需要时再回来查第 0 课。
 
-第 1 至第 4 课应连续阅读，它们依次解释新 token 怎样产生、Decoder Layer 怎样计算、Attention 怎样读取前文，以及 Prefill 和 Decode 怎样保存状态。第 5 至第 7 课加入 Gated DeltaNet、MoE 和图片输入；第 8、9 课再把这些原理用于资源估算和优化评审。
+第 1 至第 6 课应连续阅读。第 1、2 课建立生成链路和 Decoder Layer 骨架；第 3 至第 5 课分别展开 Full Attention、Gated DeltaNet 和 Dense FFN/MoE；第 6 课把这些模块放回 Prefill 与 Decode。第 7 课加入多模态输入，第 8、9 课再进行资源估算和优化评审。
 
 第一次阅读只需追踪数据表示、shape 变化和请求状态，不必记住 Qwen3.5 的每个配置数字。遇到公式时，可以运行对应的复算程序。课程中的计算、查错和评审题用于检查能否把同一个原理应用到新数据。
 
@@ -75,7 +75,7 @@
 
 ## 可运行示例
 
-第 1、2、3、5、6、8、9 课和综合评审提供了只依赖 Python 标准库的[复算程序](examples/README.md)。脚本与正文使用同一组数字，运行后会打印中间结果，并检查关键数值。它们适合在读完公式后自己算一遍，不要求安装 PyTorch 或下载模型权重。
+第 1、2、3、4、5、8、9 课和综合评审提供了只依赖 Python 标准库的[复算程序](examples/README.md)。脚本与正文使用同一组数字，运行后会打印中间结果，并检查关键数值。它们适合在读完公式后自己算一遍，不要求安装 PyTorch 或下载模型权重。
 
 提交前可以运行 `bash scripts/check-course.sh`，检查 Markdown 结构、本地链接、SVG 渲染和可运行示例。GitHub Actions 也会执行同一组检查。
 

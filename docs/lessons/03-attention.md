@@ -653,7 +653,7 @@ Prefill 有 `T` 个查询位置，每个位置最多与 `T` 个键位置比较�
 
 Qwen3.5-9B 的 KV Cache 按 `Nkv=4` 保存，不能误用 `Nq=16`。K 在写入缓存前已经做过 RoPE，复用缓存时必须保持位置编号和 RoPE 规则一致。
 
-第 4 课会继续解释 Prefill、逐 token Decode、KV Cache 的建立过程和容量计算。
+第 6 课会继续解释 Prefill、逐 token Decode 和 KV Cache 的建立过程；容量计算放在第 8 课。
 
 ## 9. 练习
 
@@ -728,4 +728,4 @@ Attention Score: [1,16,1,101]
 
 ---
 
-[上一课：Decoder Layer 的结构与计算](02-inside-a-decoder-layer.md) · [返回课程路线](../roadmap.md) · [下一课：Prefill、Decode 与 KV Cache](04-prefill-decode-kv-cache.md)
+[上一课：Decoder Layer 的结构与计算](02-inside-a-decoder-layer.md) · [返回课程路线](../roadmap.md) · [下一课：Gated DeltaNet 的状态更新机制](04-gated-deltanet.md)

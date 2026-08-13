@@ -18,11 +18,12 @@
 | --- | --- | --- | --- | --- |
 | Chat Template 与 Tokenizer | 文字 → Token IDs | 通常不产生模型请求状态 | 输入格式、特殊 token、Prompt 长度 | [第 1 课](lessons/01-text-to-next-token.md) |
 | Embedding 与视觉编码 | Token IDs 或像素 → `[B,T,H]` | 模型权重 | 词表大小、视觉位置数、Hidden Size | [第 1 课](lessons/01-text-to-next-token.md)、[第 7 课](lessons/07-multimodal-input.md) |
-| Decoder Layer | `[B,T,H]` → `[B,T,H]` | 每层的模型权重 | 层数、FFN 宽度、Dense/MoE | [第 2 课](lessons/02-inside-a-decoder-layer.md)、[第 6 课](lessons/06-dense-and-moe.md) |
-| Full Attention | Q/K/V → 上下文向量 | 历史 K/V | 上下文长度、KV dtype、GQA、FlashAttention | [第 3 课](lessons/03-attention.md)、[第 4 课](lessons/04-prefill-decode-kv-cache.md) |
-| Gated DeltaNet | 当前 token 与旧状态 → 新状态和输出 | 卷积状态、递归状态 | 固定状态容量、Prefix Cache 完整性 | [第 5 课](lessons/05-gated-deltanet.md) |
+| Decoder Layer | `[B,T,H]` → `[B,T,H]` | 每层的模型权重 | 层数、FFN 宽度、Dense/MoE | [第 2 课](lessons/02-inside-a-decoder-layer.md)、[第 5 课](lessons/05-dense-and-moe.md) |
+| Full Attention | Q/K/V → 上下文向量 | 历史 K/V | 上下文长度、KV dtype、GQA、FlashAttention | [第 3 课](lessons/03-attention.md)、[第 6 课](lessons/06-inference-phases-and-state-reuse.md) |
+| Gated DeltaNet | 当前 token 与旧状态 → 新状态和输出 | 卷积状态、递归状态 | 固定状态容量、Prefix Cache 完整性 | [第 4 课](lessons/04-gated-deltanet.md) |
 | LM Head 与选择策略 | 隐藏状态 → Logits → Token ID | 生成历史由请求继续使用 | 词表投影、采样参数、停止条件 | [第 1 课](lessons/01-text-to-next-token.md) |
-| Prefill 与 Decode | 已知位置 → 新 Logits 和新状态 | KV、卷积状态、递归状态 | TTFT、TPOT、Batching、调度 | [第 4 课](lessons/04-prefill-decode-kv-cache.md) |
+| Prefill 与 Decode | 已知位置 → 新 Logits 和新状态 | KV、卷积状态、递归状态 | 阶段边界、状态建立和复用 | [第 6 课](lessons/06-inference-phases-and-state-reuse.md) |
+| Batching 与调度 | 多个请求的已知 token → 本轮模型输入 | Batch 元数据与各请求状态 | 排队、TTFT、TPOT、吞吐 | [第 9 课](lessons/09-optimization-judgment.md) |
 | 资源与优化 | 配置与工作负载 → 容量和性能判断 | 取决于具体方案 | 权重、状态、FLOPs、通信、SLO | [第 8 课](lessons/08-config-and-sizing.md)、[第 9 课](lessons/09-optimization-judgment.md) |
 
 ## 四类数字需要分别统计

@@ -6,5 +6,5 @@
 
 | 文件 | 保留原因 | 当前对应内容 |
 | --- | --- | --- |
-| [张量、依赖与 Linear 的成本直觉](01-linear-cost-intuition.md) | 第一轮学习问题和推导记录 | 第 0、4、8 课 |
+| [张量、依赖与 Linear 的成本直觉](01-linear-cost-intuition.md) | 第一轮学习问题和推导记录 | 第 0、6、8 课 |
 | [完整计算图与核心算子族](02-computation-graphs-draft.md) | 一份已经放弃的课程组织方案 | 不再作为主课内容 |

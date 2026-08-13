@@ -13,7 +13,7 @@ body:
     attributes:
       label: 课程位置
       description: 文件、小节标题或链接
-      placeholder: 例如：第 4 课，6. 单步 Decode 的数据流
+      placeholder: 例如：课程文件名、小节标题或图示链接
     validations:
       required: true
   - type: textarea

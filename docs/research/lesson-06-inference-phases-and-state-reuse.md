@@ -1,10 +1,10 @@
-# 第 4 课研究笔记：Prefill、Decode 与推理状态
+# 第 6 课研究笔记：自回归推理的执行阶段与状态复用
 
-这份笔记为第 4 课核实模型行为和系统行为。资料只取自 Qwen3.5-9B-Base 官方配置、Hugging Face Transformers 官方实现与文档、vLLM 官方源码，以及 Orca、PagedAttention、Sarathi-Serve 原论文。
+这份笔记为第 6 课核实模型行为和状态复用，并为第 9 课保留服务调度资料。资料取自 Qwen3.5-9B-Base 官方配置、Hugging Face Transformers 官方实现与文档、vLLM 官方源码，以及 Orca、PagedAttention、Sarathi-Serve 原论文。
 
 ## 核心结论
 
-第 4 课应当沿一条请求时间线展开，而不是分别解释几个术语：
+第 6 课应当沿一条请求时间线展开，而不是分别解释几个术语：
 
 ```text
 Prompt p1 p2 p3 p4
@@ -51,7 +51,7 @@ p4 可以读 p1、p2、p3、p4
 - Full Attention 同时计算多个 Query，但因果遮罩仍限制每个 Query 可读取的 Key。
 - Qwen3.5 的 Gated DeltaNet 层存在递归状态依赖。官方实现对多 token 输入调用分块 Gated Delta Rule，对单 token 缓存解码调用递归版本。[Qwen3.5 Gated DeltaNet forward](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L432-L540)
 
-因此，第 4 课应写成“Prompt 的 token 已全部给出，runtime 可以把多个已知位置组织进一次或若干次较大的前向计算”，不要写成“Prompt token 没有依赖，所以完全并行”。
+因此，第 6 课应写成“Prompt 的 token 已全部给出，runtime 可以把多个已知位置组织进一次或若干次较大的前向计算”，不要写成“Prompt token 没有依赖，所以完全并行”。
 
 ## 2. 一步 Decode 的准确数据流
 
@@ -210,7 +210,7 @@ recurrent_state：[B,32,128,128]
 
 推导依据是 `16` 个 Key 头、`32` 个 Value 头、Key/Value 头维均为 `128`，卷积宽度为 `2 × key_dim + value_dim = 8192`；递归计算会把 Q/K 头扩展到 `32`，最终状态 shape 为 `[B,num_heads,k_head_dim,v_head_dim]`。[Qwen3.5 Gated DeltaNet 定义](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L387-L425) [Gated Delta Rule 状态创建](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L330-L380)
 
-第 4 课只需讲清边界：Full Attention 使用随序列长度增长的 K/V，Gated DeltaNet 使用固定 shape 的状态。状态内部更新过程留到第 5 课。
+第 6 课只需讲清边界：Full Attention 使用随序列长度增长的 K/V，Gated DeltaNet 使用固定 shape 的状态。状态内部更新过程已经在第 4 课讲解。
 
 ## 5. TTFT、ITL 与 TPOT 的边界
 
@@ -337,23 +337,23 @@ KV Cache 避免历史位置在各 Full Attention 层重复生成 K/V，也让 De
 
 ## 9. 推荐的正文讲解顺序
 
-课程正文适合按下面的顺序写：
+第 6 课正文适合按下面的顺序写：
 
 1. 用 4 个 Prompt token 和 3 个输出 token 画完整时间线。
 2. 明确 Prefill 产生的是第一个输出 token 的 Logits，不是一次生成所有答案。
 3. 放大第一步 Decode，标出 `y1` 何时作为输入、何时写入缓存。
 4. 回到单个 Full Attention 层，解释为什么只保存 K/V，不保存 Q。
-5. 推导 `[B,Nkv,T,D]` 和字节公式，再代入 Qwen3.5-9B。
+5. 推导 `[B,Nkv,T,D]` 和基础字节公式；真实配置的代入计算留到第 8 课。
 6. 把 Qwen3.5 的 8 个 KV Cache 层与 24 个固定状态层分开画。
-7. 由多请求时间线引出 Continuous Batching。
-8. 把长 Prompt 切块，解释 Chunked Prefill 为什么可与 Decode 混批。
-9. 最后定义 TTFT、ITL、TPOT，并提醒指标采集边界。
 
-建议至少配三张图：
+第 9 课再使用本底稿的服务系统资料，依次讲 TTFT、ITL、TPOT，Continuous Batching，Prefill/Decode 混批与 Chunked Prefill。这些内容依赖第 6 课的阶段和状态边界，但属于服务调度与优化评估，不应再塞回第 6 课正文。
+
+第 6 课建议配两类图：
 
 - 一张请求时间线，突出“Logits 预测下一个 token”的错位关系。
 - 一张 Full Attention 缓存增长图，显示每步只追加一列 K/V。
-- 一张多请求调度图，区分请求内串行与请求间混批。
+
+多请求调度图和延迟指标图放在第 9 课。
 
 ## 10. 常见错误清单
 

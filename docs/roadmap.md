@@ -8,8 +8,9 @@
 文本输入与模型向量
 → Decoder Layer 的结构与计算
 → Attention 与上下文信息
+→ Gated DeltaNet 的状态更新
+→ Dense FFN 与 MoE
 → Prefill、Decode 与请求状态
-→ Dense、MoE 与 Gated DeltaNet
 → 多模态输入与视觉编码
 → 配置字段与资源估算
 → 推理优化的收益、成本与验证
@@ -19,17 +20,19 @@
 
 推理系统里的很多概念互相依赖。还没分清 Token ID、Embedding 和隐藏状态，就很难理解 Q、K、V 从哪里来；没算过 Attention，也很难说明 KV Cache 保存了什么；不知道 Dense 和 MoE 的结构差异，就无法判断 TP、EP 或量化改变了哪部分成本。
 
-因此，第 0 至第 4 课是一条连续主线：
+第 0 至第 6 课构成连续主线：
 
 ```text
 第 0 课  张量、shape 与基础计算
 第 1 课  下一个 token 的生成过程
 第 2 课  Decoder Layer 的结构与计算
 第 3 课  Full Attention 的计算原理
-第 4 课  Prefill、Decode 与 KV Cache
+第 4 课  Gated DeltaNet 的状态更新机制
+第 5 课  Dense FFN 与 MoE 的结构差异
+第 6 课  自回归推理的执行阶段与状态复用
 ```
 
-第 5 至第 7 课加入 Qwen3.5 的混合结构、MoE 和图片输入。第 8、9 课集中练习资源估算和优化判断，只补充 dtype 与多卡切分所需的基础。
+第 0 课补足张量与基础计算知识；第 1、2 课建立生成链路和 Decoder Layer 骨架；第 3 至第 5 课展开层内主要模块；第 6 课再说明这些模块在 Prefill 和 Decode 中怎样运行。第 7 课加入图片输入，第 8、9 课集中练习资源估算和优化判断。
 
 ## 贯穿课程的分析主线
 
@@ -49,9 +52,9 @@
 | [1](lessons/01-text-to-next-token.md) | 大模型生成下一个 token 的过程 | 区分文本、Token ID、向量、Logit 和概率，解释因果训练目标以及训练与生成的数据依赖 |
 | [2](lessons/02-inside-a-decoder-layer.md) | Decoder Layer 的结构与计算 | 解释 RMSNorm、Token Mixer、残差和 SwiGLU FFN |
 | [3](lessons/03-attention.md) | Attention 的计算原理 | 手算 QK 点积、因果遮罩、Softmax 和 V 的加权求和 |
-| [4](lessons/04-prefill-decode-kv-cache.md) | Prefill、Decode 与 KV Cache | 解释生成阶段、缓存复用和服务端批处理 |
-| [5](lessons/05-gated-deltanet.md) | Gated DeltaNet 的状态读写 | 区分固定状态、因果卷积和 Full Attention KV |
-| [6](lessons/06-dense-and-moe.md) | Dense FFN 与 MoE 的结构差异 | 解释路由器、Top-K、共享专家、总参数和激活参数 |
+| [4](lessons/04-gated-deltanet.md) | Gated DeltaNet 的状态更新机制 | 解释状态矩阵、Delta Rule、门控和因果卷积 |
+| [5](lessons/05-dense-and-moe.md) | Dense FFN 与 MoE 的结构差异 | 解释路由器、Top-K、共享专家、总参数和激活参数 |
+| [6](lessons/06-inference-phases-and-state-reuse.md) | 自回归推理的执行阶段与状态复用 | 解释 Prefill、Decode、KV Cache 和固定状态的生命周期 |
 | [7](lessons/07-multimodal-input.md) | 多模态输入与视觉编码 | 从像素、Patch 和视觉编码器推导到 `[B,T,H]` |
 | [8](lessons/08-config-and-sizing.md) | 模型配置与资源估算 | 区分保存、计算与累加 dtype，估算参数、权重、请求状态和计算量 |
 | [9](lessons/09-optimization-judgment.md) | 推理优化的分析与评估 | 比较常见优化和并行策略，估算端到端上限并设计验证实验 |

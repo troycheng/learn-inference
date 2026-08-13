@@ -221,7 +221,7 @@ $$
 
 ### 4.4 Gated DeltaNet 投影
 
-第 5 课已经拆过一个 Gated DeltaNet 层。9B 中：
+第 4 课已经拆过一个 Gated DeltaNet 层。9B 中：
 
 ```text
 Key：   16×128 = 2048 维
@@ -341,7 +341,8 @@ Kernel Workspace
 等长 Batch 的逻辑 KV 有效载荷为：
 
 $$
-KV\ Bytes=2B L_{full}N_{kv}TDs
+\mathrm{KV\ bytes}
+=2\times B\times L_{full}\times N_{kv}\times T\times D\times s
 $$
 
 其中：

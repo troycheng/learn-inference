@@ -1,6 +1,6 @@
-# 第 5 课研究笔记：Qwen3.5 的 Gated DeltaNet
+# 第 4 课研究笔记：Qwen3.5 的 Gated DeltaNet
 
-这份笔记为第 5 课核实 Gated DeltaNet 的原理、Qwen3.5-9B-Base 的具体结构和推理状态。资料只取自 Gated DeltaNet 与 DeltaNet 原论文、Qwen3.5 官方模型文件、Hugging Face Transformers 固定 revision 实现，以及论文作者维护的官方 Kernel 实现。
+这份笔记为第 4 课核实 Gated DeltaNet 的原理、Qwen3.5-9B-Base 的具体结构和推理状态。资料只取自 Gated DeltaNet 与 DeltaNet 原论文、Qwen3.5 官方模型文件、Hugging Face Transformers 固定 revision 实现，以及论文作者维护的官方 Kernel 实现。
 
 ## 核心结论
 
@@ -391,7 +391,7 @@ Qwen3.5 的混合结构从数值上同时拥有两类历史通道：24 层通过
 
 面向数学基础较弱的工程师，建议按以下顺序写：
 
-1. 接上第 4 课，先画出 Qwen3.5 请求同时拥有 KV Cache 和固定状态。
+1. 接上第 3 课，先画出 Qwen3.5 中 Full Attention 与 Gated DeltaNet 的不同历史表示。
 2. 对比 Full Attention 的“保存全部 K/V”和 DeltaNet 的“维护一张状态矩阵”。
 3. 用 `2×2` 状态演示“不要重复累加，先算差值再修正”。
 4. 加入 `β`，说明一次修正多少。

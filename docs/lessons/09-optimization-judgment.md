@@ -44,6 +44,24 @@
 
 `engine token/s` 统计引擎内部工作量，不等于用户收到的 token 数。使用推测解码、Padding 或重算时，还要说明 runtime 的计数器是否包含候选位置、填充位置和重复执行的位置。
 
+### 1.2 TTFT、ITL 与 TPOT 的计时边界
+
+第 6 课已经说明 Prefill、Decode 和请求状态的生命周期。这里只定义评估服务行为时需要的时间指标。
+
+![TTFT、TPOT 与 ITL 的时间范围](../assets/09-latency-metrics.svg)
+
+首 token 延迟（Time to First Token，TTFT）从约定的请求起点开始，到客户端收到第一个输出 token 结束。端到端 TTFT 可能包含网络、排队、输入处理、Prefill、采样和返回，所以不能直接当作 GPU Prefill Kernel 时间。
+
+Token 间延迟（Inter-token Latency，ITL）是相邻两个输出 token 的到达间隔。每输出 token 时间（Time per Output Token，TPOT）通常取首 token 之后各段 ITL 的平均值：
+
+$$
+\mathrm{TPOT}
+=\frac{\mathrm{E2E}-\mathrm{TTFT}}{N_{out}-1},
+\qquad N_{out}>1
+$$
+
+同名指标也可能使用不同计时起点。比较两个系统前，应确认是否包含排队、客户端网络和预处理，并区分逐请求平均值与 P99 等分位数。
+
 ## 2. 权重量化
 
 ### 2.1 权重量化的数据路径
@@ -70,12 +88,15 @@ Weight-only 量化通常仍让激活保持 BF16 或 FP16。低比特 Kernel 读�
 
 只看模型文件大小，不能判断量化是否真的降低了服务延迟或提高了同 SLO 吞吐。
 
-## 3. KV Cache 量化
+## 3. KV Cache 的格式与内存管理
+
+### 3.1 KV Cache 量化
 
 第 8 课的 KV 公式是：
 
 $$
-KV\ Bytes=2B L_{full}N_{kv}TDs
+\mathrm{KV\ bytes}
+=2\times B\times L_{full}\times N_{kv}\times T\times D\times s
 $$
 
 若把 KV 从 BF16 的 2 Byte 改为 FP8 的 1 Byte，逻辑有效载荷约减半。它可能带来两类收益：
@@ -93,6 +114,14 @@ $$
 Qwen3.5-9B 有 8 个 Full Attention 层，Qwen3.5-35B-A3B 有 10 个；只有这些层使用随长度增长的 KV。若服务容量主要受每请求几十 MiB 的 Gated DeltaNet 固定状态限制，只量化 KV 的收益可能小于纯 Transformer 模型。
 
 验证时还要确认 Scale 的粒度、静态或动态计算方式，以及 Attention Kernel 是否能直接读取量化 Cache。若先把 KV 还原成 BF16 再执行，节省的存储字节不一定能完全转成读取加速。
+
+### 3.2 PagedAttention 管理物理内存
+
+第 6 课已经说明 KV Cache 的模型语义：Full Attention 为历史位置保存 K/V。PagedAttention 处理的是另一层问题：这些 K/V 怎样分配到显存。
+
+若每个请求都预留一段可容纳最大输出长度的连续显存，大量空间会在请求结束前闲置；请求继续增长时，连续空间也不容易扩展。PagedAttention 把 KV Cache 分成固定大小的块，用块表把逻辑连续的位置映射到不连续的物理块。请求增长时继续分配新块，不必搬动整段 Cache。
+
+这项机制主要减少预留浪费和碎片，并支持块级共享。它不会改变 K/V 的模型含义，也不会减少 Attention 必须读取的有效历史位置。评估时应看可容纳的并发请求数、Cache 利用率、尾块浪费、块表开销，以及目标 Kernel 的实际吞吐。
 
 ## 4. FlashAttention
 
@@ -183,6 +212,30 @@ Continuous Batching 只说明 Batch 成员能动态变化，不自动表示 Pref
 
 > 先满足给定的 TTFT、TPOT 和 P99 SLO，再比较可持续的 request/s、input token/s 和 output token/s。
 
+### 6.4 Prefill 与 Decode 混批
+
+第 6 课已经说明，同一请求的未来 token 必须逐轮确定；不同请求当前已经确定的 token 则彼此独立。一次调度可以面对下面三份工作：
+
+```text
+请求 A：1 个 Decode token
+请求 B：1 个 Decode token
+请求 C：4 个已知的 Prompt token
+```
+
+支持混批的运行时可以把这 6 个 token 放进同一次模型执行，同时保留请求边界、位置编号和各自的状态地址。
+
+![多个请求的 Prefill 与 Decode token 组成一次模型执行](../assets/09-mixed-batch.svg)
+
+把 Prefill token 和 Decode token 放进同一批后，一轮 Linear 和 FFN 处理的 token 数增加，同一份权重可以服务更多输入。这可能提高权重读取复用，但也增加了单轮工作量，Decode token 可能因此等待更久。是否有收益，取决于运行时与 Kernel 是否支持这种输入，以及目标负载对吞吐和尾延迟的要求。
+
+### 6.5 Chunked Prefill
+
+长 Prompt 已经完整给出，可以沿 token 轴分成多段。后一段继续读取前一段留下的 KV Cache、卷积状态和递归状态，Chunk 边界不会清空上下文。
+
+调度器可以先安排在途请求的 Decode token，再用剩余 token 预算放入 Prefill Chunk。较大的 Chunk 能更快完成单个 Prompt，却可能延长同批 Decode 的间隔；较小的 Chunk 更容易插入 Decode，但一个 Prompt 需要经历更多轮调度，TTFT 和调度开销可能增加。
+
+还要区分两种同名能力。Transformers 的 `prefill_chunk_size` 可以把一个输入顺序切块并在块间传递状态；在线推理系统中的 Chunked Prefill 通常还包含跨请求调度与 Prefill/Decode 混批。看到配置项后，应通过执行时间线确认它实际实现了哪一层能力。
+
 ## 7. DP、TP、PP 与 EP 的切分方式
 
 四种并行策略都使用多张 GPU，但切分对象不同：
@@ -193,6 +246,8 @@ Continuous Batching 只说明 Batch 成员能动态变化，不自动表示 Pref
 | 张量并行（TP） | 切分同一层中的矩阵或 Attention 头 | 每层都由多个 Rank 共同计算 | 单卡容量与单请求计算分担 |
 | 流水线并行（PP） | 按深度切分连续 Decoder Layer | 依次经过多个阶段 | 单副本模型容量 |
 | 专家并行（EP） | 把不同路由专家放到不同设备 | 每个 MoE 层按路由结果跨设备分发 | MoE 专家容量与计算组织 |
+
+![专家并行与张量并行切分的对象不同](../assets/09-ep-vs-tp.svg)
 
 ### 7.1 数据并行（DP）
 
@@ -216,7 +271,7 @@ PP 能让单个模型跨越多张卡或多个节点，但不会让同一个 toke
 
 ### 7.4 专家并行（EP）
 
-EP 把路由专家分布到不同设备。路由器选完 Top-K 后，token 特征被送到持有相应专家的设备；专家计算结束后，再把结果送回原 token 位置。第 6 课的[EP 与 TP 结构图](06-dense-and-moe.md#10-专家并行ep与张量并行tp)画出了两种切分的差异。
+EP 把路由专家分布到不同设备。路由器选完 Top-K 后，token 特征被送到持有相应专家的设备；专家计算结束后，再把结果送回原 token 位置。
 
 低并发时，每个专家可能只收到少量 token，小 GEMM 和通信延迟占主导。热点专家若集中在少数 Rank，整层还要等待最慢设备。Top-K 越大，每个 token 的路由分配和通信通常也越多。
 
@@ -471,6 +526,8 @@ Prefix Cache 有保留价值，但它没有解决当前的 P99 SLO。评审结�
 - [vLLM：Tensor Parallel 与 Pipeline Parallel 部署，revision 653ebb5](https://github.com/vllm-project/vllm/blob/653ebb52dffd8b4653b430302473c771117529f1/docs/serving/parallelism_scaling.md)
 - [NVIDIA Megatron Core：并行策略对比](https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/parallelism-guide.html)
 - [vLLM 文档与源码，revision 653ebb5](https://github.com/vllm-project/vllm/tree/653ebb52dffd8b4653b430302473c771117529f1)
+- [vLLM：TTFT、TPOT 与 ITL 的计算，revision 643c125](https://github.com/vllm-project/vllm/blob/643c125fab66d5ed5ec3143b7e764a77e7ae8ac7/vllm/benchmarks/serve.py#L582-L613)
+- [Transformers：生成循环与 Prompt 分块，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/generation/utils.py)
 - [vLLM Qwen3.5 配方，revision 689d6b9](https://github.com/vllm-project/recipes/blob/689d6b98c05ec4e92523a231afe9dce97e5d83dc/Qwen/Qwen3.5.md)
 - [Qwen3.5-35B-A3B 模型卡，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/README.md)
 

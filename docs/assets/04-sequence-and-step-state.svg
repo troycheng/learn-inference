@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 610" width="1400" height="610" role="img" aria-labelledby="title desc">
-  <title id="title">Prefill 和 Decode 怎样更新 Gated DeltaNet 状态</title>
-  <desc id="desc">Prefill 处理已知序列并得到末尾状态，Decode 每次接收一个新 token，在上一轮状态上继续更新。</desc>
+  <title id="title">整段已知序列与单个新 token 怎样更新 Gated DeltaNet 状态</title>
+  <desc id="desc">一段已知序列可由 Chunk Kernel 组织计算，单个新 token 使用递归 Kernel 在旧状态上继续更新。</desc>
   <defs>
     <marker id="b" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
     <marker id="g" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#16a34a"/></marker>
@@ -14,8 +14,8 @@
     .s { font-size:14px; fill:#6b7280; text-anchor:middle; }
   </style>
   <rect width="1400" height="610" fill="#ffffff"/>
-  <text x="55" y="58" class="title">同一条递归规则，Prefill 和 Decode 使用不同执行路径</text>
-  <text x="55" y="92" class="sub">Prefill 用 Chunk Kernel 组织已知序列；Decode 用单步 Kernel 原地更新固定状态。</text>
+  <text x="55" y="58" class="title">同一条递归规则，对应两种计算组织方式</text>
+  <text x="55" y="92" class="sub">整段已知序列使用 Chunk Kernel；单个新 token 使用递归 Kernel 更新固定状态。</text>
 
   <path d="M275 238 H370" stroke="#2563eb" stroke-width="3" marker-end="url(#b)"/>
   <path d="M610 238 H700" stroke="#16a34a" stroke-width="3" marker-end="url(#g)"/>
@@ -23,13 +23,13 @@
   <path d="M1270 238 H1290" stroke="#16a34a" stroke-width="3" marker-end="url(#g)"/>
 
   <rect x="55" y="165" width="220" height="145" rx="15" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-  <text x="165" y="207" class="h">Prompt</text><text x="165" y="248" class="t">p1 p2 ... pT</text><text x="165" y="280" class="s">多个已知位置</text>
+  <text x="165" y="207" class="h">已知序列</text><text x="165" y="248" class="t">p1 p2 ... pT</text><text x="165" y="280" class="s">多个已知位置</text>
   <rect x="370" y="145" width="240" height="185" rx="15" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
   <text x="490" y="191" class="h">Chunk Kernel</text><text x="490" y="232" class="t">块内矩阵计算</text><text x="490" y="265" class="t">块间传递状态</text><text x="490" y="299" class="s">语义仍遵守递归顺序</text>
   <rect x="700" y="145" width="245" height="185" rx="15" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
-  <text x="822" y="190" class="h">Prefill 后状态</text><text x="822" y="235" class="t">卷积状态</text><text x="822" y="268" class="t">递归状态</text><text x="822" y="301" class="s">shape 已固定</text>
+  <text x="822" y="190" class="h">序列末尾状态</text><text x="822" y="235" class="t">卷积状态</text><text x="822" y="268" class="t">递归状态</text><text x="822" y="301" class="s">shape 已固定</text>
   <rect x="1030" y="165" width="240" height="145" rx="15" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
-  <text x="1150" y="207" class="h">Decode：输入 y1</text><text x="1150" y="249" class="t">单步 Recurrent Kernel</text><text x="1150" y="281" class="s">只推进一个已确认位置</text>
+  <text x="1150" y="207" class="h">输入新 token</text><text x="1150" y="249" class="t">Recurrent Kernel</text><text x="1150" y="281" class="s">只推进一个已确认位置</text>
   <rect x="1290" y="185" width="100" height="105" rx="12" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
   <text x="1340" y="225" class="h">更新</text><text x="1340" y="259" class="s">原 shape</text>
 

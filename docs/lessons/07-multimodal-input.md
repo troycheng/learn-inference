@@ -364,4 +364,4 @@ MRoPE 的三组编号作用在同一批视觉位置上，不会把序列长度�
 
 ---
 
-[上一课：Dense FFN 与 MoE 的结构差异](06-dense-and-moe.md) · [返回课程路线](../roadmap.md) · [下一课：模型配置与资源估算](08-config-and-sizing.md)
+[上一课：自回归推理的执行阶段与状态复用](06-inference-phases-and-state-reuse.md) · [返回课程路线](../roadmap.md) · [下一课：模型配置与资源估算](08-config-and-sizing.md)
