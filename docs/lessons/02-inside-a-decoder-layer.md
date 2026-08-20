@@ -304,7 +304,56 @@ Intermediate Size I = 12288
 
 `I` 不是新的 token 数量。`H→I` 只改变每个 token 的向量宽度，`B` 和 `T` 不变。
 
-### 6.2 三组线性投影
+### 6.2 Linear 的逐行点积
+
+Linear 的计算可以直接理解为：权重矩阵的每一行负责产生一个输出数字。
+
+设一个 token 的输入向量为 `x:[H]`，Linear 的权重为 `W:[I,H]`。PyTorch 使用下面的计算约定：
+
+$$
+y=xW^T
+$$
+
+输出 `y:[I]` 的第 `j` 个数字为：
+
+$$
+y_j=\sum_{i=1}^{H}x_iW_{j,i}
+$$
+
+也就是让 `x` 与 `W` 的第 `j` 行做一次点积。`W` 有 `I` 行，所以会得到 `I` 个输出数字。
+
+例如：
+
+$$
+x=\begin{bmatrix}1&2\end{bmatrix},\qquad
+W=\begin{bmatrix}
+1&0\\
+0&1\\
+1&1
+\end{bmatrix}
+$$
+
+三行权重分别与 `x` 点积：
+
+$$
+\begin{aligned}
+y_1&=1\times1+2\times0=1\\
+y_2&=1\times0+2\times1=2\\
+y_3&=1\times1+2\times1=3
+\end{aligned}
+$$
+
+因此 `y=[1,2,3]`。这个 Linear 把 `H=2` 个输入特征重新组合成 `I=3` 个输出特征。所谓 `H→I`，就是权重矩阵有 `I` 行，每行学习一种不同的组合方式。它不会增加 token 数量。
+
+同一规则也适用于 FFN 的三组投影：
+
+```text
+gate_proj：W_gate 有 I 行，产生 I 个门控特征
+up_proj：  W_up   有 I 行，产生 I 个候选特征
+down_proj：W_down 有 H 行，把 I 个中间特征组合成 H 个输出特征
+```
+
+### 6.3 三组线性投影
 
 投影（Projection）在这里指一个学习得到的 Linear：把一组特征重新组合成另一组特征。它不等同于图像处理中的缩放或采样。
 

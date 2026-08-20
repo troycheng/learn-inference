@@ -38,7 +38,7 @@ Gated DeltaNet 替换的是 Attention 所在的 Token Mixer 子层。RMSNorm、�
 
 要理解右边这条路径，先要回答一个问题：一张矩阵怎样汇总多个 token 的信息？
 
-## 2. 用状态矩阵汇总历史
+## 2. 从逐个保存 K/V 到状态矩阵
 
 先看最简单的线性状态，不加入遗忘和修正。每个 token 产生 Key `k_t` 和 Value `v_t`，模型把二者的外积加入状态：
 
@@ -68,7 +68,24 @@ $$
 q_tS_t=\sum_{i=1}^{t}(q_tk_i^T)v_i
 $$
 
-等式右边仍然由 Q/K 点积决定各个 Value 的贡献，因此保留了 Attention 的基本分工。不过，这只是一种没有 Softmax 的线性 Attention。第 3 课的 Full Attention 需要先算出全部分数，再对这些分数执行 Softmax；Softmax 不能按上面的方式提前累积进一张固定矩阵。这里的推导只说明固定状态从何而来，并不表示两种 Token Mixer 的计算完全等价。
+这一步可以从两种计算顺序理解。先暂时忽略 Full Attention 中的 Softmax：
+
+```text
+逐个读取历史：q 先与每个 k_i 点积，再用这些分数汇总 v_i
+固定状态读取：先把每个 k_i^T v_i 累加成 S，再计算 qS
+```
+
+矩阵乘法的结合律使两种顺序得到相同结果：
+
+$$
+\sum_{i=1}^{t}(q_tk_i^T)v_i
+=q_t\left(\sum_{i=1}^{t}k_i^Tv_i\right)
+=q_tS_t
+$$
+
+因此，`S` 可以看作历史 K/V 共同写成的一张状态矩阵。读取时不再逐个访问 `k_1...k_t` 和 `v_1...v_t`，而是让当前 Query 直接乘 `S`。
+
+这个推导只适用于没有 Softmax 的线性 Attention。第 3 课的 Full Attention 要先得到一整行分数，再对这一行执行 Softmax；Softmax 无法按上面的方式提前累积进固定矩阵。两类 Token Mixer 的 Q/K/V 分工相似，计算并不等价。
 
 ### 2.1 用两个二维向量看一次写入
 
@@ -93,24 +110,42 @@ $$
 $$
 \begin{aligned}
 k_1^Tv_1
-&=\begin{bmatrix}1\\0\end{bmatrix}
-  \begin{bmatrix}3&4\end{bmatrix} \\
-&=\begin{bmatrix}3&4\\0&0\end{bmatrix}
+&=\begin{bmatrix}
+1\\
+0
+\end{bmatrix}
+\begin{bmatrix}3&4\end{bmatrix} \\
+&=\begin{bmatrix}
+1\times3&1\times4\\
+0\times3&0\times4
+\end{bmatrix} \\
+&=\begin{bmatrix}
+3&4\\
+0&0
+\end{bmatrix}
 \end{aligned}
 $$
+
+这里算的是外积，不是点积。列向量中的每个数字都会乘完整的 `v_1`：`k_1` 的第一个分量是 1，所以状态第一行写入 `[3,4]`；第二个分量是 0，所以第二行写入 `[0,0]`。
 
 因此：
 
 $$
 S_1=
-\begin{bmatrix}3&4\\0&0\end{bmatrix}
+\begin{bmatrix}
+3&4\\
+0&0
+\end{bmatrix}
 $$
 
 如果 Query 是 `q=[1,0]`，读取结果为：
 
 $$
 qS_1=[1,0]
-\begin{bmatrix}3&4\\0&0\end{bmatrix}
+\begin{bmatrix}
+3&4\\
+0&0
+\end{bmatrix}
 =[3,4]
 $$
 
@@ -124,9 +159,18 @@ $$
 \begin{aligned}
 S_2
 &=S_1+k_2^Tv_2 \\
-&=\begin{bmatrix}3&4\\0&0\end{bmatrix}
-  +\begin{bmatrix}5&1\\0&0\end{bmatrix} \\
-&=\begin{bmatrix}8&5\\0&0\end{bmatrix}
+&=\begin{bmatrix}
+3&4\\
+0&0
+\end{bmatrix}
++\begin{bmatrix}
+5&1\\
+0&0
+\end{bmatrix} \\
+&=\begin{bmatrix}
+8&5\\
+0&0
+\end{bmatrix}
 \end{aligned}
 $$
 
@@ -160,7 +204,10 @@ $$
 
 $$
 S_1=
-\begin{bmatrix}3&4\\0&0\end{bmatrix}
+\begin{bmatrix}
+3&4\\
+0&0
+\end{bmatrix}
 $$
 
 第二个 token 的 `k_2=[1,0]`、`v_2=[5,1]`。先读取旧值：
@@ -182,12 +229,21 @@ $$
 S_2
 &=S_1+k_2^T\Delta_2\\
 &=
-\begin{bmatrix}3&4\\0&0\end{bmatrix}
+\begin{bmatrix}
+3&4\\
+0&0
+\end{bmatrix}
 +
-\begin{bmatrix}1\\0\end{bmatrix}
+\begin{bmatrix}
+1\\
+0
+\end{bmatrix}
 \begin{bmatrix}2&-3\end{bmatrix}\\
 &=
-\begin{bmatrix}5&1\\0&0\end{bmatrix}
+\begin{bmatrix}
+5&1\\
+0&0
+\end{bmatrix}
 \end{aligned}
 $$
 
@@ -218,9 +274,18 @@ $$
 $$
 \begin{aligned}
 S_2
-&=\begin{bmatrix}3&4\\0&0\end{bmatrix}
-  +\begin{bmatrix}1&-1.5\\0&0\end{bmatrix} \\
-&=\begin{bmatrix}4&2.5\\0&0\end{bmatrix}
+&=\begin{bmatrix}
+3&4\\
+0&0
+\end{bmatrix}
++\begin{bmatrix}
+1&-1.5\\
+0&0
+\end{bmatrix} \\
+&=\begin{bmatrix}
+4&2.5\\
+0&0
+\end{bmatrix}
 \end{aligned}
 $$
 
@@ -249,7 +314,10 @@ $$
 
 $$
 S_2=
-\begin{bmatrix}5&1\\0&0\end{bmatrix}
+\begin{bmatrix}
+5&1\\
+0&0
+\end{bmatrix}
 $$
 
 第三个 token 产生：
@@ -263,7 +331,10 @@ $$
 
 $$
 \bar S_3=0.5S_2=
-\begin{bmatrix}2.5&0.5\\0&0\end{bmatrix}
+\begin{bmatrix}
+2.5&0.5\\
+0&0
+\end{bmatrix}
 $$
 
 第二步，Key 读取衰减后的状态：
@@ -283,9 +354,18 @@ $$
 $$
 \begin{aligned}
 S_3
-&=\begin{bmatrix}2.5&0.5\\0&0\end{bmatrix}
-  +\begin{bmatrix}0.25&1.25\\0&0\end{bmatrix} \\
-&=\begin{bmatrix}2.75&1.75\\0&0\end{bmatrix}
+&=\begin{bmatrix}
+2.5&0.5\\
+0&0
+\end{bmatrix}
++\begin{bmatrix}
+0.25&1.25\\
+0&0
+\end{bmatrix} \\
+&=\begin{bmatrix}
+2.75&1.75\\
+0&0
+\end{bmatrix}
 \end{aligned}
 $$
 

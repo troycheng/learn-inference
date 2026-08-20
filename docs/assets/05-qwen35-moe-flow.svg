@@ -1,18 +1,99 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 900" width="1500" height="900" role="img" aria-labelledby="title desc">
-  <title id="title">Qwen3.5 MoE 层的完整计算流程</title>
-  <desc id="desc">每个 token 先由路由器选择路由专家，同时经过共享专家；两条 FFN 分支相加后恢复 Batch 和序列轴。</desc>
-  <defs><marker id="b" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker><marker id="o" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#ea580c"/></marker></defs>
-  <style>text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}.title{font-size:32px;font-weight:700}.sub{font-size:17px;fill:#6b7280}.h{font-size:18px;font-weight:700;text-anchor:middle}.t{font-size:15px;text-anchor:middle}.s{font-size:13px;fill:#6b7280;text-anchor:middle}.blue{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#b)}.orange{fill:none;stroke:#ea580c;stroke-width:3;marker-end:url(#o)}</style>
-  <rect width="1500" height="900" fill="#fff"/><text x="55" y="58" class="title">Qwen3.5-35B-A3B 一层 MoE 的数据流</text><text x="55" y="92" class="sub">256 个路由专家中每 token 选择 8 个；共享专家在 Top-8 之外固定执行。</text>
-  <rect x="55" y="360" width="175" height="90" rx="13" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="143" y="397" class="h">隐藏状态</text><text x="143" y="428" class="s">[B,T,2048]</text><path d="M230 405 H310" class="blue"/>
-  <rect x="310" y="360" width="150" height="90" rx="13" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="385" y="397" class="h">展平</text><text x="385" y="428" class="s">[M,2048]</text>
-  <path d="M460 390 H540 V235 H610" class="blue"/><path d="M460 420 H540 V650 H610" class="orange"/>
-  <rect x="610" y="165" width="210" height="140" rx="15" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="715" y="202" class="h">路由器</text><text x="715" y="235" class="t">路由分数 [M,256]</text><text x="715" y="267" class="t">Top-8 编号 / 权重</text><text x="715" y="291" class="s">两个 [M,8]</text>
-  <path d="M820 235 H900" class="blue"/><rect x="900" y="145" width="250" height="180" rx="15" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/><text x="1025" y="185" class="h">按专家编号分组</text><text x="1025" y="222" class="t">每个 token 进入 8 个专家</text><text x="1025" y="255" class="t">各自 H → 512 → H</text><text x="1025" y="288" class="s">输出乘路由权重</text>
-  <path d="M1150 235 H1230" class="blue"/><rect x="1230" y="180" width="215" height="110" rx="14" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="1338" y="221" class="h">按 token 汇总</text><text x="1338" y="255" class="s">归并 → [M,2048]</text>
-  <rect x="610" y="570" width="250" height="160" rx="15" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="735" y="610" class="h">共享专家</text><text x="735" y="646" class="t">所有 token 执行</text><text x="735" y="678" class="t">H → 512 → H</text><text x="735" y="708" class="s">另算共享门 [M,1]</text>
-  <path d="M860 650 H1230 V510" class="orange"/><path d="M1338 290 V455" class="blue"/>
-  <rect x="1230" y="455" width="215" height="110" rx="14" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="1338" y="496" class="h">路由专家 + 共享专家</text><text x="1338" y="530" class="s">[M,2048]</text>
-  <path d="M1338 565 V650" class="blue"/><rect x="1225" y="650" width="225" height="95" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1338" y="688" class="h">还原 Batch 和序列轴</text><text x="1338" y="720" class="s">[B,T,2048]</text>
-  <rect x="55" y="805" width="1390" height="50" rx="10" fill="#f8fafc"/><text x="750" y="837" class="sub" text-anchor="middle">M=B×T。MoE 只在内部临时按专家分组，层的入口和出口仍保持 [B,T,H]。</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 860" width="2000" height="860" role="img" aria-labelledby="title desc">
+  <title id="title">Qwen3.5-35B-A3B 一层 MoE 的完整计算流程</title>
+  <desc id="desc">输入展平后同时进入路由专家分支和共享专家分支。路由器选择 Top-8 专家，专家输出按路由权重合并；共享专家固定执行并乘共享门控。两条分支相加后恢复 Batch 和序列轴。</desc>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <path d="M0,0 L10,4 L0,8 Z" fill="#ea580c"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 32px; font-weight: 700; }
+    .subtitle { font-size: 18px; fill: #6b7280; }
+    .section { font-size: 20px; font-weight: 700; }
+    .label { font-size: 18px; font-weight: 700; text-anchor: middle; }
+    .body { font-size: 15px; text-anchor: middle; }
+    .shape { font-size: 14px; fill: #64748b; text-anchor: middle; }
+    .note { font-size: 14px; fill: #475569; }
+    .blue { fill: none; stroke: #2563eb; stroke-width: 3; marker-end: url(#arrow-blue); }
+    .orange { fill: none; stroke: #ea580c; stroke-width: 3; marker-end: url(#arrow-orange); }
+  </style>
+
+  <rect width="2000" height="860" fill="#ffffff"/>
+  <text x="60" y="58" class="title">Qwen3.5-35B-A3B 一层 MoE 的数据流</text>
+  <text x="60" y="92" class="subtitle">每个 token 选择 8 个路由专家；共享专家在 Top-8 之外固定执行。</text>
+
+  <rect x="570" y="135" width="980" height="275" rx="16" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="605" y="178" class="section">路由专家分支</text>
+  <text x="605" y="203" class="note">每个 token 只执行选中的 8 个专家</text>
+
+  <rect x="570" y="495" width="980" height="225" rx="16" fill="#fffaf5" stroke="#fed7aa" stroke-width="2"/>
+  <text x="605" y="538" class="section">共享专家分支</text>
+  <text x="605" y="563" class="note">所有 token 都执行同一套共享专家</text>
+
+  <!-- Draw connectors before cards so labels remain unobstructed. -->
+  <path d="M250 405 H310" class="blue"/>
+  <path d="M490 385 H535 V280 H620" class="blue"/>
+  <path d="M490 425 H535 V620 H760" class="orange"/>
+  <path d="M810 280 H855" class="blue"/>
+  <path d="M1045 280 H1090" class="blue"/>
+  <path d="M1330 280 H1370" class="blue"/>
+  <path d="M1520 280 H1585 V390 H1640" class="blue"/>
+  <path d="M1240 620 H1585 V505 H1640" class="orange"/>
+  <path d="M1820 447 H1860" class="blue"/>
+
+  <rect x="60" y="355" width="190" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="155" y="394" class="label">隐藏状态</text>
+  <text x="155" y="428" class="shape">[B,T,2048]</text>
+
+  <rect x="310" y="355" width="180" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="400" y="394" class="label">展平 token 轴</text>
+  <text x="400" y="428" class="shape">[M,2048]</text>
+
+  <rect x="620" y="225" width="190" height="110" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="715" y="259" class="label">Router</text>
+  <text x="715" y="289" class="body">对 256 个专家打分</text>
+  <text x="715" y="317" class="shape">logits [M,256]</text>
+
+  <rect x="855" y="225" width="190" height="110" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="950" y="259" class="label">Softmax + Top-8</text>
+  <text x="950" y="289" class="body">专家编号与路由权重</text>
+  <text x="950" y="317" class="shape">两个 [M,8]</text>
+
+  <rect x="1090" y="215" width="240" height="130" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+  <text x="1210" y="250" class="label">按专家分组并计算</text>
+  <text x="1210" y="282" class="body">token 进入选中的专家 FFN</text>
+  <text x="1210" y="310" class="shape">[nₑ,H] → [nₑ,512] → [nₑ,H]</text>
+  <text x="1210" y="332" class="shape">各专家使用独立权重</text>
+
+  <rect x="1370" y="225" width="150" height="110" rx="12" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="1445" y="259" class="label">按 token 归并</text>
+  <text x="1445" y="289" class="body">乘路由权重后求和</text>
+  <text x="1445" y="317" class="shape">y_routed [M,H]</text>
+
+  <rect x="760" y="570" width="480" height="100" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="1000" y="602" class="label">共享专家输出 × 共享门控</text>
+  <text x="1000" y="632" class="body">shared_expert(x) × sigmoid(x w_s^T)</text>
+  <text x="1000" y="657" class="shape">[M,H] × [M,1] → y_shared [M,H]</text>
+
+  <rect x="1640" y="350" width="180" height="195" rx="14" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="1730" y="397" class="label">两条分支相加</text>
+  <text x="1730" y="435" class="body">y_routed</text>
+  <text x="1730" y="463" class="body">+</text>
+  <text x="1730" y="491" class="body">y_shared</text>
+  <text x="1730" y="522" class="shape">[M,H]</text>
+
+  <rect x="1860" y="397" width="110" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="1915" y="430" class="label">还原</text>
+  <text x="1915" y="458" class="body">B、T 轴</text>
+  <text x="1915" y="482" class="shape">[B,T,H]</text>
+
+  <line x1="60" y1="790" x2="100" y2="790" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text x="115" y="796" class="note">路由专家数据流</text>
+  <line x1="285" y1="790" x2="325" y2="790" stroke="#ea580c" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  <text x="340" y="796" class="note">共享专家数据流</text>
+  <text x="1940" y="796" class="subtitle" text-anchor="end">M=B×T。MoE 只在内部改变 token 的分组方式，层的入口和出口仍是 [B,T,H]。</text>
 </svg>

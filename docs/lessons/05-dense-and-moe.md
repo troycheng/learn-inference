@@ -13,16 +13,18 @@ Qwen3.5-9B 的 32 个 Decoder Layer 都使用这套 Dense FFN。Qwen3.5-35B-A3B 
 设 `x:[H]` 是一个 token 经过 RMSNorm 后的向量。Dense SwiGLU FFN 的计算过程为：
 
 $$
-g=SiLU(gate\_proj(x))
+g=\mathrm{SiLU}\left(\mathrm{gate\_proj}(x)\right)
 $$
 
 $$
-u=up\_proj(x)
+u=\mathrm{up\_proj}(x)
 $$
 
 $$
-y=down\_proj(g\odot u)
+y=\mathrm{down\_proj}(g\odot u)
 $$
+
+函数名使用正体，是为了和变量区分。这里的 `g`、`u`、`y` 是计算得到的向量，`gate_proj`、`up_proj`、`down_proj` 和 `SiLU` 是对向量执行的函数。
 
 三张投影权重完成不同的工作：
 
@@ -101,6 +103,35 @@ MoE 中每套独立的 FFN 参数称为一个专家（Expert）。Qwen3.5-35B-A3
 
 专家仍然是 SwiGLU FFN，不是一个独立的小语言模型，也没有人工规定的“代码专家”或“数学专家”标签。
 
+### 2.1 一个 token 经过 MoE 的主线
+
+先只跟踪一个 token 的向量 `x`。它会同时进入两条分支：
+
+```text
+路由专家分支：Router 打分 → 选择 Top-K 专家 → 各专家计算 → 按路由权重相加
+共享专家分支：共享专家计算 → 乘共享门控
+
+两条分支相加 → MoE 输出 y
+```
+
+用公式表示：
+
+$$
+y_{routed}=\sum_{e\in\mathcal{T}(x)}r_eE_e(x)
+$$
+
+$$
+y_{shared}=\mathrm{sigmoid}(xw_s^T)E_s(x)
+$$
+
+$$
+y=y_{routed}+y_{shared}
+$$
+
+其中，`𝒯(x)` 是 Router 为当前 token 选出的专家集合，`r_e` 是专家 `e` 的路由权重。后面三节沿着同一个 token，依次展开专家选择、专家 FFN 和共享专家。
+
+这里不是把 `x` 切成 `K` 份。完整的 `x:[H]` 会分别交给选中的 `K` 个专家；每个专家都返回一条 `H` 维向量，再按路由权重相加。因此，MoE 改变的是每个 token 调用哪几套 FFN 参数，token 数量和输出宽度都不变。
+
 ## 3. Router 为每个 token 选择专家
 
 Router 是一个 Linear。它读取当前 token 的隐藏状态，为所有路由专家分别计算一个分数。
@@ -155,7 +186,7 @@ Router 会在每一层重新计算。同一个 token 在不同层可以选择不
 对专家 `e`：
 
 $$
-E_e(x)=down_e\left(SiLU(gate_e(x))\odot up_e(x)\right)
+E_e(x)=\mathrm{down}_e\left(\mathrm{SiLU}\left(\mathrm{gate}_e(x)\right)\odot\mathrm{up}_e(x)\right)
 $$
 
 假设 Router 选中专家 2 和专家 0，两个专家分别算出：
@@ -216,6 +247,8 @@ y = [1.54,0.69] + [0.2,0.2]
 
 共享专家没有使用路由分支的 `[0.77,0.23]`，也不计入 Top-2。它提供一条所有 token 都会经过的 FFN 路径。至于这套参数最终学到哪些具体内容，取决于训练结果，不能仅凭名称断言它保存了“通用知识”。
 
+至此，前面那个 token 的完整结果已经算完：Top-2 专家合并得到 `[1.54,0.69]`，共享分支得到 `[0.2,0.2]`，两者相加得到 `[1.74,0.89]`。真实模型把 Top-2 换成 Top-8，计算关系相同。
+
 仓库中的 [MoE 路由复算程序](../../examples/moe_routing_walkthrough.py) 使用相同的缩小例子，并保留完整精度计算。
 
 ## 6. Qwen3.5-35B-A3B 的完整 MoE 计算
@@ -233,7 +266,7 @@ Decoder Layer 数               = 40
 
 为了描述按专家重新分组的过程，暂时把一批输入中的 `B×T` 个 token 位置记作 `M`。`M` 只是 token 总数，不是新的模型维度。
 
-![Qwen3.5 一层 MoE 的完整流程](../assets/05-qwen35-moe-flow.svg?rev=20260809-1)
+![Qwen3.5 一层 MoE 的完整流程](../assets/05-qwen35-moe-flow.svg?rev=20260820-1)
 
 | 阶段 | shape | 说明 |
 | --- | --- | --- |
