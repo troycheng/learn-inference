@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 720" role="img" aria-labelledby="title desc">
+  <title id="title">Linear 的每一行权重产生一个输出数字</title>
+  <desc id="desc">输入向量分别与权重矩阵的三行点积，得到三维输出向量。</desc>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 34px; font-weight: 700; }
+    .subtitle { font-size: 19px; fill: #64748b; }
+    .label { font-size: 22px; font-weight: 650; }
+    .body { font-size: 19px; }
+    .mono { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; font-size: 18px; }
+    .note { font-size: 18px; fill: #64748b; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="720" fill="#ffffff"/>
+  <text x="55" y="62" class="title">一个 Linear 怎样算出多个输出</text>
+  <text x="55" y="98" class="subtitle">输入 x 与 W 的每一行分别做点积；W 有几行，输出 y 就有几个数字。</text>
+
+  <text x="390" y="185" class="label">权重矩阵 W：[I,H] = [3,2]</text>
+
+  <path d="M 280 285 H 325 V 250 H 405" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 280 335 H 325 V 350 H 405" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 280 385 H 325 V 450 H 405" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 1060 250 H 1185 V 275 H 1230" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 1060 350 H 1185 V 355 H 1230" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 1060 450 H 1185 V 435 H 1230" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+
+  <rect x="55" y="245" width="225" height="180" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="168" y="292" text-anchor="middle" class="label">输入向量 x</text>
+  <text x="168" y="343" text-anchor="middle" class="mono">[1, 2]</text>
+  <text x="168" y="386" text-anchor="middle" class="note">shape = [H] = [2]</text>
+
+  <rect x="405" y="210" width="655" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="440" y="243" class="label">第 1 行 [1,0]</text>
+  <text x="660" y="243" class="mono">1×1 + 2×0 = 1</text>
+  <text x="1020" y="243" text-anchor="end" class="body">产生 y₁</text>
+
+  <rect x="405" y="310" width="655" height="80" rx="12" fill="#f0fdf4" stroke="#34d399" stroke-width="2"/>
+  <text x="440" y="343" class="label">第 2 行 [0,1]</text>
+  <text x="660" y="343" class="mono">1×0 + 2×1 = 2</text>
+  <text x="1020" y="343" text-anchor="end" class="body">产生 y₂</text>
+
+  <rect x="405" y="410" width="655" height="80" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="440" y="443" class="label">第 3 行 [1,1]</text>
+  <text x="660" y="443" class="mono">1×1 + 2×1 = 3</text>
+  <text x="1020" y="443" text-anchor="end" class="body">产生 y₃</text>
+
+  <rect x="1230" y="210" width="310" height="300" rx="18" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="1385" y="253" text-anchor="middle" class="label">输出向量 y</text>
+  <text x="1280" y="283" class="mono">y₁ = 1</text>
+  <text x="1280" y="363" class="mono">y₂ = 2</text>
+  <text x="1280" y="443" class="mono">y₃ = 3</text>
+  <text x="1385" y="478" text-anchor="middle" class="note">y = [1,2,3]</text>
+  <text x="1385" y="503" text-anchor="middle" class="note">shape = [I] = [3]</text>
+
+  <rect x="350" y="620" width="1190" height="58" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="945" y="657" text-anchor="middle" class="body">Linear 不增加 token。它用 I 行权重，为同一个 token 计算 I 个新的特征。</text>
+</svg>

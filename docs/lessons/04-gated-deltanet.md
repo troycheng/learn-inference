@@ -9,6 +9,8 @@ Full Attention：历史保留为 k1/v1、k2/v2、...、kt/vt
 Gated DeltaNet：历史不断写入同一张状态矩阵 S
 ```
 
+这张矩阵不是对 KV Cache 的无损压缩。它是一份会衰减、修正和相互干扰的模型状态。矩阵的元素数量不随序列长度增加，历史位置也不能再被逐项取回。
+
 Qwen3.5-9B 一共有 32 个 Decoder Layer，其中 24 层使用 Gated DeltaNet，8 层使用 Full Attention。层的排列方式是 3 个 Gated DeltaNet 层接 1 个 Full Attention 层，这组结构重复 8 次。
 
 ![Qwen3.5 的混合 Token Mixer](../assets/04-hybrid-layout.svg)
@@ -36,58 +38,57 @@ Gated DeltaNet 替换的是 Attention 所在的 Token Mixer 子层。RMSNorm、�
 | 是否生成 Softmax 权重 | 是 | 否 |
 | 状态 shape 是否随序列变长 | 是 | 否 |
 
-要理解右边这条路径，先要回答一个问题：一张矩阵怎样汇总多个 token 的信息？
+Gated DeltaNet 的计算从一张状态矩阵开始。下一节先说明这张矩阵怎样由历史 K/V 得到。
 
-## 2. 从逐个保存 K/V 到状态矩阵
+## 2. 状态矩阵从哪里来
 
-先看最简单的线性状态，不加入遗忘和修正。每个 token 产生 Key `k_t` 和 Value `v_t`，模型把二者的外积加入状态：
+先把 Full Attention 中的 Softmax 暂时拿掉，只看一个历史 token 对当前输出的贡献。当前 Query 是 `q`，历史位置保存 `k` 和 `v`，那么这一个位置贡献：
 
 $$
-S_t=S_{t-1}+k_t^Tv_t
+(qk^T)v
 $$
 
-本课把 `k_t` 和 `v_t` 写成行向量。设 Key 宽度为 `Dk`，Value 宽度为 `Dv`：
+`qk^T` 是 Query 与 Key 的点积，结果是一个数；这个数再乘 `v`，决定当前输出取回多少 Value。
 
-```text
-k_t       [1,Dk]
-k_t^T     [Dk,1]
-v_t       [1,Dv]
-k_t^T v_t [Dk,Dv]
-S_t       [Dk,Dv]
-```
+矩阵乘法允许改动括号的位置：
 
-外积会得到一张与状态同 shape 的矩阵。把多个 token 的外积不断相加，状态可以写成：
+$$
+(qk^T)v=q(k^Tv)
+$$
+
+左边是“读取时先算 Q/K 点积”，右边是“token 到来时先算 `k^Tv`，读取时再乘 q”。`k^Tv` 与未来的 Query 无关，因此可以提前写入状态矩阵。
+
+![同一项线性 Attention 可以按两种顺序计算](../assets/04-linear-state-reordering.svg)
+
+多个历史 token 的 `k_i^Tv_i` 累加后得到：
 
 $$
 S_t=\sum_{i=1}^{t}k_i^Tv_i
 $$
 
-当前 Query `q_t:[1,Dk]` 读取状态时：
+当前 Query 直接读取这张矩阵：
 
 $$
 q_tS_t=\sum_{i=1}^{t}(q_tk_i^T)v_i
 $$
 
-这一步可以从两种计算顺序理解。先暂时忽略 Full Attention 中的 Softmax：
+这就是固定状态的来由。历史不再以 `k_1/v_1、k_2/v_2...` 的形式逐项保存，而是持续更新同一张矩阵 `S`。
+
+这个等式只适用于没有 Softmax 的线性 Attention。Full Attention 必须先得到当前 Query 对所有 Key 的一整行分数，再对这行分数执行 Softmax。Softmax 依赖整行数值，不能提前写进固定矩阵。因此，Gated DeltaNet 和 Full Attention 不是同一个算法换了计算顺序。
+
+### 2.1 外积怎样把 Value 写入矩阵
+
+本课把 `k`、`v` 和 `q` 写成行向量。设 Key 宽度为 `Dk`，Value 宽度为 `Dv`：
 
 ```text
-逐个读取历史：q 先与每个 k_i 点积，再用这些分数汇总 v_i
-固定状态读取：先把每个 k_i^T v_i 累加成 S，再计算 qS
+k       [1,Dk]
+k^T     [Dk,1]
+v       [1,Dv]
+k^T v   [Dk,Dv]
+S       [Dk,Dv]
 ```
 
-矩阵乘法的结合律使两种顺序得到相同结果：
-
-$$
-\sum_{i=1}^{t}(q_tk_i^T)v_i
-=q_t\left(\sum_{i=1}^{t}k_i^Tv_i\right)
-=q_tS_t
-$$
-
-因此，`S` 可以看作历史 K/V 共同写成的一张状态矩阵。读取时不再逐个访问 `k_1...k_t` 和 `v_1...v_t`，而是让当前 Query 直接乘 `S`。
-
-这个推导只适用于没有 Softmax 的线性 Attention。第 3 课的 Full Attention 要先得到一整行分数，再对这一行执行 Softmax；Softmax 无法按上面的方式提前累积进固定矩阵。两类 Token Mixer 的 Q/K/V 分工相似，计算并不等价。
-
-### 2.1 用两个二维向量看一次写入
+`k^Tv` 是外积。它把一条 Key 和一条 Value 变成与状态 `S` 同 shape 的矩阵。
 
 设初始状态为：
 
@@ -126,7 +127,7 @@ k_1^Tv_1
 \end{aligned}
 $$
 
-这里算的是外积，不是点积。列向量中的每个数字都会乘完整的 `v_1`：`k_1` 的第一个分量是 1，所以状态第一行写入 `[3,4]`；第二个分量是 0，所以第二行写入 `[0,0]`。
+列向量中的每个数字都会乘完整的 `v_1`。`k_1` 的第一个分量是 1，所以状态第一行写入 `[3,4]`；第二个分量是 0，所以第二行写入 `[0,0]`。
 
 因此：
 
@@ -149,9 +150,9 @@ qS_1=[1,0]
 =[3,4]
 $$
 
-在这个特意简化的例子中，`[1,0]` 只读取矩阵第一行。真实的 Q 和 K 是连续向量，一次读写通常会同时涉及多行。
+在这个特意简化的例子中，`k=[1,0]` 把 Value 写进第一行，`q=[1,0]` 又把第一行读出来。真实的 Q 和 K 是连续向量，读写通常同时涉及多行。这里的“写入方向”和“读取方向”比“矩阵的第几行”更接近真实情况。
 
-### 2.2 简单累加会混合新旧 Value
+### 2.2 直接累加为什么会出问题
 
 假设第二个 token 仍产生 `k_2=[1,0]`，但新的 Value 是 `v_2=[5,1]`。如果继续直接累加外积：
 
@@ -310,7 +311,7 @@ $$
 β：再缩放当前 Key 方向的修正量
 ```
 
-举一个连续的例子。设旧状态是：
+例如，旧状态为：
 
 $$
 S_2=
@@ -320,14 +321,7 @@ S_2=
 \end{bmatrix}
 $$
 
-第三个 token 产生：
-
-$$
-\alpha_3=0.5,\quad \beta_3=0.5,\quad
-k_3=[1,0],\quad v_3=[3,3]
-$$
-
-第一步，旧状态先乘 `α`：
+若 `α_3=0.5`，读取和写入发生前，整张矩阵先减半：
 
 $$
 \bar S_3=0.5S_2=
@@ -337,37 +331,7 @@ $$
 \end{bmatrix}
 $$
 
-第二步，Key 读取衰减后的状态：
-
-$$
-\hat v_3=k_3\bar S_3=[2.5,0.5]
-$$
-
-第三步，计算误差并乘 `β`：
-
-$$
-e_3=0.5([3,3]-[2.5,0.5])=[0.25,1.25]
-$$
-
-第四步，写回状态：
-
-$$
-\begin{aligned}
-S_3
-&=\begin{bmatrix}
-2.5&0.5\\
-0&0
-\end{bmatrix}
-+\begin{bmatrix}
-0.25&1.25\\
-0&0
-\end{bmatrix} \\
-&=\begin{bmatrix}
-2.75&1.75\\
-0&0
-\end{bmatrix}
-\end{aligned}
-$$
+随后 K 从 `\bar S_3` 读取，`β` 再决定本次误差写回多少。`α` 作用于所有旧状态，`β` 只作用于当前 token 的修正量。
 
 ### 4.3 完整的状态更新公式
 
@@ -492,7 +456,7 @@ Gated DeltaNet 层不使用 Full Attention 中的 RoPE。短窗口因果卷积�
 7. 读出结果经过 RMSNorm，再与 `SiLU(z)` 逐元素相乘。
 8. 所有头拼回后通过 `out_proj`，输出回到 `[B,T,H]`。
 
-![Gated DeltaNet 的完整数据流](../assets/04-gated-deltanet-flow.svg)
+![Gated DeltaNet 的完整数据流](../assets/04-gated-deltanet-flow.svg?rev=20260820-2)
 
 这条路径位于 Decoder Layer 的残差分支中。`out_proj` 后的结果与进入 Token Mixer 前保存的 `x` 逐元素相加，然后再进入 FFN 子层。
 

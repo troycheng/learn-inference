@@ -1,6 +1,6 @@
 # 第 5 课：Dense FFN 与 MoE 的结构差异
 
-第 2 课已经介绍过 Dense SwiGLU FFN。每个 token 的向量依次经过 `gate_proj`、`up_proj`、SiLU、逐元素乘法和 `down_proj`，最后回到 `H` 维。
+第 2 课已经介绍过 Dense SwiGLU FFN。每个 token 的向量同时进入 `gate_proj` 和 `up_proj`；门控分支经过 SiLU 后与另一条分支逐元素相乘，再通过 `down_proj` 回到 `H` 维。
 
 Qwen3.5-9B 的 32 个 Decoder Layer 都使用这套 Dense FFN。Qwen3.5-35B-A3B 则在语言模型的 40 个 Decoder Layer 中使用混合专家（Mixture of Experts，MoE）结构。它没有替换整个 Decoder Layer，只把原来的 Dense FFN 换成了路由器（Router）、多套路由专家和一套共享专家。
 
@@ -13,7 +13,7 @@ Qwen3.5-9B 的 32 个 Decoder Layer 都使用这套 Dense FFN。Qwen3.5-35B-A3B 
 设 `x:[H]` 是一个 token 经过 RMSNorm 后的向量。Dense SwiGLU FFN 的计算过程为：
 
 $$
-g=\mathrm{SiLU}\left(\mathrm{gate\_proj}(x)\right)
+g=\mathrm{gate\_proj}(x)
 $$
 
 $$
@@ -21,10 +21,14 @@ u=\mathrm{up\_proj}(x)
 $$
 
 $$
-y=\mathrm{down\_proj}(g\odot u)
+m=\mathrm{SiLU}(g)\odot u
 $$
 
-函数名使用正体，是为了和变量区分。这里的 `g`、`u`、`y` 是计算得到的向量，`gate_proj`、`up_proj`、`down_proj` 和 `SiLU` 是对向量执行的函数。
+$$
+\mathrm{FFN}(x)=\mathrm{down\_proj}(m)
+$$
+
+这四行与第 2 课的手算一致：`gate_proj` 和 `up_proj` 分别产生一条 `I` 维向量，SwiGLU 把两条分支逐元素合并，`down_proj` 再回到 `H` 维。
 
 三张投影权重完成不同的工作：
 
@@ -40,7 +44,7 @@ Shape 变化如下：
 x                         [H]
 gate_proj(x)              [I]
 up_proj(x)                [I]
-SiLU(gate) ⊙ up           [I]
+SiLU(g) ⊙ u               [I]
 down_proj(...)            [H]
 ```
 
@@ -71,27 +75,9 @@ Dense FFN 没有路由过程。处理每个 token 时，三张矩阵中的约 1.
 
 ## 2. MoE 只替换 FFN 子层
 
-Dense Decoder Layer 的第二个子层是：
+Dense 模型在 FFN 子层放一套参数，所有 token 都调用它。MoE 模型在同一位置放多套 FFN，并让 Router 为每个 token 选择其中一部分。RMSNorm、残差连接、Token Mixer 以及层的输入输出接口都保持不变。
 
-```text
-y
-├─ 保留 y 作为残差
-└─ RMSNorm → Dense SwiGLU FFN ─┐
-                              ├─ 逐元素相加 → z
-y ────────────────────────────┘
-```
-
-MoE 模型把其中的一套 Dense FFN 换成多套参数不同的 FFN：
-
-```text
-y
-├─ 保留 y 作为残差
-└─ RMSNorm → Router + 专家 FFN ─┐
-                               ├─ 逐元素相加 → z
-y ─────────────────────────────┘
-```
-
-RMSNorm、残差连接和 Token Mixer 都保留。在 Qwen3.5-35B-A3B 中，无论 Token Mixer 是 Full Attention 还是 Gated DeltaNet，后面都接同一种 MoE 子层。改变的是 FFN 的参数组织和调用方式。
+在 Qwen3.5-35B-A3B 中，无论 Token Mixer 是 Full Attention 还是 Gated DeltaNet，后面都接同一种 MoE 子层。
 
 MoE 中每套独立的 FFN 参数称为一个专家（Expert）。Qwen3.5-35B-A3B 的每个语言层包含：
 
@@ -103,7 +89,7 @@ MoE 中每套独立的 FFN 参数称为一个专家（Expert）。Qwen3.5-35B-A3
 
 专家仍然是 SwiGLU FFN，不是一个独立的小语言模型，也没有人工规定的“代码专家”或“数学专家”标签。
 
-### 2.1 一个 token 经过 MoE 的主线
+### 2.1 单个 token 的 MoE 数据流
 
 先只跟踪一个 token 的向量 `x`。它会同时进入两条分支：
 
@@ -114,25 +100,13 @@ MoE 中每套独立的 FFN 参数称为一个专家（Expert）。Qwen3.5-35B-A3
 两条分支相加 → MoE 输出 y
 ```
 
-用公式表示：
+完整的 `x:[H]` 会分别交给选中的 `K` 个专家，而不是切成 `K` 份。每个专家都返回一条 `H` 维向量，Router 给出的权重决定这些结果怎样相加。MoE 改变的是每个 token 调用哪几套 FFN 参数，token 数量和输出宽度都不变。
 
-$$
-y_{routed}=\sum_{e\in\mathcal{T}(x)}r_eE_e(x)
-$$
+下图给出完整数据流。此处先看两条分支和合并位置，图中的真实 shape 会在第 6 节逐项说明。
 
-$$
-y_{shared}=\mathrm{sigmoid}(xw_s^T)E_s(x)
-$$
+![Qwen3.5 一层 MoE 的完整流程](../assets/05-qwen35-moe-flow.svg?rev=20260820-1)
 
-$$
-y=y_{routed}+y_{shared}
-$$
-
-其中，`𝒯(x)` 是 Router 为当前 token 选出的专家集合，`r_e` 是专家 `e` 的路由权重。后面三节沿着同一个 token，依次展开专家选择、专家 FFN 和共享专家。
-
-这里不是把 `x` 切成 `K` 份。完整的 `x:[H]` 会分别交给选中的 `K` 个专家；每个专家都返回一条 `H` 维向量，再按路由权重相加。因此，MoE 改变的是每个 token 调用哪几套 FFN 参数，token 数量和输出宽度都不变。
-
-## 3. Router 为每个 token 选择专家
+## 3. Router 计算专家编号和路由权重
 
 Router 是一个 Linear。它读取当前 token 的隐藏状态，为所有路由专家分别计算一个分数。
 
@@ -179,7 +153,7 @@ routing_weights    = [0.77, 0.23]
 
 Router 会在每一层重新计算。同一个 token 在不同层可以选择不同专家，后续 token 也可能得到另一组选择。
 
-## 4. 路由专家仍执行 SwiGLU FFN
+## 4. 选中的专家分别执行 SwiGLU FFN
 
 每个路由专家都有自己的 `gate_proj`、`up_proj` 和 `down_proj` 权重。专家编号不同，计算公式相同，权重数值不同。Transformers 参考实现把所有专家的 `gate_proj` 和 `up_proj` 融合存放在一张三维权重张量中；从计算含义上看，每个专家仍使用各自独立的权重切片。
 
@@ -215,7 +189,7 @@ Qwen3.5-35B-A3B 中，每个路由专家的维度是：
 
 单个专家仍走 `H→I→H`。这里的 `I=512` 是一套专家 FFN 的中间宽度；256 个专家各自保存一套权重，MoE 的参数容量来自这些不同的专家参数。
 
-## 5. 共享专家独立于 Top-K
+## 5. 路由专家与共享专家的输出合并
 
 Qwen3.5-35B-A3B 还有一个共享专家。每个 token 都会执行它，因此它不参加 256 选 8 的 Top-K。
 
@@ -229,7 +203,15 @@ shared_result = shared_gate × shared_output
 
 其中 `w_s:[1,H]`。`x` 与这一行权重点积得到一个数，再经过 Sigmoid 得到 0 到 1 之间的门控系数。
 
-最终 MoE 输出为：
+设 `𝒯(x)` 是 Router 选出的专家集合，`r_e` 是专家 `e` 的路由权重。三部分的关系为：
+
+$$
+y_{routed}=\sum_{e\in\mathcal{T}(x)}r_eE_e(x)
+$$
+
+$$
+y_{shared}=\mathrm{sigmoid}(x w_s^T)E_s(x)
+$$
 
 $$
 y=y_{routed}+y_{shared}
@@ -247,7 +229,7 @@ y = [1.54,0.69] + [0.2,0.2]
 
 共享专家没有使用路由分支的 `[0.77,0.23]`，也不计入 Top-2。它提供一条所有 token 都会经过的 FFN 路径。至于这套参数最终学到哪些具体内容，取决于训练结果，不能仅凭名称断言它保存了“通用知识”。
 
-至此，前面那个 token 的完整结果已经算完：Top-2 专家合并得到 `[1.54,0.69]`，共享分支得到 `[0.2,0.2]`，两者相加得到 `[1.74,0.89]`。真实模型把 Top-2 换成 Top-8，计算关系相同。
+在这个例子中，Top-2 专家合并得到 `[1.54,0.69]`，共享分支得到 `[0.2,0.2]`，两者相加得到 `[1.74,0.89]`。真实模型把 Top-2 换成 Top-8，计算关系相同。
 
 仓库中的 [MoE 路由复算程序](../../examples/moe_routing_walkthrough.py) 使用相同的缩小例子，并保留完整精度计算。
 
@@ -266,7 +248,7 @@ Decoder Layer 数               = 40
 
 为了描述按专家重新分组的过程，暂时把一批输入中的 `B×T` 个 token 位置记作 `M`。`M` 只是 token 总数，不是新的模型维度。
 
-![Qwen3.5 一层 MoE 的完整流程](../assets/05-qwen35-moe-flow.svg?rev=20260820-1)
+第 2 节的完整流程图使用的就是下面这些 shape：
 
 | 阶段 | shape | 说明 |
 | --- | --- | --- |
@@ -285,7 +267,7 @@ Decoder Layer 数               = 40
 
 入口和出口仍是 `[B,T,H]`，所以 MoE 外侧的残差连接不需要改变。
 
-## 7. 按专家重新排列 token
+## 7. 为什么运行时要按专家重新排列 token
 
 假设一批只有 3 个 token，每个 token 选择 2 个专家：
 

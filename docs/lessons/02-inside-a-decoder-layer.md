@@ -289,6 +289,22 @@ z      = y + f                 # [B,T,H]，残差相加
 
 FFN 不直接混合不同 token。上面的计算会独立应用到每个 `y[b,t,:]`，所有位置共享同一套 FFN 权重。
 
+普通的两层 FFN 可以写成：
+
+```text
+x → Linear(H→I) → 激活函数 → Linear(I→H) → 输出
+```
+
+Qwen3.5 使用的 SwiGLU 多了一条并行分支：
+
+```text
+                  ┌→ gate_proj(H→I) → SiLU ─┐
+x ────────────────┤                          ├→ 逐元素相乘 → down_proj(I→H)
+                  └→ up_proj(H→I) ──────────┘
+```
+
+两种结构都先在 `I` 维中间空间加工特征，再回到 `H` 维。SwiGLU 额外使用一组 Linear 产生门控分支，并让它与特征分支逐元素相乘。理解这三组投影，需要先看清一次 Linear 怎样计算。
+
 ### 6.1 Hidden Size 与 Intermediate Size
 
 Qwen3.5-9B 中：
@@ -344,6 +360,8 @@ y_3&=1\times1+2\times1=3
 $$
 
 因此 `y=[1,2,3]`。这个 Linear 把 `H=2` 个输入特征重新组合成 `I=3` 个输出特征。所谓 `H→I`，就是权重矩阵有 `I` 行，每行学习一种不同的组合方式。它不会增加 token 数量。
+
+![Linear 的每一行权重产生一个输出数字](../assets/02-linear-row-dot-product.svg)
 
 同一规则也适用于 FFN 的三组投影：
 
@@ -490,6 +508,12 @@ down_proj(...) ≈ [2.193, 1.977]
 仓库中的 [Decoder Layer 手算程序](../../examples/decoder_layer_walkthrough.py) 使用同一组输入和权重，可以逐项核对 RMSNorm、SiLU、门控相乘和三个投影的结果。
 
 FFN 输出重新回到 `[H]=[2]`。这个例子只计算 FFN 分支，因此没有把它与残差输入相加。真实 Decoder Layer 中，残差分支保存的是 RMSNorm 之前的 `y`，不能直接把这里的 `y_norm` 当成残差输入。完整的残差关系已经在第 6 节给出。
+
+### 8.5 FFN 对隐藏状态做了什么
+
+三组 Linear 都会重新组合输入特征。每一行权重计算一种新的组合：`gate_proj` 和 `up_proj` 各产生 `I` 种组合，SiLU 与逐元素乘法决定这些组合怎样相互调节，`down_proj` 再把 `I` 个中间结果汇总成 `H` 个输出特征。
+
+如果删掉 SiLU 和逐元素门控，连续的 Linear 可以合并成一个 Linear。加入 SwiGLU 后，FFN 才能对同一个 token 做非线性变换。它保持 token 数量不变，改变的是每个 token 的 `H` 维表示。
 
 ## 9. FFN 的 shape 变化
 

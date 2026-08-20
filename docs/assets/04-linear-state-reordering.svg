@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 760" role="img" aria-labelledby="title desc">
+  <title id="title">线性 Attention 中同一项计算的两种顺序</title>
+  <desc id="desc">直接在读取时计算 Query Key 点积并乘 Value，与先把 Key Value 外积写入状态再由 Query 读取，得到相同结果。</desc>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 34px; font-weight: 700; }
+    .subtitle { font-size: 19px; fill: #64748b; }
+    .section { font-size: 23px; font-weight: 700; }
+    .label { font-size: 21px; font-weight: 650; }
+    .body { font-size: 18px; }
+    .mono { font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace; font-size: 18px; }
+    .note { font-size: 17px; fill: #64748b; }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="760" fill="#ffffff"/>
+  <text x="55" y="62" class="title">为什么 kᵀv 可以提前写进状态</text>
+  <text x="55" y="98" class="subtitle">先忽略 Softmax。矩阵乘法的结合律允许改变括号位置，但不会改变结果。</text>
+
+  <line x1="55" y1="380" x2="1545" y2="380" stroke="#e2e8f0" stroke-width="2"/>
+
+  <path d="M 315 250 H 405" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 695 250 H 785" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 1075 250 H 1165" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+
+  <path d="M 315 515 H 405" fill="none" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <path d="M 695 515 H 785" fill="none" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <path d="M 1075 515 H 1165" fill="none" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  <text x="90" y="184" class="section">顺序 A：读取时逐项计算</text>
+  <rect x="90" y="210" width="225" height="82" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="203" y="244" text-anchor="middle" class="label">Query 与 Key</text>
+  <text x="203" y="273" text-anchor="middle" class="mono">qkᵀ</text>
+
+  <rect x="405" y="210" width="290" height="82" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="550" y="244" text-anchor="middle" class="label">得到一个匹配分数</text>
+  <text x="550" y="273" text-anchor="middle" class="mono">s = qkᵀ</text>
+
+  <rect x="785" y="210" width="290" height="82" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="930" y="244" text-anchor="middle" class="label">分数乘 Value</text>
+  <text x="930" y="273" text-anchor="middle" class="mono">c = s v</text>
+
+  <rect x="1165" y="210" width="315" height="82" rx="12" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="1323" y="244" text-anchor="middle" class="label">这一位置的输出贡献</text>
+  <text x="1323" y="273" text-anchor="middle" class="mono">c = (qkᵀ)v</text>
+
+  <text x="90" y="439" class="section">顺序 B：token 到来时先写状态，Query 以后再读</text>
+  <rect x="90" y="475" width="225" height="82" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+  <text x="203" y="509" text-anchor="middle" class="label">Key 与 Value</text>
+  <text x="203" y="538" text-anchor="middle" class="mono">kᵀv</text>
+
+  <rect x="405" y="475" width="290" height="82" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+  <text x="550" y="509" text-anchor="middle" class="label">提前写入状态</text>
+  <text x="550" y="538" text-anchor="middle" class="mono">M = kᵀv</text>
+
+  <rect x="785" y="475" width="290" height="82" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="930" y="509" text-anchor="middle" class="label">Query 读取状态</text>
+  <text x="930" y="538" text-anchor="middle" class="mono">c = qM</text>
+
+  <rect x="1165" y="475" width="315" height="82" rx="12" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="1323" y="509" text-anchor="middle" class="label">得到同一条输出贡献</text>
+  <text x="1323" y="538" text-anchor="middle" class="mono">c = q(kᵀv)</text>
+
+  <rect x="320" y="675" width="1225" height="54" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="700" y="709" text-anchor="middle" class="label">(qkᵀ)v = q(kᵀv)</text>
+  <text x="1505" y="708" text-anchor="end" class="note">只适用于不含 Softmax 的这类线性计算</text>
+</svg>

@@ -1,122 +1,111 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 960" width="960" height="960" role="img" aria-labelledby="title desc">
-  <title id="title">一个 token 经过 Gated DeltaNet 的完整过程</title>
-  <desc id="desc">隐藏状态经过投影后分成 QKV 和控制量两路。QKV 经过因果卷积后读写递归状态，输出再经过 z 门控和输出投影。</desc>
-  <defs>
-    <marker id="arrow-blue" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
-    <marker id="arrow-orange" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#ea580c"/></marker>
-    <marker id="arrow-green" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#16a34a"/></marker>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 920" role="img" aria-labelledby="title desc">
+  <title id="title">一个 token 经过 Gated DeltaNet 的完整数据流</title>
+  <desc id="desc">隐藏状态经过投影、因果卷积、QKV 拆分、状态更新和读取、输出门与输出投影。卷积状态和递归状态在 token 之间保留。</desc>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
-    .title { font-size: 27px; font-weight: 700; }
-    .sub { font-size: 15px; fill: #6b7280; }
-    .head { font-size: 18px; font-weight: 700; text-anchor: middle; }
-    .body { font-size: 15px; text-anchor: middle; }
-    .small { font-size: 13px; fill: #6b7280; text-anchor: middle; }
-    .edge-label { font-size: 13px; font-weight: 600; }
-    .flow { fill: none; stroke-width: 2.5; }
+    .title { font-size: 36px; font-weight: 700; }
+    .subtitle { font-size: 20px; fill: #64748b; }
+    .label { font-size: 23px; font-weight: 650; }
+    .body { font-size: 18px; }
+    .shape { font-size: 17px; fill: #64748b; }
+    .note { font-size: 17px; fill: #64748b; }
   </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#2563eb"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-green-start" markerWidth="10" markerHeight="7" refX="1" refY="3.5" orient="auto-start-reverse">
+      <polygon points="10 0, 0 3.5, 10 7" fill="#16a34a"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ea580c"/>
+    </marker>
+  </defs>
 
-  <rect width="960" height="960" fill="#ffffff"/>
-  <text x="40" y="48" class="title">一个 token 经过 Gated DeltaNet 的完整过程</text>
-  <text x="40" y="78" class="sub">主数据沿蓝线向下流动；绿色表示跨 token 保留的状态；橙色表示 α、β 和 z。</text>
+  <rect width="2400" height="920" fill="#ffffff"/>
+  <text x="55" y="64" class="title">一个 token 经过 Gated DeltaNet 的完整过程</text>
+  <text x="55" y="103" class="subtitle">蓝色是当前 token 的主数据流，绿色是跨 token 保留的状态，橙色是 α、β 和 z 控制分支。</text>
 
-  <!-- Arrows are drawn before nodes so labels and boxes stay readable. -->
-  <path d="M170 155 H225" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
-  <path d="M335 210 V245 H240 V275" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
-  <path d="M395 210 V230 H695 V255" class="flow" stroke="#ea580c" marker-end="url(#arrow-orange)"/>
-  <path d="M240 355 V405" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
-  <path d="M240 505 V545" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
-  <path d="M355 590 H385" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
-  <path d="M515 735 V775" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
-  <path d="M640 825 H695" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
-  <path d="M835 825 H855" class="flow" stroke="#2563eb" marker-end="url(#arrow-blue)"/>
+  <path d="M 240 275 H 300" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 550 275 H 620" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 880 275 H 950" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 1200 275 H 1270" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 1600 275 H 1670" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 1950 275 H 2010" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <path d="M 2190 275 H 2250" fill="none" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
 
-  <path d="M650 370 V520 H570 V535" class="flow" stroke="#ea580c" marker-end="url(#arrow-orange)"/>
-  <path d="M770 370 H920 V750 H610 V775" class="flow" stroke="#ea580c" marker-end="url(#arrow-orange)"/>
+  <path d="M 425 350 V 410 H 1360 V 365" fill="none" stroke="#ea580c" stroke-width="2.5" marker-end="url(#arrow-orange)"/>
+  <text x="930" y="399" text-anchor="middle" class="body">a → g → α，b → β</text>
+  <path d="M 475 350 V 455 H 1810 V 350" fill="none" stroke="#ea580c" stroke-width="2.5" marker-end="url(#arrow-orange)"/>
+  <text x="1120" y="444" text-anchor="middle" class="body">z</text>
 
-  <path d="M410 440 H355" class="flow" stroke="#16a34a" marker-end="url(#arrow-green)"/>
-  <path d="M355 480 H410" class="flow" stroke="#16a34a" marker-end="url(#arrow-green)"/>
-  <path d="M700 590 H645" class="flow" stroke="#16a34a" marker-end="url(#arrow-green)"/>
-  <path d="M645 680 H700" class="flow" stroke="#16a34a" marker-end="url(#arrow-green)"/>
+  <path d="M 750 350 V 565" fill="none" stroke="#16a34a" stroke-width="3" marker-start="url(#arrow-green-start)" marker-end="url(#arrow-green)"/>
+  <text x="770" y="470" class="body">读取 / 写回</text>
+  <path d="M 1500 365 V 565" fill="none" stroke="#16a34a" stroke-width="3" marker-start="url(#arrow-green-start)" marker-end="url(#arrow-green)"/>
+  <text x="1520" y="495" class="body">读取 / 写回</text>
 
-  <!-- Nodes -->
-  <rect x="40" y="120" width="130" height="70" rx="11" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-  <rect x="225" y="100" width="220" height="110" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-  <rect x="130" y="275" width="220" height="80" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-  <rect x="570" y="255" width="250" height="115" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
-  <rect x="130" y="405" width="220" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-  <rect x="410" y="405" width="180" height="100" rx="12" fill="#f0fdf4" stroke="#22c55e" stroke-width="2"/>
-  <rect x="130" y="545" width="225" height="90" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-  <rect x="385" y="535" width="260" height="200" rx="14" fill="#f0fdf4" stroke="#22c55e" stroke-width="2.5"/>
-  <rect x="700" y="555" width="200" height="150" rx="14" fill="#dcfce7" stroke="#22c55e" stroke-width="2"/>
-  <rect x="390" y="775" width="250" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-  <rect x="695" y="785" width="140" height="80" rx="11" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-  <rect x="855" y="785" width="75" height="80" rx="11" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <rect x="60" y="225" width="180" height="100" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="150" y="266" text-anchor="middle" class="label">输入 X</text>
+  <text x="150" y="297" text-anchor="middle" class="shape">[B,T,H]</text>
 
-  <!-- Node text -->
-  <text x="105" y="150" class="head">输入 X</text>
-  <text x="105" y="174" class="small">[B,T,H]</text>
+  <rect x="300" y="200" width="250" height="150" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="425" y="240" text-anchor="middle" class="label">四组 Linear</text>
+  <text x="425" y="276" text-anchor="middle" class="body">混合 Q/K/V</text>
+  <text x="425" y="308" text-anchor="middle" class="body">并产生 a、b、z</text>
+  <text x="425" y="334" text-anchor="middle" class="shape">[B,T,H] → 多条分支</text>
 
-  <text x="335" y="132" class="head">Linear 投影</text>
-  <text x="335" y="160" class="body">混合 Q/K/V</text>
-  <text x="335" y="185" class="small">同时产生 a、b、z</text>
+  <rect x="620" y="200" width="260" height="150" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="750" y="240" text-anchor="middle" class="label">因果卷积与 SiLU</text>
+  <text x="750" y="277" text-anchor="middle" class="body">读取最近 4 个位置</text>
+  <text x="750" y="309" text-anchor="middle" class="body">每个通道独立卷积</text>
+  <text x="750" y="334" text-anchor="middle" class="shape">混合 Q/K/V 通道</text>
 
-  <text x="240" y="307" class="head">混合 Q/K/V</text>
-  <text x="240" y="334" class="small">8192 个通道</text>
+  <rect x="950" y="200" width="250" height="150" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="1075" y="240" text-anchor="middle" class="label">拆分 Q、K、V</text>
+  <text x="1075" y="277" text-anchor="middle" class="body">Q/K 扩展到 32 头</text>
+  <text x="1075" y="309" text-anchor="middle" class="body">Q/K 做 L2 归一化</text>
+  <text x="1075" y="334" text-anchor="middle" class="shape">每头 Dk=Dv=128</text>
 
-  <text x="695" y="288" class="head">三个控制量</text>
-  <text x="695" y="317" class="body">a → g → α　　b → β</text>
-  <text x="695" y="344" class="body">z 保留到输出阶段</text>
+  <rect x="1270" y="185" width="330" height="180" rx="16" fill="#ecfdf5" stroke="#34d399" stroke-width="2.5"/>
+  <text x="1435" y="225" text-anchor="middle" class="label">更新状态并读取输出</text>
+  <text x="1310" y="263" class="body">1. α 衰减旧状态</text>
+  <text x="1310" y="294" class="body">2. K 读取旧值</text>
+  <text x="1310" y="325" class="body">3. β 缩放误差并写回</text>
+  <text x="1310" y="356" class="body">4. Q 读取更新后的状态</text>
 
-  <text x="240" y="438" class="head">因果卷积与 SiLU</text>
-  <text x="240" y="466" class="body">读取最近 4 个位置</text>
-  <text x="240" y="490" class="small">每个通道单独计算</text>
+  <rect x="1670" y="200" width="280" height="150" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="1810" y="240" text-anchor="middle" class="label">输出门</text>
+  <text x="1810" y="280" text-anchor="middle" class="body">RMSNorm(o)</text>
+  <text x="1810" y="312" text-anchor="middle" class="body">× SiLU(z)</text>
+  <text x="1810" y="337" text-anchor="middle" class="shape">z 只调节当前输出</text>
 
-  <text x="500" y="438" class="head">conv_state</text>
-  <text x="500" y="466" class="body">读旧窗口</text>
-  <text x="500" y="490" class="body">写回新窗口</text>
+  <rect x="2010" y="215" width="180" height="120" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="2100" y="260" text-anchor="middle" class="label">out_proj</text>
+  <text x="2100" y="294" text-anchor="middle" class="body">拼回所有头</text>
+  <text x="2100" y="319" text-anchor="middle" class="shape">回到 H 维</text>
 
-  <text x="242" y="577" class="head">得到 Q、K、V</text>
-  <text x="242" y="605" class="body">Q/K 做 L2 归一化</text>
-  <text x="242" y="628" class="small">扩展到 32 个状态头</text>
+  <rect x="2250" y="225" width="100" height="100" rx="14" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="2300" y="266" text-anchor="middle" class="label">输出</text>
+  <text x="2300" y="297" text-anchor="middle" class="shape">[B,T,H]</text>
 
-  <text x="515" y="572" class="head">读写递归状态</text>
-  <text x="515" y="607" class="body">1. α 衰减旧状态</text>
-  <text x="515" y="637" class="body">2. K 读取旧值</text>
-  <text x="515" y="667" class="body">3. β 缩放误差并写回</text>
-  <text x="515" y="697" class="body">4. Q 读取新状态</text>
+  <rect x="620" y="565" width="260" height="135" rx="16" fill="#f0fdf4" stroke="#34d399" stroke-width="2"/>
+  <text x="750" y="607" text-anchor="middle" class="label">conv_state</text>
+  <text x="750" y="642" text-anchor="middle" class="body">保存最近 4 个位置</text>
+  <text x="750" y="673" text-anchor="middle" class="shape">[B,8192,4]</text>
 
-  <text x="800" y="592" class="head">recurrent_state</text>
-  <text x="800" y="624" class="body">输入 S<tspan baseline-shift="sub" font-size="11">t-1</tspan></text>
-  <text x="800" y="654" class="body">写回 S<tspan baseline-shift="sub" font-size="11">t</tspan></text>
-  <text x="800" y="684" class="small">每个头一张状态矩阵</text>
+  <rect x="1270" y="565" width="330" height="135" rx="16" fill="#f0fdf4" stroke="#34d399" stroke-width="2"/>
+  <text x="1435" y="607" text-anchor="middle" class="label">recurrent_state</text>
+  <text x="1435" y="642" text-anchor="middle" class="body">每头一张 128×128 状态矩阵</text>
+  <text x="1435" y="673" text-anchor="middle" class="shape">[B,32,128,128]</text>
 
-  <text x="515" y="811" class="head">输出门</text>
-  <text x="515" y="839" class="body">RMSNorm(o) × SiLU(z)</text>
-  <text x="515" y="862" class="small">只调节本次输出</text>
-
-  <text x="765" y="818" class="head">out_proj</text>
-  <text x="765" y="845" class="small">回到 H 维</text>
-
-  <text x="892" y="818" class="head">输出</text>
-  <text x="892" y="845" class="small">[B,T,H]</text>
-
-  <!-- Edge labels -->
-  <text x="600" y="492" class="edge-label" fill="#ea580c">α、β</text>
-  <text x="892" y="742" class="edge-label" fill="#ea580c">z</text>
-  <text x="365" y="432" class="edge-label" fill="#16a34a">读</text>
-  <text x="365" y="474" class="edge-label" fill="#16a34a">写</text>
-  <text x="657" y="582" class="edge-label" fill="#16a34a">读</text>
-  <text x="657" y="674" class="edge-label" fill="#16a34a">写</text>
-
-  <!-- Legend -->
-  <g transform="translate(45 922)">
-    <line x1="0" y1="0" x2="34" y2="0" stroke="#2563eb" stroke-width="2.5" marker-end="url(#arrow-blue)"/>
-    <text x="45" y="5" class="sub">当前 token 的数据</text>
-    <line x1="230" y1="0" x2="264" y2="0" stroke="#16a34a" stroke-width="2.5" marker-end="url(#arrow-green)"/>
-    <text x="275" y="5" class="sub">跨 token 状态</text>
-    <line x1="450" y1="0" x2="484" y2="0" stroke="#ea580c" stroke-width="2.5" marker-end="url(#arrow-orange)"/>
-    <text x="495" y="5" class="sub">控制量</text>
-  </g>
+  <line x1="60" y1="835" x2="105" y2="835" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text x="125" y="842" class="note">当前 token 的数据流</text>
+  <line x1="390" y1="835" x2="435" y2="835" stroke="#16a34a" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <text x="455" y="842" class="note">跨 token 保留的状态</text>
+  <line x1="770" y1="835" x2="815" y2="835" stroke="#ea580c" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  <text x="835" y="842" class="note">控制分支</text>
+  <text x="2340" y="842" text-anchor="end" class="note">两份状态在每个 Gated DeltaNet 层中分别保存。</text>
 </svg>
