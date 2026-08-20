@@ -1,6 +1,6 @@
 # 第 4 课：Gated DeltaNet 的状态更新机制
 
-第 2 课把 Decoder Layer 中负责联系不同 token 的部分称为 Token Mixer。第 3 课讲了其中一种实现：Full Attention。它保留各个历史位置的 K/V，当前 Query 再与这些 Key 逐一比较。
+第 2 课把 Decoder Layer 中负责联系不同 token 的部分称为 Token Mixer。第 3 课讲了其中一种实现：Full Attention。它为每个历史位置保留 K/V；处理一个新 token 时，当前 Query 要重新读取这些 Key，并按注意力权重汇总对应的 Value。历史越长，KV Cache 越大，一次读取涉及的位置也越多。
 
 Qwen3.5-9B 还使用另一种 Token Mixer：Gated DeltaNet。它不保留一排可以逐位置读取的 K/V，而是为每个头维护一张固定大小的状态矩阵。新 token 到来时，模型先修改这张矩阵，再从中读出当前输出。
 
@@ -10,6 +10,8 @@ Gated DeltaNet：历史不断写入同一张状态矩阵 S
 ```
 
 这张矩阵不是对 KV Cache 的无损压缩。它是一份会衰减、修正和相互干扰的模型状态。矩阵的元素数量不随序列长度增加，历史位置也不能再被逐项取回。
+
+可以把两种历史表示看成明细和汇总：KV Cache 保留每个位置的 K/V 明细，状态矩阵只保留不断更新的汇总结果。这个类比只说明存储方式。状态中的数字是模型计算得到的连续特征，并不是人能直接阅读的文字摘要。
 
 Qwen3.5-9B 一共有 32 个 Decoder Layer，其中 24 层使用 Gated DeltaNet，8 层使用 Full Attention。层的排列方式是 3 个 Gated DeltaNet 层接 1 个 Full Attention 层，这组结构重复 8 次。
 
@@ -38,11 +40,11 @@ Gated DeltaNet 替换的是 Attention 所在的 Token Mixer 子层。RMSNorm、�
 | 是否生成 Softmax 权重 | 是 | 否 |
 | 状态 shape 是否随序列变长 | 是 | 否 |
 
-Gated DeltaNet 的计算从一张状态矩阵开始。下一节先说明这张矩阵怎样由历史 K/V 得到。
+Linear Attention 提供了构造固定状态的基本思路，Gated DeltaNet 则改进了状态更新方式。下一节先从最简单的线性形式推导状态矩阵，再加入 Delta Rule 和门控。
 
 ## 2. 状态矩阵从哪里来
 
-先把 Full Attention 中的 Softmax 暂时拿掉，只看一个历史 token 对当前输出的贡献。当前 Query 是 `q`，历史位置保存 `k` 和 `v`，那么这一个位置贡献：
+先研究一种不含 Softmax 的线性形式，只看一个历史 token 对当前输出的贡献。当前 Query 是 `q`，历史位置产生 `k` 和 `v`，这个位置贡献：
 
 $$
 (qk^T)v
@@ -56,7 +58,7 @@ $$
 (qk^T)v=q(k^Tv)
 $$
 
-左边是“读取时先算 Q/K 点积”，右边是“token 到来时先算 `k^Tv`，读取时再乘 q”。`k^Tv` 与未来的 Query 无关，因此可以提前写入状态矩阵。
+左边在读取时先算 Q/K 点积，右边在 token 到来时先算 `k^Tv`，以后再用 q 读取。`k^Tv` 与未来的 Query 无关，因此可以提前写入状态矩阵。
 
 ![同一项线性 Attention 可以按两种顺序计算](../assets/04-linear-state-reordering.svg)
 
@@ -74,7 +76,7 @@ $$
 
 这就是固定状态的来由。历史不再以 `k_1/v_1、k_2/v_2...` 的形式逐项保存，而是持续更新同一张矩阵 `S`。
 
-这个等式只适用于没有 Softmax 的线性 Attention。Full Attention 必须先得到当前 Query 对所有 Key 的一整行分数，再对这行分数执行 Softmax。Softmax 依赖整行数值，不能提前写进固定矩阵。因此，Gated DeltaNet 和 Full Attention 不是同一个算法换了计算顺序。
+这个推导只用来解释固定状态从哪里来，并不表示实际模型可以从 Full Attention 中直接删除 Softmax。Full Attention 必须先得到当前 Query 对所有 Key 的一整行分数，再对这行分数执行 Softmax。Softmax 依赖整行数值，不能提前写进固定矩阵。Gated DeltaNet 使用归一化后的 Q/K 和专门的状态更新公式，与 Full Attention 是两种不同的 Token Mixer。
 
 ### 2.1 外积怎样把 Value 写入矩阵
 
@@ -178,6 +180,19 @@ $$
 用相同 Key 读取时得到 `[8,5]`，新旧 Value 叠在了一起。模型当前希望这个方向返回 `[5,1]`，直接累加却无法修正旧内容。
 
 Delta Rule 改为写入新旧 Value 的差值。
+
+### 2.3 Linear Attention、DeltaNet 与 Gated DeltaNet 的关系
+
+前面的推导解决了一个问题：如何用固定状态保存历史，并让当前 Query 通过 `q_tS_t` 读取。这是 Linear Attention 的基本计算框架。简单累加会让新旧内容互相干扰，DeltaNet 因此改为先读取旧值，再用 `β` 控制误差的写入幅度。Gated DeltaNet 在此基础上加入 `α`，让模型先衰减旧状态。Qwen3.5 的实现还使用 `z` 调节当前输出。
+
+```text
+Linear Attention：固定状态 S，当前输出由 qS 读出
+DeltaNet：         先读取旧值，再用 β 控制误差写回
+Gated DeltaNet：   在 Delta Rule 上加入 α，先衰减旧状态
+Qwen3.5 实现：     使用 z 继续调节当前输出
+```
+
+因此，状态矩阵不是 Gated DeltaNet 最后额外增加的缓存。它是这类线性状态模型的基础；Gated DeltaNet 的主要变化在于怎样更新和使用这份状态。
 
 ## 3. Delta Rule：先读取旧值，再写入差值
 
@@ -635,6 +650,10 @@ Gated DeltaNet 用固定大小的矩阵保存持续更新的历史状态。它�
 
 - [Gated Delta Networks: Improving Mamba2 with Delta Rule](https://arxiv.org/abs/2412.06464)
 - [Parallelizing Linear Transformers with the Delta Rule over Sequence Length](https://arxiv.org/abs/2406.06484)
+
+概念讲解参考：
+
+- [一文看懂 Linear Attention：核心思想与数学推导](https://mp.weixin.qq.com/s/QL-QDd7ddEyTnjwU7g4ISA)
 
 ---
 
