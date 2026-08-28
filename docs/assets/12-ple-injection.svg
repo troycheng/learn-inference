@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 850" width="1600" height="850" role="img" aria-labelledby="title desc">
+  <title id="title">N-gram Embedding 通过 PLE 写入四条残差支路</title>
+  <desc id="desc">N-gram 向量分别投影为每支路 Key 和共享 Value，四条残差支路归一化后作为 Query，与 Key 点积产生四个门控，门控后的 Value 与因果卷积结果相加并写入对应支路。</desc>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 34px; font-weight: 700; }
+    .subtitle { font-size: 18px; fill: #64748b; }
+    .node-title { font-size: 18px; font-weight: 650; }
+    .node-sub { font-size: 15px; fill: #64748b; }
+    .main { fill: none; stroke: #2563eb; stroke-width: 3; marker-end: url(#arrow-blue); }
+    .control { fill: none; stroke: #9333ea; stroke-width: 2.5; stroke-dasharray: 8 6; marker-end: url(#arrow-purple); }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 11 4, 0 8" fill="#2563eb"/></marker>
+    <marker id="arrow-purple" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 11 4, 0 8" fill="#9333ea"/></marker>
+  </defs>
+  <rect width="1600" height="850" fill="#ffffff"/>
+  <text x="60" y="68" class="title">PLE 让四条残差支路分别判断 N-gram 信息是否有用</text>
+  <text x="60" y="104" class="subtitle">Key 用于匹配，Value 提供写入内容；四条支路共享 Value，但使用不同门控系数。</text>
+
+  <rect x="70" y="190" width="220" height="100" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="180" y="230" text-anchor="middle" class="node-title">N-gram 向量 e</text>
+  <text x="180" y="259" text-anchor="middle" class="node-sub">[H] = [2560]</text>
+
+  <path d="M290 220 H360 V185 H420" class="main"/>
+  <path d="M290 260 H340 V125 H1315 V160" class="main"/>
+  <rect x="420" y="145" width="230" height="100" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="535" y="184" text-anchor="middle" class="node-title">key_proj</text>
+  <text x="535" y="214" text-anchor="middle" class="node-sub">每支路一条 Key [4,H]</text>
+  <rect x="1190" y="160" width="250" height="100" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="1315" y="199" text-anchor="middle" class="node-title">value_proj</text>
+  <text x="1315" y="229" text-anchor="middle" class="node-sub">共享 Value v [H]</text>
+
+  <rect x="70" y="470" width="220" height="150" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="180" y="512" text-anchor="middle" class="node-title">四条残差支路</text>
+  <text x="180" y="545" text-anchor="middle" class="node-sub">R1、R2、R3、R4</text>
+  <text x="180" y="575" text-anchor="middle" class="node-sub">分别 RMSNorm</text>
+  <text x="180" y="603" text-anchor="middle" class="node-sub">得到 Query [4,H]</text>
+
+  <path d="M650 195 H760 V285 H820" class="main"/>
+  <path d="M290 545 H745 V325 H820" class="main"/>
+  <rect x="820" y="235" width="240" height="140" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="940" y="275" text-anchor="middle" class="node-title">每支路 Q · K</text>
+  <text x="940" y="306" text-anchor="middle" class="node-sub">得到 4 个匹配分数</text>
+  <text x="940" y="336" text-anchor="middle" class="node-sub">变换后执行 Sigmoid</text>
+  <text x="940" y="362" text-anchor="middle" class="node-sub">门控 g [4]</text>
+
+  <path d="M1060 305 H1130 V385 H1190" class="control"/>
+  <path d="M1315 260 V345" class="main"/>
+  <rect x="1190" y="345" width="250" height="120" rx="12" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="1315" y="384" text-anchor="middle" class="node-title">每支路缩放共享 Value</text>
+  <text x="1315" y="416" text-anchor="middle" class="node-sub">g1v、g2v、g3v、g4v</text>
+  <text x="1315" y="445" text-anchor="middle" class="node-sub">[4,H]</text>
+
+  <path d="M1315 465 V520" class="main"/>
+  <rect x="1190" y="520" width="250" height="105" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="1315" y="558" text-anchor="middle" class="node-title">局部因果卷积</text>
+  <text x="1315" y="588" text-anchor="middle" class="node-sub">只读取当前和左侧位置</text>
+  <text x="1315" y="614" text-anchor="middle" class="node-sub">与直接门控结果相加</text>
+
+  <path d="M1190 575 H1085 V690 H1015" class="main"/>
+  <rect x="705" y="650" width="310" height="105" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="860" y="690" text-anchor="middle" class="node-title">写入对应的四条残差支路</text>
+  <text x="860" y="721" text-anchor="middle" class="node-sub">随后进入第 2 层的 GR Read</text>
+
+  <path d="M290 585 H600 V702 H705" class="main"/>
+
+  <line x1="70" y1="800" x2="110" y2="800" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text x="125" y="805" class="node-sub">向量数据</text>
+  <line x1="280" y1="800" x2="320" y2="800" stroke="#9333ea" stroke-width="2.5" stroke-dasharray="8 6" marker-end="url(#arrow-purple)"/>
+  <text x="335" y="805" class="node-sub">门控系数</text>
+  <text x="1510" y="805" text-anchor="end" class="node-sub">注入只发生在第 2 个 Decoder Layer</text>
+</svg>

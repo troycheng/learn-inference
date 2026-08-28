@@ -7,13 +7,13 @@
 
 课程先说明 QKV、RoPE、KV Cache、MoE 在模型哪一步出现、怎样计算、会留下哪些状态，再用这些结论分析显存、吞吐和首 token 延迟。学完后，你应该能指出一项优化改变了哪些模型层、张量或请求状态，并判断它在当前工作负载下是否值得验证。
 
-![课程分为计算主线、现代模型结构、资源与优化评估三个阶段](docs/assets/course-roadmap.svg)
+![课程从基础计算、模型执行和资源评估延伸到 Qwen3.8 新结构](docs/assets/course-roadmap.svg)
 
 对张量和矩阵运算还不熟悉，可以从[第 0 课](docs/lessons/00-math-and-tensors.md)开始；已经能根据算子推导 shape，可以直接阅读[第 1 课](docs/lessons/01-text-to-next-token.md)。
 
 ## 学习目标
 
-这 10 课不要求你推导复杂公式，但要能做到：
+这 13 课不要求你推导复杂公式，但要能做到：
 
 - 从 Tokenizer 开始，完整解释一个新 token 是怎样产生的；
 - 说明 Embedding、RMSNorm、Attention、FFN、残差连接（Residual Connection）和 LM Head 分别解决什么问题；
@@ -22,11 +22,14 @@
 - 解释 Prefill、Decode、KV Cache 和 Gated DeltaNet 状态之间的关系；
 - 解释图片怎样经过视觉编码器变成语言模型可处理的视觉特征；
 - 阅读模型 `config.json`，区分保存与计算 dtype，判断参数规模、状态规模和主要计算来自哪里；
-- 判断量化、缓存、批处理和 DP、TP、PP、EP 分别影响权重、Attention、请求状态、执行批次还是多卡通信。
+- 判断量化、缓存、批处理和 DP、TP、PP、EP 分别影响权重、Attention、请求状态、执行批次还是多卡通信；
+- 解释 Gated Residual 怎样通过四条支路传递跨层信息；
+- 解释 QSA 怎样先选择微块，再对原始 K/V 执行正式 Attention；
+- 区分 N-gram 参数容量、逐 token 查表量和主机内存预取成本。
 
 ## 课程主线
 
-第 1 至第 6 课沿着一次文本生成展开：先看 token 怎样进入 Decoder，再拆解 Full Attention、Gated DeltaNet、Dense FFN 和 MoE，最后比较 Prefill 与 Decode 怎样执行这些模块并维护请求状态。第 7 课再加入图片和视频。
+第 1 至第 6 课沿着一次文本生成展开：先看 token 怎样进入 Decoder，再拆解 Full Attention、Gated DeltaNet、Dense FFN 和 MoE，最后比较 Prefill 与 Decode 怎样执行这些模块并维护请求状态。第 7 课再加入图片和视频。第 10 至第 12 课把同一套分析方法用于 Qwen3.8-Flash-Next 的 GR、QSA 和 N-gram Embedding。
 
 需要复习完整数据流、Decoder Layer 内部结构和两类请求状态时，可以打开带图的[大模型推理链路速查](docs/inference-map.md)。
 
@@ -37,6 +40,7 @@
 - 用 **Qwen3.5-35B-A3B** 讲 MoE 模型；
 - 用两者共同的 Gated DeltaNet 与 Full Attention 混合结构讲现代模型；
 - 用 Qwen3.5 的视觉输入路径讲视觉编码器与多模态序列；
+- 用 **Qwen3.8-Flash-Next** 讲四支路 Gated Residual、Qwen Sparse Attention 和 N-gram Embedding；
 - 课程只解释理解推理所需的因果语言模型目标，不展开反向传播、优化器、CUDA 编程和框架参数清单。
 
 ## 课程目录
@@ -53,6 +57,9 @@
 | 7 | [第 7 课：多模态输入与视觉编码](docs/lessons/07-multimodal-input.md) | 从像素和 Patch 推导到 Decoder 输入 |
 | 8 | [第 8 课：模型配置与资源估算](docs/lessons/08-config-and-sizing.md) | 估算权重、请求状态和主要计算量 |
 | 9 | [第 9 课：推理优化的分析与评估](docs/lessons/09-optimization-judgment.md) | 判断优化改了什么、何时有效、怎样验证 |
+| 10 | [第 10 课：Gated Residual 与 Decoder Layer 数据流](docs/lessons/10-gated-residual.md) | 手算 GR Read/Write，区分跨层激活与请求状态 |
+| 11 | [第 11 课：Qwen Sparse Attention 的计算过程](docs/lessons/11-qwen-sparse-attention.md) | 解释微块索引、Top-K 和稀疏核心 Attention |
+| 12 | [第 12 课：N-gram Embedding 与推理状态](docs/lessons/12-ngram-embedding.md) | 手算 N-gram 哈希查表，分析主机预取和完整状态 |
 
 配套资料：
 
@@ -67,15 +74,17 @@
 
 第 1 至第 6 课应连续阅读。第 1、2 课建立生成链路和 Decoder Layer 骨架；第 3 至第 5 课分别展开 Full Attention、Gated DeltaNet 和 Dense FFN/MoE；第 6 课把这些模块放回 Prefill 与 Decode。第 7 课加入多模态输入，第 8、9 课再进行资源估算和优化评审。
 
+第 10 至第 12 课是进阶专题，应在第 2 至第 6 课之后连续阅读。第 10 课先更新 Decoder Layer 的公共骨架，第 11 课沿用第 3 课的 Attention 计算，第 12 课加入局部词组查表并汇总整套请求状态。
+
 第一次阅读只需追踪数据表示、shape 变化和请求状态，不必记住 Qwen3.5 的每个配置数字。遇到公式时，可以运行对应的复算程序。课程中的计算、查错和评审题用于检查能否把同一个原理应用到新数据。
 
-读完第 9 课后，可以继续看[长上下文扩容评审](docs/capstone.md)。这个案例从目标上下文长度出发，算出 TP 下的每 Rank KV 容量，再比较 FP8 KV、Chunked Prefill、Prefix Cache 和增加副本分别能解决什么问题，最后给出验证实验和上线门槛。
+读完第 9 课后，可以先看[长上下文扩容评审](docs/capstone.md)，也可以继续学习第 10 至第 12 课的新结构专题。评审案例仍以 Qwen3.5-9B 为准，不把两代模型的配置混用。
 
 正文用小数字缩短手算过程，向量和矩阵的维度虽然变小，计算顺序与真实模型相同。需要练习的地方会安排查错、计算或判断，参考答案默认折叠；不为统一版式给每课强行添加相同栏目。
 
 ## 可运行示例
 
-第 1、2、3、4、5、8、9 课和综合评审提供了只依赖 Python 标准库的[复算程序](examples/README.md)。脚本与正文使用同一组数字，运行后会打印中间结果，并检查关键数值。它们适合在读完公式后自己算一遍，不要求安装 PyTorch 或下载模型权重。
+第 1、2、3、4、5、8、9、10、11、12 课和综合评审提供了只依赖 Python 标准库的[复算程序](examples/README.md)。脚本与正文使用同一组数字，运行后会打印中间结果，并检查关键数值。它们适合在读完公式后自己算一遍，不要求安装 PyTorch 或下载模型权重。
 
 提交前可以运行 `bash scripts/check-course.sh`，检查 Markdown 结构、本地链接、SVG 渲染和可运行示例。GitHub Actions 也会执行同一组检查。
 

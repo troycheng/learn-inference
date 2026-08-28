@@ -11,6 +11,9 @@
 | [`moe_routing_walkthrough.py`](moe_routing_walkthrough.py) | 第 5 课 | Router Softmax、Top-2、路由权重与 Shared Expert |
 | [`model_sizing_walkthrough.py`](model_sizing_walkthrough.py) | 第 8 课 | KV、TP 下每 Rank KV、固定状态与 Attention 长度项 |
 | [`optimization_decision_walkthrough.py`](optimization_decision_walkthrough.py) | 第 9 课 | 局部 Kernel 加速对同一条 TTFT trace 的实际影响 |
+| [`gated_residual_walkthrough.py`](gated_residual_walkthrough.py) | 第 10 课 | 两支路 GR Read 的逐元素门控与 GR Write |
+| [`qsa_walkthrough.py`](qsa_walkthrough.py) | 第 11 课 | 微块 Top-K、候选 token 展开与稀疏 Attention |
+| [`ngram_embedding_walkthrough.py`](ngram_embedding_walkthrough.py) | 第 12 课 | N-gram 哈希、逐 token 激活量与参数表容量 |
 | [`request_budget_walkthrough.py`](request_budget_walkthrough.py) | 综合案例 | 长上下文的逻辑 KV、TP 下每 Rank KV 与双副本分流 |
 
 在仓库根目录运行：
@@ -23,6 +26,9 @@ python3 examples/gated_deltanet_walkthrough.py
 python3 examples/moe_routing_walkthrough.py
 python3 examples/model_sizing_walkthrough.py
 python3 examples/optimization_decision_walkthrough.py
+python3 examples/gated_residual_walkthrough.py
+python3 examples/qsa_walkthrough.py
+python3 examples/ngram_embedding_walkthrough.py
 python3 examples/request_budget_walkthrough.py
 ```
 

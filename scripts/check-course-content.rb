@@ -3,11 +3,11 @@
 errors = []
 course_title = "大模型推理原理与优化"
 lesson_files = Dir["docs/lessons/[0-9][0-9]-*.md"].sort
-expected_numbers = (0..9).to_a
+expected_numbers = (0..12).to_a
 actual_numbers = lesson_files.map { |file| File.basename(file, ".md")[0, 2].to_i }
 
 if actual_numbers != expected_numbers
-  errors << "lesson files must cover 00 through 09 exactly; found #{actual_numbers.inspect}"
+  errors << "lesson files must cover 00 through 12 exactly; found #{actual_numbers.inspect}"
 end
 
 lesson_titles = {}

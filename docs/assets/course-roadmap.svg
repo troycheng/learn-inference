@@ -1,87 +1,78 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 650" width="1280" height="650" role="img" aria-labelledby="course-roadmap-title course-roadmap-desc">
-  <title id="course-roadmap-title">课程学习路线</title>
-  <desc id="course-roadmap-desc">课程分为三个阶段：第零至第三课建立基础计算主线，第四至第七课补全现代模型结构、推理执行和多模态输入，第八至第九课学习资源估算和优化评审。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1680 700" width="1680" height="700" role="img" aria-labelledby="title desc">
+  <title id="title">课程学习路线</title>
+  <desc id="desc">课程分为四个阶段：建立基础计算主线，理解 Qwen3.5 模型结构，学习资源估算与优化评估，再将同一方法用于 Gated Residual、Qwen Sparse Attention 和 N-gram Embedding。</desc>
   <style>
-    text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei','Microsoft JhengHei','SimHei',sans-serif;fill:#111827}
-    .title{font-size:34px;font-weight:700}.subtitle{font-size:17px;fill:#64748b}
-    .stage-number{font-size:14px;font-weight:700;letter-spacing:1px}.stage-title{font-size:23px;font-weight:700}
-    .lesson{font-size:16px;font-weight:650}.detail{font-size:14px;fill:#475569}.outcome{font-size:15px;font-weight:600}
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 34px; font-weight: 700; }
+    .subtitle { font-size: 17px; fill: #64748b; }
+    .stage-number { font-size: 14px; font-weight: 700; }
+    .stage-title { font-size: 23px; font-weight: 700; }
+    .lesson { font-size: 16px; font-weight: 650; }
+    .detail { font-size: 14px; fill: #475569; }
+    .outcome { font-size: 15px; font-weight: 600; }
+    .edge { fill: none; stroke: #2563eb; stroke-width: 2.6; marker-end: url(#arrow); }
   </style>
   <defs>
-    <marker id="roadmap-arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-      <polygon points="0 0,10 3.5,0 7" fill="#2563eb"/>
-    </marker>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker>
   </defs>
+  <rect width="1680" height="700" fill="#ffffff"/>
+  <text x="48" y="58" class="title">课程学习路线</text>
+  <text x="48" y="89" class="subtitle">先掌握 Decoder 的基础计算，再分析模型执行和资源；最后用同一方法学习新结构。</text>
 
-  <rect width="1280" height="650" fill="#ffffff" data-graph-role="canvas"/>
-  <g data-graph-role="title-block">
-    <text x="54" y="58" class="title">课程学习路线</text>
-    <text x="54" y="89" class="subtitle">先理解模型怎样计算，再看完整推理怎样执行，最后分析资源与优化方案。</text>
+  <path d="M405 360 H438" class="edge"/>
+  <path d="M815 360 H848" class="edge"/>
+  <path d="M1225 360 H1258" class="edge"/>
+
+  <g id="stage-one">
+    <rect x="40" y="126" width="365" height="470" rx="18" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+    <rect x="64" y="150" width="82" height="26" rx="13" fill="#dbeafe"/>
+    <text x="105" y="168" class="stage-number" text-anchor="middle" fill="#1d4ed8">第一阶段</text>
+    <text x="64" y="210" class="stage-title">建立计算主线</text>
+    <text x="64" y="255" class="lesson">第 0 课　张量与模型计算基础</text><text x="82" y="278" class="detail">shape、轴、点积与 Linear</text>
+    <text x="64" y="316" class="lesson">第 1 课　生成下一个 token</text><text x="82" y="339" class="detail">从 Chat Template 跟踪到 Logits</text>
+    <text x="64" y="377" class="lesson">第 2 课　Decoder Layer</text><text x="82" y="400" class="detail">RMSNorm、残差连接与 FFN</text>
+    <text x="64" y="438" class="lesson">第 3 课　Attention</text><text x="82" y="461" class="detail">QKV、RoPE、因果遮罩与 GQA</text>
+    <rect x="64" y="518" width="317" height="46" rx="10" fill="#ffffff" stroke="#93c5fd" stroke-width="1.4"/>
+    <text x="222" y="547" class="outcome" text-anchor="middle">掌握 Decoder 的基础计算</text>
   </g>
 
-  <g data-graph-role="edge" data-source="stage-one" data-target="stage-two">
-    <path d="M 422 337 H 453" fill="none" stroke="#2563eb" stroke-width="2.6" marker-end="url(#roadmap-arrow)"/>
-  </g>
-  <g data-graph-role="edge" data-source="stage-two" data-target="stage-three">
-    <path d="M 827 337 H 858" fill="none" stroke="#2563eb" stroke-width="2.6" marker-end="url(#roadmap-arrow)"/>
-  </g>
-
-  <g data-graph-role="node" id="stage-one" aria-label="第一阶段：建立计算主线">
-    <rect x="54" y="126" width="368" height="421" rx="18" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-    <rect x="78" y="150" width="76" height="26" rx="13" fill="#dbeafe"/>
-    <text x="116" y="168" class="stage-number" text-anchor="middle" fill="#1d4ed8">第一阶段</text>
-    <text x="78" y="210" class="stage-title">建立计算主线</text>
-
-    <text x="78" y="255" class="lesson">第 0 课　张量与模型计算基础</text>
-    <text x="96" y="278" class="detail">看懂 shape、轴、点积、Linear</text>
-    <text x="78" y="316" class="lesson">第 1 课　生成下一个 token</text>
-    <text x="96" y="339" class="detail">从 Chat Template 跟踪到 Logits</text>
-    <text x="78" y="377" class="lesson">第 2 课　Decoder Layer</text>
-    <text x="96" y="400" class="detail">RMSNorm、残差连接与 FFN</text>
-    <text x="78" y="438" class="lesson">第 3 课　Attention</text>
-    <text x="96" y="461" class="detail">QKV、RoPE、因果遮罩与 GQA</text>
-    <rect x="78" y="482" width="320" height="42" rx="10" fill="#ffffff" stroke="#93c5fd" stroke-width="1.4"/>
-    <text x="238" y="508" class="outcome" text-anchor="middle">掌握 Decoder 的基础计算</text>
+  <g id="stage-two">
+    <rect x="450" y="126" width="365" height="470" rx="18" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+    <rect x="474" y="150" width="82" height="26" rx="13" fill="#ede9fe"/>
+    <text x="515" y="168" class="stage-number" text-anchor="middle" fill="#6d28d9">第二阶段</text>
+    <text x="474" y="210" class="stage-title">理解模型结构与执行</text>
+    <text x="474" y="255" class="lesson">第 4 课　Gated DeltaNet</text><text x="492" y="278" class="detail">状态矩阵、Delta Rule 与门控</text>
+    <text x="474" y="316" class="lesson">第 5 课　Dense FFN 与 MoE</text><text x="492" y="339" class="detail">Router、Top-K 与激活参数</text>
+    <text x="474" y="377" class="lesson">第 6 课　推理阶段与状态复用</text><text x="492" y="400" class="detail">Prefill、Decode 与 KV Cache</text>
+    <text x="474" y="438" class="lesson">第 7 课　多模态输入</text><text x="492" y="461" class="detail">从图像 Patch 到 Decoder 输入</text>
+    <rect x="474" y="518" width="317" height="46" rx="10" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.4"/>
+    <text x="632" y="547" class="outcome" text-anchor="middle">读懂 Qwen3.5 的推理过程</text>
   </g>
 
-  <g data-graph-role="node" id="stage-two" aria-label="第二阶段：理解现代模型结构">
-    <rect x="459" y="126" width="368" height="421" rx="18" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
-    <rect x="483" y="150" width="76" height="26" rx="13" fill="#ede9fe"/>
-    <text x="521" y="168" class="stage-number" text-anchor="middle" fill="#6d28d9">第二阶段</text>
-    <text x="483" y="210" class="stage-title">理解现代模型结构</text>
-
-    <text x="483" y="250" class="lesson">第 4 课　Gated DeltaNet</text>
-    <text x="501" y="273" class="detail">状态矩阵、Delta Rule 与门控</text>
-    <text x="483" y="316" class="lesson">第 5 课　Dense FFN 与 MoE</text>
-    <text x="501" y="339" class="detail">Router、Top-K、专家与激活参数</text>
-    <text x="483" y="382" class="lesson">第 6 课　推理阶段与状态复用</text>
-    <text x="501" y="405" class="detail">Prefill、Decode 与 KV Cache</text>
-    <text x="483" y="448" class="lesson">第 7 课　多模态输入</text>
-    <text x="501" y="471" class="detail">从图像 Patch 到 Decoder 输入向量</text>
-
-    <rect x="483" y="493" width="320" height="42" rx="10" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.4"/>
-    <text x="643" y="519" class="outcome" text-anchor="middle">读懂 Qwen3.5 的模型结构与执行过程</text>
+  <g id="stage-three">
+    <rect x="860" y="126" width="365" height="470" rx="18" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
+    <rect x="884" y="150" width="82" height="26" rx="13" fill="#d1fae5"/>
+    <text x="925" y="168" class="stage-number" text-anchor="middle" fill="#047857">第三阶段</text>
+    <text x="884" y="210" class="stage-title">资源估算与优化评估</text>
+    <text x="884" y="278" class="lesson">第 8 课　配置与资源估算</text><text x="902" y="303" class="detail">权重、计算量和请求状态</text>
+    <text x="884" y="365" class="lesson">第 9 课　优化分析与实验评估</text><text x="902" y="390" class="detail">量化、缓存、并行与端到端收益</text>
+    <text x="884" y="452" class="lesson">综合案例　长上下文扩容评审</text><text x="902" y="477" class="detail">从容量计算推导到方案取舍</text>
+    <rect x="884" y="518" width="317" height="46" rx="10" fill="#ffffff" stroke="#6ee7b7" stroke-width="1.4"/>
+    <text x="1042" y="547" class="outcome" text-anchor="middle">形成可复核的工程判断</text>
   </g>
 
-  <g data-graph-role="node" id="stage-three" aria-label="第三阶段：资源估算与优化评估">
-    <rect x="864" y="126" width="362" height="421" rx="18" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
-    <rect x="888" y="150" width="76" height="26" rx="13" fill="#d1fae5"/>
-    <text x="926" y="168" class="stage-number" text-anchor="middle" fill="#047857">第三阶段</text>
-    <text x="888" y="210" class="stage-title">资源估算与优化评估</text>
-
-    <text x="888" y="274" class="lesson">第 8 课　配置与资源估算</text>
-    <text x="906" y="298" class="detail">权重、计算量和请求状态</text>
-    <text x="888" y="361" class="lesson">第 9 课　优化分析与实验评估</text>
-    <text x="906" y="385" class="detail">量化、缓存、并行与端到端收益</text>
-    <text x="888" y="448" class="lesson">综合案例　长上下文扩容评审</text>
-    <text x="906" y="472" class="detail">从容量计算推导到方案取舍</text>
-
-    <rect x="888" y="498" width="314" height="42" rx="10" fill="#ffffff" stroke="#6ee7b7" stroke-width="1.4"/>
-    <text x="1045" y="524" class="outcome" text-anchor="middle">形成可复核的工程判断</text>
+  <g id="stage-four">
+    <rect x="1270" y="126" width="365" height="470" rx="18" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+    <rect x="1294" y="150" width="82" height="26" rx="13" fill="#fed7aa"/>
+    <text x="1335" y="168" class="stage-number" text-anchor="middle" fill="#c2410c">进阶专题</text>
+    <text x="1294" y="210" class="stage-title">Qwen3.8 新结构</text>
+    <text x="1294" y="278" class="lesson">第 10 课　Gated Residual</text><text x="1312" y="303" class="detail">四支路的读取与写入</text>
+    <text x="1294" y="365" class="lesson">第 11 课　QSA</text><text x="1312" y="390" class="detail">微块索引与稀疏 Attention</text>
+    <text x="1294" y="452" class="lesson">第 12 课　N-gram Embedding</text><text x="1312" y="477" class="detail">哈希查表、PLE 与主机预取</text>
+    <rect x="1294" y="518" width="317" height="46" rx="10" fill="#ffffff" stroke="#fdba74" stroke-width="1.4"/>
+    <text x="1452" y="547" class="outcome" text-anchor="middle">把原理迁移到下一代结构</text>
   </g>
 
-  <g data-graph-role="annotation">
-    <rect x="54" y="581" width="1172" height="42" rx="11" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.4"/>
-    <text x="640" y="608" class="detail" text-anchor="middle">课程中的小数字、图示和复算程序使用同一组变量；每个难点先跟踪一次具体计算，再回到 Qwen3.5 的真实配置。</text>
-  </g>
+  <rect x="40" y="632" width="1595" height="44" rx="11" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.4"/>
+  <text x="837" y="660" class="detail" text-anchor="middle">小数字、图示和真实配置使用同一套变量；每个新结构先跟踪一次具体计算，再判断推理成本。</text>
 </svg>

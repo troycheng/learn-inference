@@ -34,6 +34,16 @@
 
 第 0 课补足张量与基础计算知识；第 1、2 课建立生成链路和 Decoder Layer 骨架；第 3 至第 5 课展开层内主要模块；第 6 课再说明这些模块在 Prefill 和 Decode 中怎样运行。第 7 课加入图片输入，第 8、9 课集中练习资源估算和优化判断。
 
+第 10 至第 12 课组成 Qwen3.8-Flash-Next 进阶专题：
+
+```text
+第 10 课  Gated Residual 与 Decoder Layer 数据流
+第 11 课  Qwen Sparse Attention 的计算过程
+第 12 课  N-gram Embedding 与推理状态
+```
+
+三课不重新讲一遍 Decoder。它们分别接续第 2 课的残差骨架、第 3 课的 Attention 计算，以及第 6、8 课的请求状态和资源估算。
+
 ## 贯穿课程的分析主线
 
 遇到任何新算子或模型结构，都可以先问三件事：
@@ -58,8 +68,11 @@
 | [7](lessons/07-multimodal-input.md) | 多模态输入与视觉编码 | 从像素、Patch 和视觉编码器推导到 `[B,T,H]` |
 | [8](lessons/08-config-and-sizing.md) | 模型配置与资源估算 | 区分保存、计算与累加 dtype，估算参数、权重、请求状态和计算量 |
 | [9](lessons/09-optimization-judgment.md) | 推理优化的分析与评估 | 比较常见优化和并行策略，估算端到端上限并设计验证实验 |
+| [10](lessons/10-gated-residual.md) | Gated Residual 与 Decoder Layer 数据流 | 手算 GR Read/Write，区分跨层残差支路与跨 token 请求状态 |
+| [11](lessons/11-qwen-sparse-attention.md) | Qwen Sparse Attention 的计算过程 | 解释微块压缩、索引器、Top-K 和核心 Attention 的分工 |
+| [12](lessons/12-ngram-embedding.md) | N-gram Embedding 与推理状态 | 手算哈希查表和 PLE 注入，汇总新结构的参数与请求状态 |
 
-完成 0～9 课后，可以阅读[长上下文扩容评审](capstone.md)。案例会从需求、模型结构和每 Rank KV 容量一路推到方案取舍与上线门槛，示范怎样把前面学到的知识写成一份可复核的工程结论。
+完成 0～9 课后，可以阅读[长上下文扩容评审](capstone.md)，也可以进入第 10～12 课的新结构专题。案例使用 Qwen3.5-9B；进阶专题使用 Qwen3.8-Flash-Next，两者的配置数字分别核对。
 
 ## 教学示例与真实模型
 
@@ -69,15 +82,16 @@
 先算一个 token 或一个位置
 → 用同一组数字推广到矩阵和 batch
 → 写出通用 shape
-→ 代入 Qwen3.5 的真实配置
+→ 代入对应 Qwen 模型的真实配置
 → 推出显存、计算、访存或通信影响
 ```
 
-课程使用三个模型版本：
+课程使用四个模型版本：
 
 - Qwen3.5-9B-Base 用于核对 Dense 架构、层数和 shape；
 - post-trained Qwen3.5-9B 用于 Chat Template、Tokenizer、多模态输入和生成行为；
-- Qwen3.5-35B-A3B 用于 MoE、总参数和激活参数。
+- Qwen3.5-35B-A3B 用于 MoE、总参数和激活参数；
+- Qwen3.8-Flash-Next 用于 GR、QSA、N-gram Embedding 和新请求状态。
 
 涉及配置、实现或真实数字时，正文会链接到固定 revision。教学用数值会明确说明，不会伪装成真实模型输出。
 
@@ -107,3 +121,6 @@
 - [GQA: Training Generalized Multi-Query Transformer Models](https://arxiv.org/abs/2305.13245)
 - [Mixtral of Experts](https://arxiv.org/abs/2401.04088)
 - [Gated Delta Networks](https://arxiv.org/abs/2412.06464)
+- [Qwen3.8-Flash-Next 技术报告，revision 6988587](https://github.com/QwenLM/Qwen3.8-Flash-Next/blob/69885871a64393807d988b27b1b5e380e8f28526/tech_report.pdf)
+- [Qwen3.8-Flash-Next 配置，revision de4b8e4](https://huggingface.co/Qwen/Qwen3.8-Flash-Next/blob/de4b8e4d43b917e7706784d8bb445c9af86a3540/config.json)
+- [Transformers 参考实现，revision 281dd53](https://github.com/huggingface/transformers/blob/281dd533060988a1de8d063c4c1ea72b304a2bb8/src/transformers/models/qwen4_exp/modeling_qwen4_exp.py)

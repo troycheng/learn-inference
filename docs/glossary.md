@@ -153,6 +153,21 @@
 | 输出门控 | Output Gate / `z` | 在状态读出并归一化后，逐元素调节本层输出 |
 | 分块递归计算 | Chunk Gated Delta Rule | 把已知序列的递归更新改写为分块矩阵计算，并在块间传递状态 |
 
+## Qwen3.8-Flash-Next 进阶结构
+
+| 正文用词 | 英文或代码名 | 简短含义 |
+| --- | --- | --- |
+| 门控残差 | Gated Residual / GR | 并行维护多条残差支路，并用数据相关门控控制子层的读取和写入 |
+| 残差支路 | Residual Branch / Residual Stream | GR 中沿模型层深传递的一条隐藏状态通道；它不属于跨 Decode 轮保存的请求缓存 |
+| 门控残差读取 | GR Read | 分别归一化多条残差支路，逐元素门控后混合成一个 `H` 维子层输入 |
+| 门控残差写入 | GR Write | 用每支路一个系数，把子层输出写回多条残差支路 |
+| Qwen 稀疏注意力 | Qwen Sparse Attention / QSA | 先用轻量索引器选择候选位置，再对候选位置的原始 K/V 执行正式 Attention |
+| 索引器 | Indexer | 为压缩后的历史微块打分并选择候选位置的轻量 Q/K 模块 |
+| 微块 | Micro-block | 索引器中由若干连续 token 组成的压缩单位；选中后会展开回原始 token 位置 |
+| Token 预算 | Token Budget | 一个 Query 交给核心稀疏 Attention 的候选位置数量上限，不是 KV Cache 的保存上限 |
+| N-gram Embedding | N-gram Embedding | 用当前位置和左侧若干 Token ID 的哈希组合查表，取得局部词组向量 |
+| 逐层嵌入注入模块 | Per-Layer Embedding / PLE | 把 N-gram 查表向量按门控写入指定 Decoder Layer 的残差支路 |
+
 ## 多模态输入
 
 | 正文用词 | 英文或代码名 | 简短含义 |

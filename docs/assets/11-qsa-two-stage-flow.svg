@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" role="img" aria-labelledby="title desc">
+  <title id="title">QSA 先选择位置，再执行正式 Attention</title>
+  <desc id="desc">图中上半部分是轻量索引器，从隐藏状态生成索引器 Query 和 Key，将 Key 按微块平均后打分并选择 token 位置；下半部分使用正式 QKV，只读取选中位置的原始 Key 和 Value，执行标准 Attention。</desc>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 34px; font-weight: 700; }
+    .subtitle { font-size: 18px; fill: #64748b; }
+    .lane-title { font-size: 22px; font-weight: 700; }
+    .node-title { font-size: 17px; font-weight: 650; }
+    .node-sub { font-size: 14px; fill: #64748b; }
+    .main { fill: none; stroke: #2563eb; stroke-width: 3; marker-end: url(#arrow-blue); }
+    .control { fill: none; stroke: #9333ea; stroke-width: 2.5; stroke-dasharray: 8 6; marker-end: url(#arrow-purple); }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 11 4, 0 8" fill="#2563eb"/></marker>
+    <marker id="arrow-purple" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 11 4, 0 8" fill="#9333ea"/></marker>
+  </defs>
+  <rect width="1600" height="900" fill="#ffffff"/>
+  <text x="60" y="68" class="title">QSA 是“粗选位置，再精算 Attention”</text>
+  <text x="60" y="104" class="subtitle">索引器只产生候选 token 编号；最终输出仍由正式 Q/K/V、Softmax 和 V 加权求和计算。</text>
+
+  <rect x="55" y="145" width="1490" height="290" rx="18" fill="#faf5ff" stroke="#c4b5fd" stroke-width="2"/>
+  <text x="85" y="187" class="lane-title">第一阶段：轻量索引器选择位置</text>
+
+  <rect x="85" y="230" width="170" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="170" y="270" text-anchor="middle" class="node-title">隐藏状态 X</text>
+  <text x="170" y="299" text-anchor="middle" class="node-sub">[B,T,H]</text>
+  <path d="M255 280 H310" class="main"/>
+
+  <rect x="310" y="215" width="190" height="130" rx="12" fill="#ffffff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="405" y="252" text-anchor="middle" class="node-title">索引器 Q/K</text>
+  <text x="405" y="281" text-anchor="middle" class="node-sub">4 个 Query 头</text>
+  <text x="405" y="307" text-anchor="middle" class="node-sub">1 个共享 Key 头</text>
+  <text x="405" y="331" text-anchor="middle" class="node-sub">每头 128 维</text>
+  <path d="M500 280 H555" class="main"/>
+
+  <rect x="555" y="215" width="205" height="130" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="657" y="252" text-anchor="middle" class="node-title">Key 微块压缩</text>
+  <text x="657" y="281" text-anchor="middle" class="node-sub">每 4 个 Key 求平均</text>
+  <text x="657" y="307" text-anchor="middle" class="node-sub">再加 Partial RoPE</text>
+  <text x="657" y="331" text-anchor="middle" class="node-sub">T → 约 T/4 个块</text>
+  <path d="M760 280 H815" class="main"/>
+
+  <rect x="815" y="215" width="190" height="130" rx="12" fill="#ffffff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="910" y="252" text-anchor="middle" class="node-title">Query 为块打分</text>
+  <text x="910" y="281" text-anchor="middle" class="node-sub">Q · 压缩 Key</text>
+  <text x="910" y="307" text-anchor="middle" class="node-sub">ReLU 后跨头求和</text>
+  <text x="910" y="331" text-anchor="middle" class="node-sub">得到块重要性</text>
+  <path d="M1005 280 H1060" class="main"/>
+
+  <rect x="1060" y="215" width="190" height="130" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="1155" y="252" text-anchor="middle" class="node-title">Top-K 微块</text>
+  <text x="1155" y="281" text-anchor="middle" class="node-sub">最多 512 个完整块</text>
+  <text x="1155" y="307" text-anchor="middle" class="node-sub">加末尾未满 4 个 token</text>
+  <text x="1155" y="331" text-anchor="middle" class="node-sub">受因果条件约束</text>
+  <path d="M1250 280 H1305" class="main"/>
+
+  <rect x="1305" y="230" width="205" height="100" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="1407" y="270" text-anchor="middle" class="node-title">候选 token 编号</text>
+  <text x="1407" y="299" text-anchor="middle" class="node-sub">每个 Query 最多约 2048 个</text>
+
+  <rect x="55" y="475" width="1490" height="300" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="85" y="517" class="lane-title">第二阶段：正式 Attention 计算输出</text>
+
+  <rect x="85" y="570" width="170" height="100" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="170" y="610" text-anchor="middle" class="node-title">同一组 X</text>
+  <text x="170" y="639" text-anchor="middle" class="node-sub">[B,T,H]</text>
+  <path d="M255 620 H315" class="main"/>
+
+  <rect x="315" y="555" width="200" height="130" rx="12" fill="#ffffff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="415" y="592" text-anchor="middle" class="node-title">正式 Q/K/V 投影</text>
+  <text x="415" y="621" text-anchor="middle" class="node-sub">24 个 Query 头</text>
+  <text x="415" y="647" text-anchor="middle" class="node-sub">2 个 KV 头</text>
+  <text x="415" y="671" text-anchor="middle" class="node-sub">每头 256 维</text>
+  <path d="M515 620 H585" class="main"/>
+
+  <rect x="585" y="555" width="220" height="130" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="695" y="592" text-anchor="middle" class="node-title">按候选编号取 K/V</text>
+  <text x="695" y="621" text-anchor="middle" class="node-sub">读取原始 token 的正式 K/V</text>
+  <text x="695" y="647" text-anchor="middle" class="node-sub">不是压缩块 Key</text>
+  <text x="695" y="671" text-anchor="middle" class="node-sub">候选数约 ≤ 2048</text>
+
+  <path d="M1407 330 V445 H695 V555" class="control"/>
+  <path d="M805 620 H875" class="main"/>
+
+  <rect x="875" y="555" width="205" height="130" rx="12" fill="#ffffff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="977" y="592" text-anchor="middle" class="node-title">核心 Attention</text>
+  <text x="977" y="621" text-anchor="middle" class="node-sub">QKᵀ / √D</text>
+  <text x="977" y="647" text-anchor="middle" class="node-sub">因果遮罩 → Softmax</text>
+  <text x="977" y="671" text-anchor="middle" class="node-sub">权重 × V</text>
+  <path d="M1080 620 H1140" class="main"/>
+
+  <rect x="1140" y="570" width="170" height="100" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="1225" y="610" text-anchor="middle" class="node-title">输出门控</text>
+  <text x="1225" y="639" text-anchor="middle" class="node-sub">Sigmoid Gate</text>
+  <path d="M1310 620 H1365" class="main"/>
+
+  <rect x="1365" y="570" width="145" height="100" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="1437" y="610" text-anchor="middle" class="node-title">o_proj</text>
+  <text x="1437" y="639" text-anchor="middle" class="node-sub">[B,T,H]</text>
+
+  <rect x="245" y="810" width="1110" height="54" rx="10" fill="#eff6ff" stroke="#bfdbfe" stroke-width="1.5"/>
+  <text x="800" y="844" text-anchor="middle" class="node-sub">紫色虚线只传递候选位置编号；索引器分数和压缩 Key 都不会参与最终 V 加权求和。</text>
+
+  <line x1="60" y1="837" x2="100" y2="837" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text x="115" y="842" class="node-sub">数据计算</text>
+  <line x1="1400" y1="837" x2="1440" y2="837" stroke="#9333ea" stroke-width="2.5" stroke-dasharray="8 6" marker-end="url(#arrow-purple)"/>
+  <text x="1455" y="842" class="node-sub">位置选择</text>
+</svg>

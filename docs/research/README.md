@@ -12,5 +12,6 @@
 | [多模态输入](lesson-07-multimodal-input.md) | 核对 Patch、视觉编码器、Merger 和 MRoPE |
 | [配置与资源估算](lesson-08-config-and-sizing.md) | 核对参数量、状态量和 FLOPs |
 | [优化分析](lesson-09-optimization-judgment.md) | 核对常见优化的收益条件和失效边界 |
+| [Qwen3.8-Flash-Next 架构](qwen38-next-architecture.md) | 核对 GR、QSA、N-gram Embedding 的配置、公式和状态边界 |
 | [RoPE 讲解方案](rope-teaching-notes.md) | 比较 RoPE 的直观解释与数学边界 |
 | [LLMs-from-scratch 教学方法](llms-from-scratch-teaching-review.md) | 分析图、正文、小数字和代码怎样配合 |

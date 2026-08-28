@@ -533,6 +533,6 @@ Prefix Cache 有保留价值，但它没有解决当前的 P99 SLO。评审结�
 
 ---
 
-[上一课：模型配置与资源估算](08-config-and-sizing.md) · [返回课程路线](../roadmap.md)
+[上一课：模型配置与资源估算](08-config-and-sizing.md) · [返回课程路线](../roadmap.md) · [下一课：Gated Residual 与 Decoder Layer 数据流](10-gated-residual.md)
 
 完成本课后，可以继续阅读[综合案例：Qwen3.5-9B 长上下文扩容评审](../capstone.md)。案例会把模型结构、TP 下的 KV 容量和上线实验放进同一份评审。仓库中的[容量复算程序](../../examples/request_budget_walkthrough.py)可以核对其中的算术。

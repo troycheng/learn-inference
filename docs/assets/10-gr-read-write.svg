@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 820" width="1600" height="820" role="img" aria-labelledby="title desc">
+  <title id="title">GR Read 与 GR Write 的计算关系</title>
+  <desc id="desc">左侧展示四条残差支路经过独立 RMSNorm、低秩门控、逐元素乘法和平均得到子层输入；右侧展示子层输出乘四个支路写入系数后分别加回残差支路。</desc>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 34px; font-weight: 700; }
+    .subtitle { font-size: 18px; fill: #64748b; }
+    .panel-title { font-size: 23px; font-weight: 700; }
+    .node-title { font-size: 18px; font-weight: 650; }
+    .node-sub { font-size: 15px; fill: #64748b; }
+    .arrow { fill: none; stroke: #2563eb; stroke-width: 3; marker-end: url(#arrow-blue); }
+    .control { fill: none; stroke: #9333ea; stroke-width: 2.5; stroke-dasharray: 8 6; marker-end: url(#arrow-purple); }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 11 4, 0 8" fill="#2563eb"/></marker>
+    <marker id="arrow-purple" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 11 4, 0 8" fill="#9333ea"/></marker>
+  </defs>
+  <rect width="1600" height="820" fill="#ffffff"/>
+  <text x="60" y="68" class="title">GR 先选择怎样读取，再决定怎样写回</text>
+  <text x="60" y="104" class="subtitle">读取门控细到每个特征；写入门控只为每条支路产生一个标量。</text>
+
+  <rect x="55" y="150" width="940" height="610" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="90" y="195" class="panel-title">GR Read：四条支路 → 一条子层输入</text>
+
+  <rect x="90" y="245" width="190" height="330" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="185" y="282" text-anchor="middle" class="node-title">残差支路</text>
+  <rect x="118" y="315" width="134" height="44" rx="8" fill="#ffffff" stroke="#93c5fd"/><text x="185" y="343" text-anchor="middle" class="node-title">R1 [H]</text>
+  <rect x="118" y="374" width="134" height="44" rx="8" fill="#ffffff" stroke="#93c5fd"/><text x="185" y="402" text-anchor="middle" class="node-title">R2 [H]</text>
+  <rect x="118" y="433" width="134" height="44" rx="8" fill="#ffffff" stroke="#93c5fd"/><text x="185" y="461" text-anchor="middle" class="node-title">R3 [H]</text>
+  <rect x="118" y="492" width="134" height="44" rx="8" fill="#ffffff" stroke="#93c5fd"/><text x="185" y="520" text-anchor="middle" class="node-title">R4 [H]</text>
+
+  <path d="M280 410 H335" class="arrow"/>
+  <rect x="335" y="350" width="185" height="120" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="427" y="392" text-anchor="middle" class="node-title">分支 RMSNorm</text>
+  <text x="427" y="422" text-anchor="middle" class="node-sub">各自沿 H 归一化</text>
+  <text x="427" y="449" text-anchor="middle" class="node-sub">[4,H]</text>
+
+  <path d="M520 390 H580 V300 H635" class="arrow"/>
+  <rect x="635" y="245" width="235" height="112" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="752" y="282" text-anchor="middle" class="node-title">低秩门控网络</text>
+  <text x="752" y="312" text-anchor="middle" class="node-sub">4H → 320 → 4H</text>
+  <text x="752" y="338" text-anchor="middle" class="node-sub">Sigmoid 得到 G [4,H]</text>
+
+  <path d="M520 430 H610 V490 H665" class="arrow"/>
+  <path d="M752 357 V420 H745 V454" class="control"/>
+  <rect x="665" y="454" width="160" height="76" rx="12" fill="#ffffff" stroke="#94a3b8" stroke-width="2"/>
+  <text x="745" y="486" text-anchor="middle" class="node-title">逐元素相乘</text>
+  <text x="745" y="512" text-anchor="middle" class="node-sub">G ⊙ R̂</text>
+
+  <path d="M825 492 H865" class="arrow"/>
+  <rect x="865" y="454" width="100" height="76" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="915" y="486" text-anchor="middle" class="node-title">平均</text>
+  <text x="915" y="512" text-anchor="middle" class="node-sub">沿支路轴</text>
+
+  <path d="M915 530 V620 H760" class="arrow"/>
+  <rect x="555" y="585" width="205" height="74" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="657" y="615" text-anchor="middle" class="node-title">子层输入 x</text>
+  <text x="657" y="642" text-anchor="middle" class="node-sub">[H]</text>
+
+  <rect x="1035" y="150" width="510" height="610" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="1070" y="195" class="panel-title">GR Write：一条增量 → 四条支路</text>
+
+  <rect x="1100" y="255" width="180" height="82" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="1190" y="288" text-anchor="middle" class="node-title">子层输出 y</text>
+  <text x="1190" y="316" text-anchor="middle" class="node-sub">[H]</text>
+
+  <rect x="1340" y="255" width="150" height="82" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="1415" y="286" text-anchor="middle" class="node-title">写入门控</text>
+  <text x="1415" y="313" text-anchor="middle" class="node-sub">s1…s4 [4]</text>
+
+  <path d="M1190 337 V397" class="arrow"/>
+  <path d="M1415 337 V375 H1260 V397" class="control"/>
+  <rect x="1155" y="397" width="210" height="82" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="1260" y="430" text-anchor="middle" class="node-title">分别缩放 y</text>
+  <text x="1260" y="458" text-anchor="middle" class="node-sub">s1y、s2y、s3y、s4y</text>
+
+  <path d="M1260 479 V535" class="arrow"/>
+  <rect x="1100" y="535" width="320" height="116" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="1260" y="571" text-anchor="middle" class="node-title">分别加回原支路</text>
+  <text x="1260" y="602" text-anchor="middle" class="node-sub">R1′ = R1 + s1y　…　R4′ = R4 + s4y</text>
+  <text x="1260" y="632" text-anchor="middle" class="node-sub">输出仍为 [4,H]</text>
+
+  <line x1="1080" y1="790" x2="1120" y2="790" stroke="#2563eb" stroke-width="3" marker-end="url(#arrow-blue)"/>
+  <text x="1135" y="795" class="node-sub">隐藏状态与增量</text>
+  <line x1="1320" y1="790" x2="1360" y2="790" stroke="#9333ea" stroke-width="2.5" stroke-dasharray="8 6" marker-end="url(#arrow-purple)"/>
+  <text x="1375" y="795" class="node-sub">门控系数</text>
+</svg>

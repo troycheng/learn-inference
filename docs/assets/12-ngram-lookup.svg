@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 780" width="1600" height="780" role="img" aria-labelledby="title desc">
+  <title id="title">N-gram 哈希、查表与向量拼接</title>
+  <desc id="desc">最近三个 Token ID 分别形成 2-gram 和 3-gram，两组各进入八个哈希头，每个头查出一条 160 维向量，最后拼接成 2560 维 N-gram 向量。</desc>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
+    .title { font-size: 34px; font-weight: 700; }
+    .subtitle { font-size: 18px; fill: #64748b; }
+    .lane-title { font-size: 21px; font-weight: 700; }
+    .node-title { font-size: 18px; font-weight: 650; }
+    .node-sub { font-size: 15px; fill: #64748b; }
+    .main { fill: none; stroke: #2563eb; stroke-width: 3; marker-end: url(#arrow-blue); }
+  </style>
+  <defs>
+    <marker id="arrow-blue" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 11 4, 0 8" fill="#2563eb"/></marker>
+  </defs>
+  <rect width="1600" height="780" fill="#ffffff"/>
+  <text x="60" y="68" class="title">最近几个 Token ID 决定查哪几行参数</text>
+  <text x="60" y="104" class="subtitle">模型不遍历整张 51B 参数表；每个 token 只完成 16 次确定地址的查表。</text>
+
+  <rect x="60" y="160" width="300" height="460" rx="18" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="210" y="202" text-anchor="middle" class="lane-title">当前位置的局部历史</text>
+  <rect x="95" y="250" width="230" height="74" rx="10" fill="#ffffff" stroke="#93c5fd" stroke-width="1.8"/>
+  <text x="210" y="280" text-anchor="middle" class="node-title">token t-2</text>
+  <text x="210" y="307" text-anchor="middle" class="node-sub">ID = 2</text>
+  <rect x="95" y="350" width="230" height="74" rx="10" fill="#ffffff" stroke="#93c5fd" stroke-width="1.8"/>
+  <text x="210" y="380" text-anchor="middle" class="node-title">token t-1</text>
+  <text x="210" y="407" text-anchor="middle" class="node-sub">ID = 5</text>
+  <rect x="95" y="450" width="230" height="74" rx="10" fill="#dbeafe" stroke="#60a5fa" stroke-width="2"/>
+  <text x="210" y="480" text-anchor="middle" class="node-title">当前 token t</text>
+  <text x="210" y="507" text-anchor="middle" class="node-sub">ID = 7</text>
+  <text x="210" y="574" text-anchor="middle" class="node-sub">只使用当前和左侧 token</text>
+
+  <path d="M360 315 H425 V275 H480" class="main"/>
+  <path d="M360 465 H425 V505 H480" class="main"/>
+
+  <rect x="480" y="180" width="360" height="230" rx="18" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="660" y="222" text-anchor="middle" class="lane-title">2-gram：token t-1 与 t</text>
+  <rect x="525" y="260" width="270" height="90" rx="12" fill="#ffffff" stroke="#fdba74" stroke-width="1.8"/>
+  <text x="660" y="293" text-anchor="middle" class="node-title">8 组乘数、异或、取余</text>
+  <text x="660" y="322" text-anchor="middle" class="node-sub">得到 8 个不同的行号</text>
+  <text x="660" y="380" text-anchor="middle" class="node-sub">8 个哈希头，表长各不相同</text>
+
+  <rect x="480" y="440" width="360" height="230" rx="18" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="660" y="482" text-anchor="middle" class="lane-title">3-gram：token t-2、t-1 与 t</text>
+  <rect x="525" y="520" width="270" height="90" rx="12" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.8"/>
+  <text x="660" y="553" text-anchor="middle" class="node-title">8 组乘数、异或、取余</text>
+  <text x="660" y="582" text-anchor="middle" class="node-sub">得到另外 8 个行号</text>
+  <text x="660" y="640" text-anchor="middle" class="node-sub">多张表降低同时碰撞概率</text>
+
+  <path d="M840 295 H920" class="main"/>
+  <path d="M840 555 H880 V385 H920" class="main"/>
+
+  <rect x="920" y="220" width="300" height="330" rx="18" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
+  <text x="1070" y="262" text-anchor="middle" class="lane-title">16 次 Embedding 查表</text>
+  <rect x="965" y="310" width="210" height="70" rx="10" fill="#ffffff" stroke="#86efac" stroke-width="1.8"/>
+  <text x="1070" y="339" text-anchor="middle" class="node-title">2-gram：8 行</text>
+  <text x="1070" y="365" text-anchor="middle" class="node-sub">每行 160 维</text>
+  <rect x="965" y="410" width="210" height="70" rx="10" fill="#ffffff" stroke="#86efac" stroke-width="1.8"/>
+  <text x="1070" y="439" text-anchor="middle" class="node-title">3-gram：8 行</text>
+  <text x="1070" y="465" text-anchor="middle" class="node-sub">每行 160 维</text>
+  <text x="1070" y="520" text-anchor="middle" class="node-sub">总共读取 16 × 160 个参数</text>
+
+  <path d="M1220 385 H1300" class="main"/>
+  <rect x="1300" y="285" width="240" height="200" rx="18" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="1420" y="332" text-anchor="middle" class="lane-title">沿最后一维拼接</text>
+  <text x="1420" y="380" text-anchor="middle" class="node-title">16 × 160</text>
+  <text x="1420" y="413" text-anchor="middle" class="node-title">= 2560 维</text>
+  <text x="1420" y="453" text-anchor="middle" class="node-sub">得到 N-gram 向量 e</text>
+
+  <rect x="365" y="712" width="870" height="48" rx="10" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
+  <text x="800" y="742" text-anchor="middle" class="node-sub">51B 表示可查询的参数容量；单个 token 实际激活的 N-gram 参数只有 2560 个。</text>
+</svg>
