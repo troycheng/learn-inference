@@ -367,7 +367,21 @@ K： 4 × 256 = 1024
 V： 4 × 256 = 1024
 ```
 
-与 16 组 K/V 的普通 MHA 相比，K/V 投影宽度和 KV Cache 元素数降为 1/4。Q、输出投影和 FFN 并没有缩小，所以整模型显存和总计算量不会一起降为 1/4。
+与 16 组 K/V 的普通 MHA 相比，K/V 投影宽度和 KV Cache 元素数降为 1/4。每层、每个 token 的逻辑 KV Cache 字节数是：
+
+$$
+\mathrm{KV\ bytes}_{GQA}=2\times N_{kv}\times D\times s
+$$
+
+`2` 表示 K 和 V，`s` 表示每个元素占用的字节数。Qwen3.5-9B 使用 BF16 时，一层 Full Attention 为每个 token 保存：
+
+$$
+2\times4\times256\times2=4096\ \mathrm{Byte}=4\ \mathrm{KiB}
+$$
+
+模型有 8 层 Full Attention，所以每个 token 的逻辑 KV 有效载荷是 `8×4 KiB=32 KiB`。第 8 课会把它乘上序列长度和 Batch，并继续计算 TP 下每张卡的实际占用。
+
+Q、输出投影和 FFN 并没有缩小，所以整模型显存和总计算量不会一起降为 1/4。
 
 优化实现可以让四个查询头直接读取共享 K/V。朴素实现也可能在逻辑上把 K/V 展开到 16 头。两种实现的 Attention 结果相同，内存访问和临时数据量不同。
 
@@ -402,7 +416,13 @@ $$
 k_t^C=W^{UK}c_t^{KV},\qquad v_t^C=W^{UV}c_t^{KV}
 $$
 
-若联合压缩表示的宽度为 `d_c`，单独保存的 RoPE Key 宽度为 `d_h^R`，每层、每个 token 的缓存宽度可概括为 `d_c + d_h^R`。
+若联合压缩表示的宽度为 `d_c`，单独保存的 RoPE Key 宽度为 `d_h^R`，每层、每个 token 的缓存字节数可概括为：
+
+$$
+\mathrm{KV\ bytes}_{MLA}=(d_c+d_h^R)\times s
+$$
+
+GQA 的公式仍以完整 K/V 头数 `Nkv` 为基础，MLA 的公式则由潜在表示宽度决定。两者不能互相套用，也不能把 Qwen3.5 的 GQA 配置换算成一个假想的 MLA 配置。
 
 以上结构来自 [DeepSeek-V2 的 MLA 设计](https://arxiv.org/abs/2405.04434)。
 
