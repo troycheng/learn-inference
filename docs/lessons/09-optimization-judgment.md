@@ -314,8 +314,7 @@ $$
 
 本轮读取的 KV 字节与权重字节大致相等。这个交叉点只比较流量，不等于真实性能拐点。Kernel shape、Cache、TP 通信和调度都会改变实测结果。
 
-<details>
-<summary>选读：用 Roofline 粗估饱和 Batch</summary>
+#### 选读：用 Roofline 粗估饱和 Batch
 
 设硬件平衡点为 `R=P_peak/BW_peak`。在上面的简化模型中，如果 `F>R×K(T)`，令 `AI(M,T)=R`，可得到：
 
@@ -326,8 +325,6 @@ $$
 纯 Decode 中，`M_sat` 也可以记作 `B_sat`。它表示这套假设下从带宽斜坡进入计算上限所需的 Batch。若 `F≤R×K(T)`，增加 Batch 也无法越过计算上限，因为每个新增 token 带来的私有读取已经太多。
 
 这个公式适合提出压测假设，不适合直接生成线上配置。实际的饱和 Batch 应从目标模型、上下文长度、dtype、并行方式和 Kernel 的吞吐曲线中确定。
-
-</details>
 
 ### 6.5 Prefill 与 Decode 混批
 
