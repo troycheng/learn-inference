@@ -1,6 +1,10 @@
 # 第 9 课：推理优化的分析与评估
 
-量化、FlashAttention、Prefix Cache、Batching 和并行策略改的不是同一部分。判断一种方案有没有用，先回答五个问题：
+量化、FlashAttention、Prefix Cache、Batching 和并行策略改的不是同一部分。选方案之前，先确认时间花在哪里。
+
+一次请求变慢，可能是 GPU Kernel 计算或读取数据变慢，也可能是请求排队、CPU 调度、卡间通信或显存不足造成的。先固定 Prompt 长度、输出长度、并发、硬件和 runtime，再从端到端时间线中找出占主要时间的部分。只有当问题落在 GPU Kernel 内部时，第 8 课的 Roofline、算术强度以及本课后面的 MFU/MBU 才能继续判断它更接近计算上限还是显存带宽上限。
+
+确认主要限制后，再用下面五个问题评估方案：
 
 1. 它改了哪段计算、哪份数据或哪条调度规则？
 2. 因此少做了多少计算，少占了多少显存，或少传了多少数据？
@@ -62,6 +66,55 @@ $$
 
 同名指标也可能使用不同计时起点。比较两个系统前，应确认是否包含排队、客户端网络和预处理，并区分逐请求平均值与 P99 等分位数。
 
+### 1.3 MFU 与 MBU：计算和显存带宽的利用率
+
+TTFT、TPOT、P99 和 `goodput` 描述用户看到的服务结果。MFU 和 MBU 描述 GPU 资源使用情况，用来解释结果为什么会变好或变差。两类指标不能互相替代。
+
+本课按下面的口径计算：
+
+$$
+\mathrm{MFU}
+=\frac{F_{useful}}{\Delta t\times P_{peak}}
+$$
+
+$$
+\mathrm{MBU}
+=\frac{Q_{HBM}}{\Delta t\times BW_{peak}}
+$$
+
+各符号的含义如下：
+
+| 符号 | 含义 |
+| --- | --- |
+| `F_useful` | 按模型公式计算的有效 FLOPs，不含 Padding、重算和被丢弃候选等额外工作 |
+| `Q_HBM` | 同一窗口内从 HBM 读写的字节数 |
+| `Δt` | 测量窗口时长 |
+| `P_peak` | 与计算 dtype、稠密或稀疏口径一致的计算峰值 |
+| `BW_peak` | 同一张卡的显存带宽上限 |
+
+如果每个 token 的计算量和 HBM 流量近似固定，也可以用“每 token 数量×token/s”计算分子。混合 Prefill/Decode、MoE 路由或动态 Batch 下，每个 token 的工作量不同，直接使用窗口总量更稳妥。
+
+MFU 统计的是有效模型工作量，不是硬件实际执行过的全部指令。Padding、重算和被拒绝的推测 token 会消耗 GPU 时间，却不进入 `F_useful`。分析单个 Kernel 是否把计算单元用满时，应看 Nsight Compute 的 Compute Throughput，而不是用 MFU 代替硬件计数器。
+
+MFU 与 MBU 必须使用相同的测量边界。按单张卡计算时，FLOPs、HBM 字节和峰值都取该卡口径；按整个 TP 组计算时，分子和分母都要汇总整个组。估算得到的逻辑字节不等于真实 HBM 流量，分析热点 Kernel 时应优先读取 Nsight Compute 的 DRAM Bytes 和 Throughput。
+
+| 观测 | 优先检查什么 |
+| --- | --- |
+| MBU 较高，MFU 较低 | HBM 读取可能接近上限，检查权重、KV Cache 和中间结果的实际流量 |
+| MFU 较高，MBU 较低 | 计算单元可能接近上限，检查矩阵 shape、dtype 和 Tensor Core 路径 |
+| 两者都低 | 检查小矩阵、Kernel Launch、同步、通信、CPU 调度、负载不均和流水线空泡 |
+
+表中的“较高”和“较低”没有跨硬件通用的固定阈值。MFU 与 MBU 也不需要相加等于 100%。一次请求包含多种 Kernel，端到端平均值会掩盖局部热点，因此还要结合 Kernel 时间线和第 8 课的 Roofline 图判断。
+
+用一组缩小后的数字演示计算。假设测量窗口为 1 秒，一张 GPU 在当前 dtype 下的计算峰值为 100 TFLOP/s，显存带宽上限为 1 TB/s。窗口内完成了 20 TFLOP 的有效模型计算，Nsight Compute 统计到 0.8 TB 的 HBM 流量：
+
+```text
+MFU = 20 TFLOP ÷ (1 s × 100 TFLOP/s) = 20%
+MBU = 0.8 TB  ÷ (1 s × 1 TB/s)        = 80%
+```
+
+这组结果支持“先检查显存流量”的判断。如果时间线显示 Collective、CPU 间隙和 Kernel Launch 占比都很低，权重或 KV 的读取更可能是当前限制。它仍不能代替端到端验证，方案上线与否要看 TTFT、TPOT、P99、质量和同 SLO 吞吐。
+
 ## 2. 权重量化
 
 ### 2.1 权重量化的数据路径
@@ -72,11 +125,19 @@ Qwen3.5-35B-A3B 的 BF16 权重有效载荷约 66.97 GiB。若所有参数都用
 
 Weight-only 量化通常仍让激活保持 BF16 或 FP16。低比特 Kernel 读取压缩权重，再在寄存器或片上存储中完成反量化和矩阵运算。
 
-### 2.2 理论容量收益
+### 2.2 量化可能带来的三种收益
 
-小 Batch Decode 经常需要为很少的 token 读取大量活跃权重。若时间主要花在 HBM 搬权重，读取字节减少，延迟就有下降空间。省下的显存还可以换成更多 KV Cache 或更高并发。
+量化后的容量、带宽和计算收益来自三条不同路径，实际系统可能只得到其中一部分：
 
-### 2.3 延迟收益的限制条件
+| 收益路径 | 发生了什么 | 适合看什么证据 |
+| --- | --- | --- |
+| 容量 | 权重的保存字节减少 | 进程显存、可部署卡数、最大并发和最大上下文 |
+| 带宽 | Kernel 从 HBM 读取的权重字节减少 | DRAM Bytes、DRAM Throughput、TPOT 和 MBU |
+| 计算 | GEMM 命中相应的低精度 Tensor Core 或专用 Kernel | Kernel 名称、矩阵 shape、计算吞吐和 MFU |
+
+小 Batch Decode 经常为很少的 token 读取大量活跃权重。若时间主要花在 HBM 搬权重，读取字节减少，延迟就有下降空间。省下的显存也可以容纳更多 KV Cache 或更高并发。
+
+### 2.3 容量缩小不等于延迟同比下降
 
 低比特格式缺少合适的硬件路径、反量化代价过大或部分层回退到通用 Kernel 时，省下的读取时间会被新增工作抵消。大 Batch GEMM 已经偏计算受限，或者 MoE 单个专家收到的 token 太少时，低比特 Kernel 也未必高效。
 
@@ -115,7 +176,20 @@ Qwen3.5-9B 有 8 个 Full Attention 层，Qwen3.5-35B-A3B 有 10 个；只有这
 
 验证时还要确认 Scale 的粒度、静态或动态计算方式，以及 Attention Kernel 是否能直接读取量化 Cache。若先把 KV 还原成 BF16 再执行，节省的存储字节不一定能完全转成读取加速。
 
-### 3.2 PagedAttention 管理物理内存
+### 3.2 减少位置数，还是减少每个位置的字节数
+
+KV Cache 的容量随历史 token 数量增长。压缩它有两条基本思路：
+
+| 思路 | 直接改变什么 | 主要代价 |
+| --- | --- | --- |
+| 少保留一些历史位置 | 减小参与后续 Attention 的有效 `T` | 被删除位置的信息不能再被完整读取 |
+| 减少每个位置的字节数 | 降低 K/V 的位宽，或改用更窄的表示 | 引入量化或近似误差，并要求 Kernel 支持新格式 |
+
+两种方法都能减少显存，但模型语义不同。前者改变 Attention 能读取哪些历史位置，后者保留位置，只改变每个位置的编码方式。验证时要分别检查长上下文质量、真实 Cache 字节和 Attention Kernel 路径。
+
+Gated DeltaNet 的递归状态没有一排可逐个删除的历史 token。旧信息已经合并进固定状态，因此按位置驱逐 KV 的方法不能直接用于这部分状态。
+
+### 3.3 PagedAttention 管理物理内存
 
 第 6 课已经说明 KV Cache 的模型语义：Full Attention 为历史位置保存 K/V。PagedAttention 处理的是另一层问题：这些 K/V 怎样分配到显存。
 
@@ -212,7 +286,50 @@ Continuous Batching 只说明 Batch 成员能动态变化，不自动表示 Pref
 
 > 先满足给定的 TTFT、TPOT 和 P99 SLO，再比较可持续的 request/s、input token/s 和 output token/s。
 
-### 6.4 Prefill 与 Decode 混批
+### 6.4 Batch 增大后，权重和 KV 的读取怎样变化
+
+本轮进入模型的 token 位置数记为 `M`。纯 Decode 中每个请求只增加一个 token，此时 `M` 等于 Batch 中的请求数；混合 Prefill/Decode 时，两者不一定相等。
+
+再设：
+
+| 符号 | 含义 |
+| --- | --- |
+| `F` | 每个 token 的计算量 |
+| `W` | 本轮可由这些 token 共同复用的权重读取字节数 |
+| `K(T)` | 每个 token 在上下文长度 `T` 下需要读取的 KV 和其他请求私有字节数 |
+
+忽略 Cache 命中、通信和其他中间值时，这一轮的算术强度可以粗略写成：
+
+$$
+AI(M,T)=\frac{M\times F}{W+M\times K(T)}
+$$
+
+`M` 较小时，分母主要是 `W`。增加 Batch 能让更多 token 复用同一份权重，算术强度明显上升。`T` 很长时，`M×K(T)` 逐渐成为主要流量；每增加一个请求，都要读取它自己的 KV，权重复用带来的收益会减弱。
+
+当：
+
+$$
+M=\frac{W}{K(T)}
+$$
+
+本轮读取的 KV 字节与权重字节大致相等。这个交叉点只比较流量，不等于真实性能拐点。Kernel shape、Cache、TP 通信和调度都会改变实测结果。
+
+<details>
+<summary>选读：用 Roofline 粗估饱和 Batch</summary>
+
+设硬件平衡点为 `R=P_peak/BW_peak`。在上面的简化模型中，如果 `F>R×K(T)`，令 `AI(M,T)=R`，可得到：
+
+$$
+M_{sat}(T)=\frac{R\times W}{F-R\times K(T)}
+$$
+
+纯 Decode 中，`M_sat` 也可以记作 `B_sat`。它表示这套假设下从带宽斜坡进入计算上限所需的 Batch。若 `F≤R×K(T)`，增加 Batch 也无法越过计算上限，因为每个新增 token 带来的私有读取已经太多。
+
+这个公式适合提出压测假设，不适合直接生成线上配置。实际的饱和 Batch 应从目标模型、上下文长度、dtype、并行方式和 Kernel 的吞吐曲线中确定。
+
+</details>
+
+### 6.5 Prefill 与 Decode 混批
 
 第 6 课已经说明，同一请求的未来 token 必须逐轮确定；不同请求当前已经确定的 token 则彼此独立。一次调度可以面对下面三份工作：
 
@@ -228,7 +345,7 @@ Continuous Batching 只说明 Batch 成员能动态变化，不自动表示 Pref
 
 把 Prefill token 和 Decode token 放进同一批后，一轮 Linear 和 FFN 处理的 token 数增加，同一份权重可以服务更多输入。这可能提高权重读取复用，但也增加了单轮工作量，Decode token 可能因此等待更久。是否有收益，取决于运行时与 Kernel 是否支持这种输入，以及目标负载对吞吐和尾延迟的要求。
 
-### 6.5 Chunked Prefill
+### 6.6 Chunked Prefill
 
 长 Prompt 已经完整给出，可以沿 token 轴分成多段。后一段继续读取前一段留下的 KV Cache、卷积状态和递归状态，Chunk 边界不会清空上下文。
 
@@ -260,6 +377,8 @@ DP 的每个副本都能独立完成一次前向。在线服务把不同请求�
 TP 把一张大权重矩阵分到多张 GPU。以 FFN 为例，`gate_proj` 和 `up_proj` 可以按输出特征切分，`down_proj` 再按输入特征切分。各卡得到部分结果后，通过集合通信恢复下一步需要的层输出。
 
 TP 能降低每卡权重和计算量，但集合通信进入每层关键路径。TP 越大，每卡 GEMM 越小，Kernel 效率也可能下降。小 Batch Decode 的本地计算很少，通信延迟尤其容易占主导。
+
+同机 TP 可以使用 NVLink 或 NVSwitch，跨机 TP 则要经过网卡和交换网络。跨机并非不能运行，但每层关键路径上的 Collective 会受到 PCIe、NVLink、InfiniBand 或 RoCE 拓扑以及 NCCL 实现影响。选择 TP 范围时，应比较每层 Collective 时间、端到端 TPOT 和可保留的模型副本数，不能只看互联的标称带宽。
 
 第 8 课已经说明固定版本 vLLM 在 `Nkv<TP` 时会复制 K/V 头。计算每卡 KV Cache 时，应使用 runtime 实际分配的本地 K/V 头数，不能把全局数量直接除以 TP。
 
@@ -482,6 +601,7 @@ Prefix Cache 有保留价值，但它没有解决当前的 P99 SLO。评审结�
 | 已有观测 | 不能直接推出 | 还需要什么证据 |
 | --- | --- | --- |
 | 量化文件缩小四倍 | 服务延迟也缩短四倍 | Kernel 覆盖、反量化成本、端到端 TTFT/TPOT 与质量 |
+| GPU 的低精度峰值 FLOPS 更高 | 端到端推理会同比例加速 | 算术强度、矩阵 shape、低精度 Kernel 覆盖和实际时间线 |
 | Attention Microbenchmark 加速两倍 | 完整模型加速两倍 | 目标工作负载中的 Attention 时间占比和 Amdahl 上限 |
 | Prefix Cache 已开启 | 重复请求一定命中并改善尾延迟 | 精确前缀命中 token 数、驱逐率和命中/未命中分桶 |
 | Batch 增大后离线吞吐更高 | 在线服务一定更好 | 到达率、排队、TTFT/TPOT P99 和同 SLO `goodput` |
@@ -525,6 +645,8 @@ Prefix Cache 有保留价值，但它没有解决当前的 P99 SLO。评审结�
 - [vLLM：Data Parallel Deployment，revision 653ebb5](https://github.com/vllm-project/vllm/blob/653ebb52dffd8b4653b430302473c771117529f1/docs/serving/data_parallel_deployment.md)
 - [vLLM：Tensor Parallel 与 Pipeline Parallel 部署，revision 653ebb5](https://github.com/vllm-project/vllm/blob/653ebb52dffd8b4653b430302473c771117529f1/docs/serving/parallelism_scaling.md)
 - [NVIDIA Megatron Core：并行策略对比](https://docs.nvidia.com/megatron-core/developer-guide/latest/user-guide/parallelism-guide.html)
+- [Roofline：算术强度与硬件上界](https://dl.acm.org/doi/10.1145/1498765.1498785)
+- [NVIDIA Nsight Compute：Roofline 与显存流量分析](https://docs.nvidia.com/nsight-compute/ProfilingGuide/)
 - [vLLM 文档与源码，revision 653ebb5](https://github.com/vllm-project/vllm/tree/653ebb52dffd8b4653b430302473c771117529f1)
 - [vLLM：TTFT、TPOT 与 ITL 的计算，revision 643c125](https://github.com/vllm-project/vllm/blob/643c125fab66d5ed5ec3143b7e764a77e7ae8ac7/vllm/benchmarks/serve.py#L582-L613)
 - [Transformers：生成循环与 Prompt 分块，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/generation/utils.py)
