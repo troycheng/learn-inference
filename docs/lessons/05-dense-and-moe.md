@@ -299,6 +299,14 @@ Router 选择专家
 
 每个专家收到的 token 数 `n_e` 由当前输入决定。Router 不保证各专家平均分配，因此有些专家可能收到很多 token，有些专家可能没有输入。
 
+### 7.1 专家分布在多张 GPU 上时
+
+单卡时，按专家分组只是同一张卡内的数据重排。使用专家并行（Expert Parallelism，EP）后，不同 GPU 保存不同专家，分组还可能包含跨卡传输：运行时把每个 token 的 Top-K 分配发送到持有对应专家的 GPU，专家完成计算后，再把结果送回原 token 所在的位置并按路由权重合并。
+
+这条链路会暴露两个问题。第一，`n_e` 不均匀时，持有热门专家的 GPU 会成为慢卡，其他 GPU 即使已经算完也要等待。第二，Decode 一轮中的 token 较少时，每个专家分到的输入可能很少，Grouped GEMM 仍是许多小矩阵，难以充分利用 GPU。通信、负载不均和小 GEMM 共同决定 EP 的实际收益。
+
+`dispatch → expert → combine` 是 EP 不变的计算语义，具体通信方式取决于框架。All-to-All 很常见，Transformers、Megatron Core 等实现也可以采用 All-Reduce、All-Gather 或专用 dispatcher，因此不能把 EP 简化成固定的“两次 All-to-All”。
+
 ## 8. 总参数量与每 token 激活参数量
 
 总参数量和激活参数量回答不同的问题：
@@ -346,7 +354,7 @@ $$
 
 40 层 MoE 子层合计约 32.36B 总参数。一个 token 在这些 MoE 子层中使用约 1.15B 参数。再计入 Embedding、Attention、Gated DeltaNet、Norm 和输出层等共享模块，官方给出的整模型口径约为 35B total / 3B active。
 
-每 token 激活参数较少，说明 MoE 用条件选择控制单个 token 的计算规模。它不能直接换算成吞吐提升倍数。一批 token 合起来可能命中很多专家，实际执行还要读取专家权重、重新排列 token，并处理大小不同的专家计算任务。
+每 token 激活参数较少，说明 MoE 用条件选择控制单个 token 的计算规模。它不能直接换算成吞吐提升倍数。一批 token 合起来可能命中很多专家，实际执行还要读取专家权重、重新排列 token，并承担专家负载不均、小 GEMM 和跨卡通信的成本。
 
 ## 9. Dense FFN 与 MoE 的结构对照
 
@@ -396,6 +404,8 @@ $$
 - [Qwen3.5-35B-A3B `config.json`，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/config.json)
 - [Transformers：Qwen3.5 Dense 模型实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py)
 - [Transformers：Qwen3.5 MoE 模型实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5_moe/modeling_qwen3_5_moe.py)
+- [Transformers：Expert Parallelism](https://huggingface.co/docs/transformers/expert_parallelism)
+- [Megatron Core：MoE Token Dispatcher](https://docs.nvidia.com/megatron-core/developer-guide/nightly/apidocs/core/core.transformer.moe.token_dispatcher.html)
 - [Mixtral of Experts](https://arxiv.org/abs/2401.04088)
 - [DeepSeekMoE](https://arxiv.org/abs/2401.06066)
 

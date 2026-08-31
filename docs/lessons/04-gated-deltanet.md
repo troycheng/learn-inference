@@ -488,6 +488,10 @@ Gated DeltaNet 层不使用 Full Attention 中的 RoPE。短窗口因果卷积�
 已有历史状态，只处理一个新 token：Recurrent Gated Delta Rule
 ```
 
+`chunk_size` 决定一块包含多少个 token。块大一些，块内计算通常能组织成更大的矩阵运算，但临时工作区和数据复用方式也会随之改变；最佳值要在目标 GPU 和 Kernel 上测量。
+
+FLA 的当前实现默认使用 64，并只接受 16、32 或 64。这是 Kernel 参数，不是 Qwen 的模型结构：每个 Chunk 结束后只把最终状态传给下一块，不会每 64 个 token 清空历史。
+
 一次处理整段已知输入通常称为 Prefill；基于已有状态生成一个新 token 通常称为 Decode。这里先说明 Gated DeltaNet 的两条实现路径，第 6 课再把 Prefill 和 Decode 放回完整生成过程。
 
 ![整段序列与单个新 token 怎样更新同一份状态](../assets/04-sequence-and-step-state.svg)
@@ -542,6 +546,8 @@ $$
 个元素。按当前参考实现使用 FP32 计算，约为 2 MiB/层；24 个 Gated DeltaNet 层约为 48 MiB。
 
 卷积状态每层包含 `8192×4=32768` 个元素。若按 BF16 计算，24 层约为 1.5 MiB。两类状态合计约 49.5 MiB/请求。这个数字不含分配和对齐开销、Kernel 临时张量，也不含 8 个 Full Attention 层保存的 KV Cache。不同推理框架也可能采用不同 dtype 或布局。
+
+两类状态的 dtype 不同，与它们的更新方式有关。`conv_state` 只保存短卷积窗口中的投影结果，通常沿用输入投影的 dtype；`recurrent_state` 则会在每一步被读取、衰减并改写，舍入误差也会参与后续递推。Transformers 的 Qwen3.5 Python 路径和 FLA 的当前 fused recurrent 实现都用 FP32 保存最终递归状态，输出再转回输入 dtype。这说明状态精度不能只按显存大小选择，但不代表所有 Runtime 都必须采用相同实现。
 
 ## 11. 与 Full Attention 的结构差异
 

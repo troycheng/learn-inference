@@ -269,6 +269,26 @@ Decode 中只有一个新 Query：
 核心 Attention：读取最多 K 个候选位置的 K/V
 ```
 
+### 10.1 用 131072 个历史位置算一次读取量
+
+下面只计算一个 QSA 层、一个 Decode Query 的 BF16 逻辑有效载荷，目的是看清索引器和正式 Attention 分别省了什么。它不计缓存命中、索引、Scatter、页布局、对齐和 Kernel 临时数据。
+
+正式 GQA 有 2 个 K/V 头，每头 256 维。一个历史位置的 K/V 共占：
+
+$$
+2\times2\times256\times2\ \text{Byte}=2048\ \text{Byte}
+$$
+
+当 `T=131072` 时：
+
+| 读取内容 | 位置或条目数 | BF16 逻辑有效载荷 |
+| --- | ---: | ---: |
+| 稠密 GQA 读取全部历史 K/V | 131,072 个位置 | 256 MiB |
+| QSA 核心 Attention 读取候选 K/V | 最多 2,048 个位置 | 4 MiB |
+| QSA 索引器读取压缩 Key | 约 32,768 个微块 | 8 MiB |
+
+索引器每个微块使用一条 128 维 Key，因此一条 BF16 Key 是 256 Byte。QSA 没有让 256 MiB 直接变成 4 MiB：它先用约 8 MiB 的压缩 Key 做筛选，再让正式 Attention 读取约 4 MiB 的候选 K/V，而且完整 K/V 和逐 token 原始索引 Key 仍保存在请求状态中。这个表解释的是单层读取量，不是显存容量比例，也不能直接换算成端到端加速倍数。
+
 因此 QSA 的收益会随上下文增长而扩大。技术报告中的 1M 上下文实验显示，QSA 相比稠密 GQA 的 Attention 模块内核，Prefill 加速 7.6 倍，Decode 加速 4.9 倍。该结果包含索引器和稀疏核心 Attention，但不包含 MoE、Gated DeltaNet、调度、通信和其他端到端时间。
 
 稀疏结构本身不保证加速。Kernel 必须根据候选位置只读取并计算选中的 K/V；如果只是给完整 `T×T` 分数矩阵加一层遮罩，矩阵乘法仍然是稠密的。Transformers 参考实现主要用于表达模型语义，报告中的性能来自专用的融合 QSA Kernel。
