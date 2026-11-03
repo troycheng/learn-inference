@@ -8,6 +8,9 @@
 | --- | --- | --- | --- |
 | `B` | 批大小 | Batch Size | 一批同时处理的序列数 |
 | `T` | 序列长度 | Sequence Length | 每条序列当前包含的 token 位置数 |
+| `T_q` | 本轮查询长度 | Query Length | 本轮输入并产生 Query 的位置数；普通 Decode 为 1 |
+| `T_past` | 已有缓存长度 | Past Cache Length | 本轮前向开始前，已经缓存的位置数 |
+| `T_kv` | 键值长度 | Key/Value Length | 历史缓存加本轮新 K/V 的位置数；完整缓存场景中为 `T_past+T_q` |
 | `H` | 隐藏维度 | Hidden Size | 每个 token 的公共表示宽度 |
 | `I` | 中间维度 | Intermediate Size | FFN 内部的特征宽度 |
 | `V` | 词表大小 | Vocabulary Size | 模型可输出的 token 候选数 |
@@ -16,8 +19,10 @@
 | `D` | 头维度 | Head Dimension | 每个 Attention 头包含的特征数 |
 | `L_full` | Full Attention 层数 | Number of Full-Attention Layers | 模型中使用 Full Attention 的 Decoder Layer 数量 |
 | `N_state` | 状态头数 | Number of State Heads | Gated DeltaNet 中并行维护的状态头数量 |
-| `M` | 本轮 token 位置数 | Number of Batched Token Positions | 把当前执行批次中的位置展平后得到的总数；例如 `M=B×T` |
+| `M` | 本轮 token 位置数 | Number of Batched Token Positions | 当前批次实际执行的位置总数；等长输入为 `B×T_q`，无缓存完整输入时也写 `B×T` |
 | `s` | 单元素字节数 | Bytes per Element | 指定 dtype 下，一个缓存或状态元素占用的字节数 |
+
+第 0～5 课主要讨论一次完整输入，使用 `T` 表示输入序列长度。第 6 课开始同时涉及新输入和历史缓存，分别使用 `T_q`、`T_past`、`T_kv`。容量公式中单独出现的 `T` 表示缓存中的位置数，以公式旁的定义为准。不同请求长度不同时，分别计算各请求的长度，不能用同一个 `T` 代替全部请求。
 
 ## 数学与张量
 
@@ -164,7 +169,7 @@
 | Qwen 稀疏注意力 | Qwen Sparse Attention / QSA | 先用轻量索引器选择候选位置，再对候选位置的原始 K/V 执行正式 Attention |
 | 索引器 | Indexer | 为压缩后的历史微块打分并选择候选位置的轻量 Q/K 模块 |
 | 微块 | Micro-block | 索引器中由若干连续 token 组成的压缩单位；选中后会展开回原始 token 位置 |
-| Token 预算 | Token Budget | 一个 Query 交给核心稀疏 Attention 的候选位置数量上限，不是 KV Cache 的保存上限 |
+| QSA Token 预算 | Token Budget / `indexer_budget` | 选中完整微块展开后的 token 数上限；不足一块的尾部另行保留，不限制 KV Cache 容量 |
 | N-gram Embedding | N-gram Embedding | 用当前位置和左侧若干 Token ID 的哈希组合查表，取得局部词组向量 |
 | 逐层嵌入注入模块 | Per-Layer Embedding / PLE | 把 N-gram 查表向量按门控写入指定 Decoder Layer 的残差支路 |
 

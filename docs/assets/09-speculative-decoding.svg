@@ -1,58 +1,54 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 740" width="1200" height="740" role="img" aria-labelledby="spec-title spec-desc">
-  <title id="spec-title">推测解码让目标模型一次验证多个候选</title>
-  <desc id="spec-desc">普通解码需要四次串行目标模型前向才能确认四个 token。推测解码先由 Drafter 提出三个候选，再由目标模型一次验证，前两个候选接受，第三个候选拒绝并修正。</desc>
-  <defs>
-    <marker id="spec-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#2563eb"/></marker>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="1020" viewBox="0 0 1400 1020" role="img" aria-labelledby="title desc">
+  <title id="title">3 个候选，4 个验证输入位置</title>
+  <desc id="desc">目标缓存覆盖 y0 之前的前缀，y0 已确认但尚未输入。一次因果前向输入 y0、c1、c2、c3，各自预测下一位置。若 c3 被拒绝，输出 c1、c2 和修正 token r，保留缓存至 c2；若全部接受，再输出额外 token b，保留缓存至 c3。r 或 b 尚未进入缓存。</desc>
+  <defs><marker id="arrow" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0 L9 4 L0 8 Z" fill="#2563eb"/></marker></defs>
   <style>
-    text{font-family:'Helvetica Neue',Helvetica,Arial,'PingFang SC','Microsoft YaHei','Microsoft JhengHei','SimHei',sans-serif;fill:#111827}
-    .title{font-size:30px;font-weight:700}.sub{font-size:16px;fill:#6b7280}.panel{font-size:22px;font-weight:700;text-anchor:middle}.heading{font-size:16px;font-weight:700;text-anchor:middle}.note{font-size:14px;fill:#4b5563;text-anchor:middle}.edge{fill:none;stroke:#2563eb;stroke-width:3;marker-end:url(#spec-arrow)}
+    text{font-family:'Helvetica Neue',Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}
+    .title{font-size:34px;font-weight:700}.body{font-size:20px}.note{font-size:18px;fill:#475569}.head{font-size:24px;font-weight:700}.token{font-size:26px;font-weight:700;text-anchor:middle}.center{text-anchor:middle}.edge{fill:none;stroke:#2563eb;stroke-width:2.5;marker-end:url(#arrow)}
   </style>
-  <rect width="1200" height="740" fill="#fff" data-graph-role="canvas"/>
-  <g data-graph-role="title-block">
-    <text x="48" y="56" class="title">推测解码让目标模型一次验证多个候选</text>
-    <text x="48" y="88" class="sub">候选不是最终输出。目标模型仍按顺序验证，并在第一个拒绝位置修正。</text>
-  </g>
-
-  <g data-graph-role="container" aria-label="普通 Decode">
-    <rect x="48" y="126" width="520" height="526" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" data-graph-role="decoration"/>
-    <text x="308" y="170" class="panel">普通 Decode</text>
-    <text x="96" y="224" font-size="16" font-weight="700">Target forward</text>
-    <g transform="translate(96 254)">
-      <rect x="0" y="0" width="70" height="64" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="35" y="39" class="heading">y1</text>
-      <path d="M70 32 H110" class="edge" data-graph-role="edge"/>
-      <rect x="110" y="0" width="70" height="64" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="145" y="39" class="heading">y2</text>
-      <path d="M180 32 H220" class="edge" data-graph-role="edge"/>
-      <rect x="220" y="0" width="70" height="64" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="255" y="39" class="heading">y3</text>
-      <path d="M290 32 H330" class="edge" data-graph-role="edge"/>
-      <rect x="330" y="0" width="70" height="64" rx="10" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="365" y="39" class="heading">y4</text>
-    </g>
-    <text x="308" y="370" class="heading">4 次串行 Target forward</text>
-    <text x="308" y="405" class="note">每次确认 1 个 token</text>
-    <rect x="96" y="472" width="424" height="112" rx="12" fill="#fee2e2" stroke="#f87171" stroke-width="2"/>
-    <text x="308" y="511" class="heading">每一步都要等待一次目标模型前向</text>
-    <text x="308" y="547" class="note">未来 token 依赖前一个已确认 token</text>
-  </g>
-
-  <g data-graph-role="container" aria-label="推测解码">
-    <rect x="632" y="126" width="520" height="526" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2" data-graph-role="decoration"/>
-    <text x="892" y="170" class="panel">Speculative Decode</text>
-    <rect x="680" y="224" width="178" height="104" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
-    <text x="769" y="263" class="heading">Drafter</text>
-    <text x="769" y="298" class="note">提出 c1、c2、c3</text>
-    <path d="M858 276 H914" class="edge" data-graph-role="edge"/>
-    <rect x="914" y="204" width="190" height="144" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
-    <text x="1009" y="242" class="heading">1 次 Target 验证</text>
-    <text x="1009" y="282" class="note">c1 ✓　c2 ✓</text>
-    <text x="1009" y="318" class="note">c3 ✗，在此修正</text>
-    <path d="M1009 348 V402" class="edge" data-graph-role="edge"/>
-    <rect x="772" y="402" width="240" height="90" rx="12" fill="#ecfdf5" stroke="#34d399" stroke-width="2"/>
-    <text x="892" y="438" class="heading">本轮确认多个位置</text>
-    <text x="892" y="468" class="note">是否更快取决于总成本</text>
-    <rect x="680" y="532" width="424" height="82" rx="12" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
-    <text x="892" y="565" class="heading">还要运行 Drafter 并保存候选状态</text>
-    <text x="892" y="594" class="note">被拒绝候选的计算会白做</text>
-  </g>
-
-  <text x="600" y="704" class="sub" text-anchor="middle" data-graph-role="annotation">低并发 TPOT 下降，不代表高并发吞吐一定提高。</text>
+  <rect width="1400" height="1020" fill="#fff"/>
+  <text x="50" y="62" class="title">3 个候选，4 个验证输入位置</text>
+  <text x="50" y="102" class="note">约定：y0 已确认，但尚未输入目标模型；本例忽略 EOS 和输出长度上限。</text>
+  <rect x="50" y="145" width="1300" height="95" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="80" y="185" class="body">目标模型已有缓存：y0 之前的前缀</text>
+  <text x="80" y="217" class="note">草稿模型根据前缀和 y0，依次提出 c1、c2、c3。</text>
+  <rect x="50" y="275" width="1300" height="340" rx="16" fill="#eff6ff" stroke="#93c5fd" stroke-width="2"/>
+  <text x="80" y="319" class="head">目标模型一次前向，四个位置使用因果遮罩</text>
+  <text x="80" y="395" class="body">本轮输入</text>
+  <text x="80" y="508" class="body">对应 Logits</text>
+  <rect x="280" y="350" width="205" height="72" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <text x="382" y="395" class="token">y0</text>
+  <rect x="550" y="350" width="205" height="72" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <text x="652" y="395" class="token">c1</text>
+  <rect x="820" y="350" width="205" height="72" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <text x="922" y="395" class="token">c2</text>
+  <rect x="1090" y="350" width="205" height="72" fill="#fff" stroke="#2563eb" stroke-width="2"/>
+  <text x="1192" y="395" class="token">c3</text>
+  <path d="M382 422 V467" class="edge"/>
+  <path d="M652 422 V467" class="edge"/>
+  <path d="M922 422 V467" class="edge"/>
+  <path d="M1192 422 V467" class="edge"/>
+  <rect x="280" y="470" width="205" height="70" rx="10" fill="#fff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="382" y="512" class="body center">检验 c1</text>
+  <rect x="550" y="470" width="205" height="70" rx="10" fill="#fff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="652" y="512" class="body center">检验 c2</text>
+  <rect x="820" y="470" width="205" height="70" rx="10" fill="#fff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="922" y="512" class="body center">检验 c3</text>
+  <rect x="1090" y="470" width="205" height="70" rx="10" fill="#fff" stroke="#60a5fa" stroke-width="2"/>
+  <text x="1192" y="512" class="body center">预测额外 token</text>
+  <text x="280" y="580" class="note">每个输入位置预测下一个 token；接受判断从左到右，遇到拒绝就停止。</text>
+  <rect x="50" y="660" width="625" height="240" rx="14" fill="#fff7ed" stroke="#fdba74" stroke-width="2"/>
+  <text x="80" y="704" class="head">情况 A：接受 c1、c2，拒绝 c3</text>
+  <text x="80" y="750" class="body">新增输出：c1、c2、r，共 3 个</text>
+  <text x="80" y="790" class="note">r 从 c2 位置的 Logits 选出。</text>
+  <text x="80" y="830" class="note">保留缓存至 c2；丢弃 c3 的候选状态。</text>
+  <text x="80" y="870" class="note">c3 位置的 Logits 基于错误前缀，不能再用。</text>
+  <rect x="725" y="660" width="625" height="240" rx="14" fill="#f0fdf4" stroke="#86efac" stroke-width="2"/>
+  <text x="755" y="704" class="head">情况 B：三个候选全部接受</text>
+  <text x="755" y="750" class="body">新增输出：c1、c2、c3、b，共 4 个</text>
+  <text x="755" y="790" class="note">b 从 c3 位置的 Logits 选出。</text>
+  <text x="755" y="830" class="note">保留缓存至 c3。</text>
+  <text x="755" y="870" class="note">无需再做一次前向来选择 b。</text>
+  <text x="50" y="955" class="body">两种情况下，r 或 b 都尚未输入目标模型，下一轮接替 y0 的角色。</text>
+  <text x="50" y="990" class="note">图中以贪心生成为例；随机采样还需要接受概率与拒绝后的分布修正。</text>
 </svg>

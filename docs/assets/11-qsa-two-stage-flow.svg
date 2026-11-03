@@ -16,7 +16,7 @@
     <marker id="arrow-purple" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 11 4, 0 8" fill="#9333ea"/></marker>
   </defs>
   <rect width="1600" height="900" fill="#ffffff"/>
-  <text x="60" y="68" class="title">QSA 是“粗选位置，再精算 Attention”</text>
+  <text x="60" y="68" class="title">QSA：索引器选位置，Attention 计算输出</text>
   <text x="60" y="104" class="subtitle">索引器只产生候选 token 编号；最终输出仍由正式 Q/K/V、Softmax 和 V 加权求和计算。</text>
 
   <rect x="55" y="145" width="1490" height="290" rx="18" fill="#faf5ff" stroke="#c4b5fd" stroke-width="2"/>
@@ -35,10 +35,10 @@
   <path d="M500 280 H555" class="main"/>
 
   <rect x="555" y="215" width="205" height="130" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
-  <text x="657" y="252" text-anchor="middle" class="node-title">Key 微块压缩</text>
+  <text x="657" y="252" text-anchor="middle" class="node-title">仅 Key 做微块压缩</text>
   <text x="657" y="281" text-anchor="middle" class="node-sub">每 4 个 Key 求平均</text>
-  <text x="657" y="307" text-anchor="middle" class="node-sub">再加 Partial RoPE</text>
-  <text x="657" y="331" text-anchor="middle" class="node-sub">T → 约 T/4 个块</text>
+  <text x="657" y="307" text-anchor="middle" class="node-sub">RMSNorm → Partial RoPE</text>
+  <text x="657" y="331" text-anchor="middle" class="node-sub">Query 不参与求平均</text>
   <path d="M760 280 H815" class="main"/>
 
   <rect x="815" y="215" width="190" height="130" rx="12" fill="#ffffff" stroke="#a78bfa" stroke-width="2"/>
@@ -57,7 +57,7 @@
 
   <rect x="1305" y="230" width="205" height="100" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
   <text x="1407" y="270" text-anchor="middle" class="node-title">候选 token 编号</text>
-  <text x="1407" y="299" text-anchor="middle" class="node-sub">每个 Query 最多约 2048 个</text>
+  <text x="1407" y="299" text-anchor="middle" class="node-sub">2048 + 最多 3 个尾部位置</text>
 
   <rect x="55" y="475" width="1490" height="300" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
   <text x="85" y="517" class="lane-title">第二阶段：正式 Attention 计算输出</text>
@@ -78,7 +78,7 @@
   <text x="695" y="592" text-anchor="middle" class="node-title">按候选编号取 K/V</text>
   <text x="695" y="621" text-anchor="middle" class="node-sub">读取原始 token 的正式 K/V</text>
   <text x="695" y="647" text-anchor="middle" class="node-sub">不是压缩块 Key</text>
-  <text x="695" y="671" text-anchor="middle" class="node-sub">候选数约 ≤ 2048</text>
+  <text x="695" y="671" text-anchor="middle" class="node-sub">候选位置最多 2051 个</text>
 
   <path d="M1407 330 V445 H695 V555" class="control"/>
   <path d="M805 620 H875" class="main"/>
