@@ -63,6 +63,8 @@
 
 配套资料：
 
+- [配套实验：Decoder 前向计算与逐步生成](docs/supplements/full-forward.md)，在第 6 课后运行两层教学模型，对照有无 KV Cache 的计算结果。
+- [补充专题：数值精度与量化基础](docs/supplements/precision-and-quantization.md)，在第 8、9 课之间复算 Scale、分组量化与 Linear 输出误差。
 - [完整课程路线](docs/roadmap.md)
 - [大模型推理链路速查](docs/inference-map.md)
 - [综合案例：Qwen3.5-9B 长上下文扩容评审](docs/capstone.md)
@@ -84,7 +86,7 @@
 
 ## 可运行示例
 
-第 1、2、3、4、5、8、9、10、11、12 课和综合评审提供了只依赖 Python 标准库的[复算程序](examples/README.md)。脚本与正文使用同一组数字，运行后会打印中间结果，并检查关键数值。它们适合在读完公式后自己算一遍，不要求安装 PyTorch 或下载模型权重。
+第 1 至第 6 课、第 8 至第 12 课、量化专题和综合评审提供了只依赖 Python 标准库的[复算程序](examples/README.md)。脚本与正文使用同一组数字，运行后会打印中间结果，并检查关键数值。完整前向实验还会对照整段输入、分块输入和逐 token 输入时的 Logits 与 K/V。运行不要求安装 PyTorch 或下载模型权重。
 
 提交前可以运行 `bash scripts/check-course.sh`，检查 Markdown 结构、本地链接、SVG 渲染和可运行示例。GitHub Actions 也会执行同一组检查。
 

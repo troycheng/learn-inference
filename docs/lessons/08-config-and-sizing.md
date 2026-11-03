@@ -156,6 +156,8 @@ BF16 和 FP16 都占 2 Byte，却不能只按容量判断谁更合适。FP16 的
 
 Weight-only INT4 也不表示整条链路都在做 INT4 整数运算。权重可以用 INT4 保存，激活仍是 BF16；Kernel 读取打包权重和 Scale，在片上完成反量化或低比特乘法，再按实现选择累加格式。讨论量化时至少要把这四个 dtype 口径写清楚。
 
+Scale 如何把整数对应回近似权重，以及近似权重怎样影响 Linear 输出，见补充专题[数值精度与量化基础](../supplements/precision-and-quantization.md)。其中还会比较整张矩阵共用 Scale 和分组 Scale 的误差与元数据容量。
+
 ## 4. Qwen3.5-9B 参数量计算
 
 ### 4.1 Embedding 表与 LM Head
