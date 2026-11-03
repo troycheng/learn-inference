@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900" role="img" aria-labelledby="title desc">
+  <title id="title">同一个 Linear，批次增大后算术强度上升</title>
+  <desc id="desc">教学硬件算力峰值 100 TFLOP/s、显存带宽 1 TB/s，平衡点为 100 FLOP/Byte。横纵轴均为对数刻度。4096 到 12288 的 BF16 Linear 在 M 为 1、32、128 时，算术强度分别约为 1、31.67、122.88，对应 Roofline 上界约为 1、31.67、100 TFLOP/s。图中点不是实测结果。</desc>
+  <style>
+    text{font-family:'Helvetica Neue',Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}
+    .title{font-size:32px;font-weight:700}.body{font-size:20px}.note{font-size:18px;fill:#475569}.tick{font-size:17px;fill:#475569}.grid{stroke:#e2e8f0;stroke-width:1}.roof{fill:none;stroke:#2563eb;stroke-width:5;stroke-linejoin:round}
+  </style>
+  <rect width="1280" height="900" fill="#fff"/>
+  <text x="50" y="58" class="title">同一个 Linear，批次增大后算术强度上升</text>
+  <text x="50" y="98" class="note">教学参数：100 TFLOP/s、1 TB/s；BF16 Linear：4096 → 12288</text>
+  <text x="80" y="154" class="body">计算吞吐上界（TFLOP/s）</text>
+  <!-- Log axes: x = 150 + 380 log10(AI), y = 690 - 200 log10(throughput). -->
+  <path d="M150 690 H1140 M150 490 H1140 M150 290 H1140" class="grid"/>
+  <path d="M150 220 V690 M530 220 V690 M910 220 V690" class="grid"/>
+  <path d="M150 210 V690 H1150" fill="none" stroke="#475569" stroke-width="2"/>
+  <text x="130" y="696" text-anchor="end" class="tick">1</text>
+  <text x="130" y="496" text-anchor="end" class="tick">10</text>
+  <text x="130" y="296" text-anchor="end" class="tick">100</text>
+  <text x="150" y="722" text-anchor="middle" class="tick">1</text>
+  <text x="530" y="722" text-anchor="middle" class="tick">10</text>
+  <text x="910" y="722" text-anchor="middle" class="tick">100</text>
+  <text x="1138.78" y="722" text-anchor="middle" class="tick">400</text>
+  <text x="1150" y="765" text-anchor="end" class="body">算术强度（FLOP/Byte）</text>
+  <path d="M150 690 L910 290 H1138.78" class="roof"/>
+  <path d="M910 290 V690" fill="none" stroke="#64748b" stroke-width="2" stroke-dasharray="7 6"/>
+  <text x="580" y="675" class="note">平衡点：100 FLOP/Byte</text>
+  <text x="380" y="478" class="body" transform="rotate(-27.76 380 478)">带宽上界：BW × AI</text>
+  <text x="925" y="245" class="body">算力上限：100</text>
+  <circle cx="150" cy="690" r="7" fill="#111827"/>
+  <text x="185" y="570" class="body">M = 1</text>
+  <text x="185" y="605" class="note">AI ≈ 1</text>
+  <circle cx="720.25" cy="389.87" r="7" fill="#111827"/>
+  <text x="555" y="315" class="body">M = 32</text>
+  <text x="555" y="346" class="note">AI ≈ 31.67</text>
+  <rect x="937.01" y="283" width="14" height="14" fill="#111827"/>
+  <text x="975" y="365" class="body">M = 128</text>
+  <text x="975" y="397" class="note">AI = 122.88</text>
+  <text x="975" y="429" class="note">上界 = 100</text>
+  <rect x="50" y="803" width="1180" height="63" rx="10" fill="#f8fafc" stroke="#cbd5e1"/>
+  <text x="75" y="841" class="note">两轴均为对数刻度。点表示理论上界，不是实测性能；实际结果还受 Kernel 和硬件利用率影响。</text>
+</svg>

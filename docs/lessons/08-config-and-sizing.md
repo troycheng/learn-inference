@@ -511,13 +511,13 @@ $$
 t_{memory}\ge\frac{搬运字节}{峰值内存带宽}
 $$
 
-忽略重叠与其他开销时，理论时间至少由两者中更大的一项决定：
+即使计算和数据搬运能完全重叠，耗时也不能小于两者中更大的一项；不能重叠的部分和其他开销只会增加时间：
 
 $$
 t_{theory}\ge\max(t_{compute},t_{memory})
 $$
 
-两者的比值叫算术强度（Arithmetic Intensity）：
+计算量与搬运字节数的比值叫算术强度（Arithmetic Intensity）：
 
 $$
 AI=\frac{FLOPs}{搬运字节}
@@ -535,6 +535,40 @@ FLOPs：     约 2×H_in×H_out
 
 若同一份权重在一轮中服务 `M` 个 token，FLOPs 增加到约 `2×M×H_in×H_out`，权重却有机会被复用，算术强度随 `M` 上升。这解释了为什么小 Batch Decode 常暴露权重带宽，而更大的 Batch 更可能提高计算利用率。
 
+### 11.1 从一个 Linear 算到 Roofline 图
+
+使用一组便于复算的教学硬件参数：当前 dtype 下的稠密计算峰值为 `100 TFLOP/s`，显存带宽为 `1 TB/s`。它们不对应某款 GPU 的实测结果，硬件平衡点为：
+
+$$
+R=\frac{100\times10^{12}\ \text{FLOP/s}}{10^{12}\ \text{Byte/s}}=100\ \text{FLOP/Byte}
+$$
+
+取第 2 课 FFN 中一个 `4096→12288` 的 BF16 Linear。本轮处理 `M` 个位置，输入和输出也按 BF16 计算。假设权重、输入各从 HBM 读取一次，输出写入一次：
+
+```text
+权重：4096×12288×2 = 100663296 Byte = 96 MiB
+输入与输出：2×M×(4096+12288) = 32768×M Byte
+计算量：2×M×4096×12288 = 100663296×M FLOPs
+```
+
+由此得到算术强度 `AI=M/(1+M/3072)`。只计权重时它近似等于 `M`，补上输入输出后略低一些。
+
+| 本轮位置数 `M` | 算术强度（FLOP/Byte） | 计算时间下界 | 搬运时间下界 | 较大的下界 |
+| ---: | ---: | ---: | ---: | --- |
+| 1 | 1.00 | 0.001 ms | 0.101 ms | 搬运 |
+| 32 | 31.67 | 0.032 ms | 0.102 ms | 搬运 |
+| 128 | 122.88 | 0.129 ms | 0.105 ms | 计算 |
+
+一次算 32 个位置，计算量是一次算 1 个位置的 32 倍，搬运字节却只增加约 1%。这解释了权重复用为什么可能提高吞吐。到 128 个位置时，计算下界已经超过搬运下界，继续增大批次就不能再期待单步时间近似不变。
+
+![同一个 Linear 在不同批次下的 Roofline 上界](../assets/08-roofline-linear.svg)
+
+图的横轴是算术强度，纵轴是计算吞吐，两轴都采用对数刻度。斜线由显存带宽决定：每字节做 `AI` 次运算，带宽为 1 TB/s 时，吞吐最多为 `AI` TFLOP/s。横线是 100 TFLOP/s 的算力上限。每个点取两者中较低的一项，因此表示理论上界，不是实测性能。
+
+令 `M/(1+M/3072)=100`，可得交点约为 `M=103.36`；整数位置数从 104 起，计算下界超过搬运下界。实际拐点还受矩阵分块、缓存命中、Kernel Launch 和 Tensor Core 利用率影响。第 9 课会把这种比较用于批处理方案评估。[复算程序](../../examples/roofline_walkthrough.py)沿用本节的参数、字节数和舍入规则。
+
+### 11.2 长上下文中的 KV 读取
+
 长上下文 Decode 还要单独计算 KV 读取。9B 每个历史位置有 32 KiB 逻辑 KV，所有 Full Attention 层的长度项是 `131,072×T FLOPs`。忽略布局和其他读写时：
 
 $$
@@ -542,6 +576,10 @@ AI_{KV}\approx\frac{131072T}{32768T}=4\ FLOPs/Byte
 $$
 
 这个例子只给出数量级。TP 下应把 FLOPs 和 KV 字节都换成每 Rank 口径；最终判断还要看实际 Kernel 时间、有效带宽和端到端指标。
+
+这里的 `T` 是本轮 Query 可读取的 K/V 长度，即第 6 课的 `T_kv`，包含当前位置。沿用上面的教学硬件，`4 FLOP/Byte` 远低于平衡点 `100 FLOP/Byte`。上下文增长会同时增加 KV 字节和 QK/AV 计算，并不会提高这部分的算术强度。
+
+对于相互独立、没有共享前缀的请求，扩大 Decode Batch 会同时增加各请求的 KV 读取和 Attention 计算，这个比值仍约为 4。Linear 可以共享权重，独立请求却各有自己的历史 K/V；所以不能由 Linear 越过 Roofline 交点，推断整步 Decode 也变成计算受限。第 9 课第 6.4 节会把两类流量放进同一个估算式。
 
 分子和分母必须使用同一口径。以 `TP=8` 为例，9B 每 Rank 通常计算 2 个 Query 头，并保存 1 个复制后的 K/V 头：
 
@@ -683,6 +721,7 @@ TP=8 大于 `Nkv=4`，每 Rank 保存一个 K/V 头，因此每 Rank、每位置
 - [PyTorch：FP16/BF16 GEMM 的累加精度](https://docs.pytorch.org/docs/stable/notes/numerical_accuracy.html#reduced-precision-reduction-for-fp16-and-bf16-gemms)
 - [PyTorch：CUDA 显存管理与统计](https://docs.pytorch.org/docs/stable/notes/cuda.html#cuda-memory-management)
 - [Roofline：算术强度与硬件上界](https://dl.acm.org/doi/10.1145/1498765.1498785)
+- [NVIDIA：矩阵乘法的 FLOPs、数据字节与硬件限制](https://docs.nvidia.com/deeplearning/performance/dl-performance-matrix-multiplication/index.html#math-and-memory-bounds)
 
 ---
 
