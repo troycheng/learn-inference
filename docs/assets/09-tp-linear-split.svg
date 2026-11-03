@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="1070" viewBox="0 0 1200 1070" role="img" aria-labelledby="title desc">
+  <title id="title">同一个 Linear 的两种切分</title>
+  <desc id="desc">W 的每行对应输出坐标。按输出维度切分，两张卡分别得到 1 和 19，拼成完整向量。按输入维度切分，两张卡分别得到部分和 5,2 与负4,17，逐元素相加得到同一个向量 1,19。</desc>
+  <defs><marker id="arrow" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0 L9 4 L0 8 Z" fill="#2563eb"/></marker></defs>
+  <style>
+    text{font-family:'Helvetica Neue',Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}
+    .title{font-size:34px;font-weight:700}.head{font-size:25px;font-weight:700}.body{font-size:23px}.note{font-size:21px;fill:#475569}.center{text-anchor:middle}.edge{fill:none;stroke:#2563eb;stroke-width:2.5;marker-end:url(#arrow)}
+  </style>
+  <rect width="1200" height="1070" fill="#fff"/>
+  <text x="50" y="60" class="title">同一个 Linear 的两种切分</text>
+  <text x="50" y="104" class="note">参数 W 的每行对应一个输出坐标；输入 x = [1, 2, 3, 4]，完整输出 y = [1, 19]。</text>
+
+  <rect x="50" y="145" width="1100" height="390" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="80" y="190" class="head">A　按输出维度切分：各卡负责不同的输出坐标</text>
+  <rect x="85" y="225" width="510" height="110" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="110" y="265" class="body">GPU 0：W 的第 0 行 · 完整输入 x</text>
+  <text x="110" y="305" class="head">[1, 2, 0, -1] · x = 1</text>
+  <rect x="85" y="385" width="510" height="110" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="110" y="425" class="body">GPU 1：W 的第 1 行 · 完整输入 x</text>
+  <text x="110" y="465" class="head">[0, 1, 3, 2] · x = 19</text>
+  <path d="M595 280 H690 V325 H775" class="edge"/>
+  <path d="M595 440 H690 V395 H775" class="edge"/>
+  <rect x="780" y="290" width="330" height="140" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="945" y="332" class="head center">拼接 Concat</text>
+  <text x="945" y="374" class="head center">[1] 与 [19] → [1, 19]</text>
+  <text x="945" y="408" class="note center">两个数对应不同坐标</text>
+
+  <rect x="50" y="580" width="1100" height="390" rx="14" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="80" y="625" class="head">B　按输入维度切分：各卡只完成每个点积的一部分</text>
+  <rect x="85" y="660" width="510" height="110" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="110" y="700" class="body">GPU 0：W 的前两列 · 输入 [1, 2]</text>
+  <text x="110" y="740" class="head">两个输出的部分和：[5, 2]</text>
+  <rect x="85" y="820" width="510" height="110" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="110" y="860" class="body">GPU 1：W 的后两列 · 输入 [3, 4]</text>
+  <text x="110" y="900" class="head">两个输出的部分和：[-4, 17]</text>
+  <path d="M595 715 H690 V760 H775" class="edge"/>
+  <path d="M595 875 H690 V830 H775" class="edge"/>
+  <rect x="780" y="725" width="330" height="140" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="945" y="767" class="head center">逐元素求和 Sum</text>
+  <text x="945" y="809" class="head center">[5 − 4, 2 + 17]</text>
+  <text x="945" y="843" class="note center">完整输出仍为 [1, 19]</text>
+
+  <text x="50" y="1025" class="note">需要每卡都拿到完整结果时，A 可用 All-Gather，B 可用 All-Reduce 求和。</text>
+</svg>

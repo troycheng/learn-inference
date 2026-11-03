@@ -13,7 +13,7 @@ end
 lesson_titles = {}
 referenced_assets = Hash.new { |hash, key| hash[key] = [] }
 roadmap = File.read("docs/roadmap.md")
-public_support_pages = ["README.md"] + Dir["docs/*.md"]
+public_support_pages = ["README.md"] + Dir["docs/*.md"] + Dir["docs/supplements/*.md"]
 
 readme = File.read("README.md")
 errors << "README.md: course title does not match" unless readme.start_with?("# #{course_title}\n")

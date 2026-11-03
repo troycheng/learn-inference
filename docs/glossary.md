@@ -209,11 +209,16 @@
 | 正文用词 | 英文或代码名 | 简短含义 |
 | --- | --- | --- |
 | 权重量化 | Weight Quantization | 用更低比特格式编码权重，并由相应 Kernel 读取和参与计算 |
+| 缩放系数 | Scale | 量化中用来匹配数值范围的系数；本课程整数例子的近似值为“整数编码 × Scale” |
+| 反量化 | Dequantization | 将低精度编码按 Scale 等参数还原为近似数值，不能恢复已经丢失的信息 |
+| 分组量化 | Group-wise Quantization | 一组数共用一套量化参数，例如一个 Scale；组的划分和大小取决于格式 |
 | KV 量化 | KV Cache Quantization | 用更低位格式保存 Full Attention 的历史 K/V |
 | 闪存注意力 | FlashAttention | 分块在片上计算精确 Attention，减少中间矩阵的 HBM 读写 |
 | 语义缓存 | Semantic Cache | 根据输入语义相似性复用最终结果或上层结果，不等同于 Prefix Cache |
 | 静态批处理 | Static Batching | 一组请求固定组成 Batch，通常整批结束后才补入新请求 |
 | 集合通信 | Collective Communication | 多设备共同参与的 All-Reduce、All-to-All 等通信操作 |
+| 全收集 | All-Gather | 每张参与设备都取得所有设备提供的分片，按约定顺序组成完整数据 |
+| 全归约 | All-Reduce | 对各设备的对应元素执行求和等归约，再让每张参与设备得到归约结果 |
 | 推测解码 | Speculative Decoding | 用 Drafter 提出多个候选，再由 Target Model 一次验证多个位置 |
 | 草稿模型 | Drafter | 在推测解码中以较低成本提出候选 token 的模型或辅助模块 |
 | 目标模型 | Target Model | 决定候选是否接受并保持最终输出分布的主模型 |

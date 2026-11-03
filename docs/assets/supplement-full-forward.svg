@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="1210" viewBox="0 0 1180 1210" role="img" aria-labelledby="title desc">
+  <title id="title">两层 Decoder 的前向计算</title>
+  <desc id="desc">输入 ID 经过 Embedding、两个独立 Decoder Layer、最终 RMSNorm 和 LM Head，最后选择新 ID。每层分别读取旧 K/V 并写入新 K/V；新选出的 ID 在下一轮才作为输入。</desc>
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="8" refX="8" refY="4" orient="auto"><path d="M0 0 L9 4 L0 8 Z" fill="#2563eb"/></marker>
+  </defs>
+  <style>
+    text{font-family:'Helvetica Neue',Arial,'PingFang SC','Microsoft YaHei',sans-serif;fill:#111827}
+    .title{font-size:34px;font-weight:700}.head{font-size:26px;font-weight:700}.body{font-size:23px}.note{font-size:21px;fill:#475569}.small{font-size:18px;fill:#475569}.center{text-anchor:middle}.edge{fill:none;stroke:#2563eb;stroke-width:2.5;marker-end:url(#arrow)}
+  </style>
+  <rect width="1180" height="1210" fill="#fff"/>
+  <text x="50" y="60" class="title">两层 Decoder 的前向计算</text>
+  <text x="50" y="101" class="note">Prefill 与 Decode 经过相同模块；每层维护自己的 K/V。</text>
+
+  <rect x="150" y="145" width="550" height="80" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="425" y="180" class="head center">本轮输入 Token ID</text>
+  <text x="425" y="210" class="note center">Prefill：[0, 1, 2]　Decode：上轮选出的 ID</text>
+  <path d="M425 225 V270" class="edge"/>
+  <rect x="150" y="275" width="550" height="80" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="425" y="310" class="head center">Embedding 查表</text>
+  <text x="425" y="340" class="note center">输出隐藏状态 [1, T_q, 4]</text>
+  <path d="M425 355 V400" class="edge"/>
+
+  <rect x="150" y="405" width="550" height="155" rx="12" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+  <text x="180" y="443" class="head">Decoder Layer 1</text>
+  <text x="180" y="487" class="body">RMSNorm → Attention → 残差相加</text>
+  <text x="180" y="530" class="body">RMSNorm → SwiGLU → 残差相加</text>
+  <rect x="835" y="405" width="295" height="155" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="982" y="446" class="head center">第 1 层 K/V 状态</text>
+  <text x="982" y="491" class="note center">每头保留历史位置</text>
+  <text x="982" y="534" class="note center">K 已包含 RoPE</text>
+  <text x="767" y="432" class="small center">追加新 K/V</text>
+  <path d="M700 450 H830" class="edge"/>
+  <text x="767" y="510" class="small center">读取旧 K/V</text>
+  <path d="M835 530 H705" class="edge" stroke-dasharray="7 5"/>
+  <path d="M425 560 V605" class="edge"/>
+
+  <rect x="150" y="610" width="550" height="155" rx="12" fill="#f8fafc" stroke="#64748b" stroke-width="2"/>
+  <text x="180" y="648" class="head">Decoder Layer 2</text>
+  <text x="180" y="692" class="body">RMSNorm → Attention → 残差相加</text>
+  <text x="180" y="735" class="body">RMSNorm → SwiGLU → 残差相加</text>
+  <rect x="835" y="610" width="295" height="155" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="982" y="651" class="head center">第 2 层 K/V 状态</text>
+  <text x="982" y="696" class="note center">来自第 2 层的输入</text>
+  <text x="982" y="739" class="note center">不与第 1 层共用</text>
+  <text x="767" y="637" class="small center">追加新 K/V</text>
+  <path d="M700 655 H830" class="edge"/>
+  <text x="767" y="715" class="small center">读取旧 K/V</text>
+  <path d="M835 735 H705" class="edge" stroke-dasharray="7 5"/>
+  <path d="M425 765 V810" class="edge"/>
+
+  <rect x="150" y="815" width="550" height="100" rx="12" fill="#fff7ed" stroke="#ea580c" stroke-width="2"/>
+  <text x="425" y="855" class="head center">最终 RMSNorm → LM Head</text>
+  <text x="425" y="892" class="note center">每个位置得到 6 个候选 ID 的 Logits</text>
+  <path d="M425 915 V960" class="edge"/>
+  <rect x="150" y="965" width="550" height="100" rx="12" fill="#eff6ff" stroke="#2563eb" stroke-width="2"/>
+  <text x="425" y="1005" class="head center">按最后位置的 Logits 贪心选择</text>
+  <text x="425" y="1042" class="note center">得到下一个 ID；它此时尚未进入缓存</text>
+  <path d="M700 1015 H830" class="edge"/>
+  <rect x="835" y="965" width="295" height="100" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <text x="982" y="1005" class="head center">下一轮输入</text>
+  <text x="982" y="1042" class="note center">新 ID + 两层已有缓存</text>
+
+  <text x="50" y="1130" class="note">每层 Attention 包含 Q/K/V 投影、Q/K 的 RoPE、因果遮罩、各头计算及输出投影。</text>
+  <text x="50" y="1170" class="note">两次残差分别保留该子层的输入；缓存箭头表示 Attention 内部的读写。</text>
+</svg>

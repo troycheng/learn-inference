@@ -294,6 +294,8 @@ Prompt 是 `p1 p2 p3 p4`，模型最终生成 `y1 y2 y3`。补全下表：
 
 ## 参考资料
 
+配套实验 [Decoder 前向计算与逐步生成](../supplements/full-forward.md)会把本课的数据流执行一遍：输入 3 个 ID，经过两层 Decoder，再完成两轮 Decode。程序打印各模块结果，并比较有无缓存时的 Logits 和 K/V。
+
 以下 Qwen3.5 配置和 Transformers 实现于 2026-08-08 按固定 revision 复核：
 
 - [Qwen3.5-9B-Base `config.json`，revision 68c46c4](https://huggingface.co/Qwen/Qwen3.5-9B-Base/blob/68c46c4b3498877f3ef123c856ecfde50c39f404/config.json)

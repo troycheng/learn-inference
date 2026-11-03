@@ -10,7 +10,7 @@ files = [
   "docs/inference-map.md",
   "docs/glossary.md",
   "docs/capstone.md",
-] + Dir["docs/lessons/[0-9][0-9]-*.md"].sort
+] + Dir["docs/lessons/[0-9][0-9]-*.md"].sort + Dir["docs/supplements/*.md"].sort
 
 repository = ENV.fetch("GITHUB_REPOSITORY", "troycheng/learn-inference")
 token = ENV["GITHUB_TOKEN"]
