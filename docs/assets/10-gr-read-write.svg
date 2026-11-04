@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 820" width="1600" height="820" role="img" aria-labelledby="title desc">
   <title id="title">GR Read 与 GR Write 的计算关系</title>
-  <desc id="desc">左侧展示四条残差支路经过独立 RMSNorm、低秩门控、逐元素乘法和平均得到子层输入；右侧展示子层输出乘四个支路写入系数后分别加回残差支路。</desc>
+  <desc id="desc">左侧展示四条残差支路经过独立 RMSNorm、低秩门控、逐元素乘法和平均得到子层输入；右侧展示子层输出乘四个支路写入系数后分别加回残差支路。读写门控均由子层计算前的归一化支路生成。</desc>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
     .title { font-size: 34px; font-weight: 700; }
@@ -16,7 +16,7 @@
     <marker id="arrow-purple" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 11 4, 0 8" fill="#9333ea"/></marker>
   </defs>
   <rect width="1600" height="820" fill="#ffffff"/>
-  <text x="60" y="68" class="title">GR 先选择怎样读取，再决定怎样写回</text>
+  <text x="60" y="68" class="title">GR Read 与 GR Write 的数据流</text>
   <text x="60" y="104" class="subtitle">读取门控细到每个特征；写入门控只为每条支路产生一个标量。</text>
 
   <rect x="55" y="150" width="940" height="610" rx="18" fill="#f8fafc" stroke="#cbd5e1" stroke-width="2"/>
@@ -64,6 +64,7 @@
   <text x="1190" y="288" text-anchor="middle" class="node-title">子层输出 y</text>
   <text x="1190" y="316" text-anchor="middle" class="node-sub">[H]</text>
 
+  <text x="1415" y="233" text-anchor="middle" class="node-sub">由子层计算前的 R̂ 生成</text>
   <rect x="1340" y="255" width="150" height="82" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/>
   <text x="1415" y="286" text-anchor="middle" class="node-title">写入门控</text>
   <text x="1415" y="313" text-anchor="middle" class="node-sub">s1…s4 [4]</text>

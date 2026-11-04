@@ -93,7 +93,7 @@ Qwen3.5 使用一个三维卷积做 Patch Embedding，卷积核覆盖：
 输出宽度：1152
 ```
 
-先忽略视频的时间方向，把静态图片理解成一个 Patch 的像素向量 `p:[1536]`。这里的 1536 来自 `2×16×16×3`，静态图会复制一次像素以满足两帧输入形状。投影可以写成：
+对静态图片，处理器会把同一帧复制一次，以满足两帧输入形状。因此，一个 Patch 展平后的像素向量是 `p:[1536]`，其中 `1536=2×16×16×3`。投影可以写成：
 
 $$
 x_{patch}=pW_{patch}^{T}+b
@@ -142,6 +142,8 @@ Qwen3.5 的视觉塔有 27 个视觉 Transformer Block，内部宽度为 1152。
 视觉 MLP：      加工每个位置内部的特征
 ```
 
+这里的视觉 Attention 不是因果 Attention：同一张静态图片内的 Patch 可以互相读取，不受“只能看序列左侧”的限制。整张图片在生成答案前已经给出；答案的逐 token 生成仍由语言 Decoder 的因果计算完成。[对应实现](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L901-L960)设置了 `is_causal=False`。
+
 经过多层后，一个 Patch 位置的向量不再只包含原来的 `16×16` 像素，还混入了整张图中其他相关位置的信息。这里与文本 Decoder 的思想相似，但视觉塔使用独立的参数、位置 Embedding 和 Vision RoPE，不能把它当成语言 Decoder 的前几层。
 
 ## 6. Patch Merger
@@ -152,7 +154,7 @@ Qwen3.5 的视觉塔有 27 个视觉 Transformer Block，内部宽度为 1152。
 [1024, 1152]
 ```
 
-Merger 再把每个 `2×2` 区域的四条特征拼起来：
+Merger 先对每条 1152 维向量做 LayerNorm，再把每个 `2×2` 区域的四条特征拼起来：
 
 ```text
 4 条 [1152]
@@ -166,7 +168,7 @@ $$
 1024\div(2\times2)=256
 $$
 
-Merger 不是简单求平均，也不是随手删掉四条中的三条。拼接后的 4608 维特征还会经过两层 Linear 和 GELU。以 Qwen3.5-9B 为例：
+四条归一化后的向量拼成一条后，位置数减少了，但它们的数值仍全部保留在 4608 维中。随后两层 Linear 和 GELU 才把这些数重新组合并映射到语言模型的宽度。以 Qwen3.5-9B 为例：
 
 ```text
 [4608] → Linear → GELU → Linear → [4096]
@@ -218,7 +220,7 @@ Qwen3.5-35B-A3B 的语言 Hidden Size 是 2048，所以最后一步输出 `[2048
 
 ## 8. 语言模型侧的 MRoPE
 
-上一节的位置 Embedding 和 Vision RoPE 只在视觉塔内部工作。Merger 输出替换图片占位位置后，视觉向量进入文本与图片组成的统一序列；语言 Decoder 再用 MRoPE 表示这条序列中的时间、高度和宽度位置。两级位置处理发生在不同模块，不能互相替代。
+第 5 节的位置 Embedding 和 Vision RoPE 在视觉塔内部工作。Merger 输出替换图片占位位置后，视觉向量进入文本与图片组成的统一序列；语言 Decoder 的 Full Attention 层再用 MRoPE 表示时间、高度和宽度位置。Gated DeltaNet 层仍采用第 4 课介绍的卷积与递归更新，不在其中加入 MRoPE。
 
 纯文本位置只有一条先后顺序：0、1、2、3。图片中的 Patch 还需要区分上下和左右。若把 256 个视觉位置只看成一条扁平序列，模型很难知道两个位置原本在二维网格中的关系。
 
@@ -249,6 +251,13 @@ position_ids shape = [3,B,T]
 Qwen3.5 使用 Interleaved MRoPE，把不同频率交错分给三个轴。配置中的 `mrope_section=[11,11,10]` 表示 32 个频率槽怎样分配，而不是把一条视觉向量切成 11、11、10 个 token。
 
 MRoPE 不会把 token 数变成三倍，也不代表相机坐标或现实世界的三维位置。它编码的是输入序列中视觉网格的相对位置。
+
+<details>
+<summary>实现注记：MRoPE 的三组编号与生成接口的四组编号</summary>
+
+上面的 `[3,B,T]` 指送入 MRoPE 的时间、高度和宽度编号。所引用的 Transformers 生成路径还会在前面加一组普通序列位置，形成 `[4,B,T]`，用于构造因果遮罩等计算；进入 RoPE 前再取后三组。这个接口差异没有增加第四个旋转轴。源码分别实现了[四组编号的构造](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L1827-L1829)和[进入语言模型后的拆分](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L1174-L1187)。
+
+</details>
 
 ## 9. 视频输入的时间 Patch 与时间戳
 
@@ -297,7 +306,7 @@ $$
 3. 8 个 Full Attention 层的 KV Cache。
 4. 24 个 Gated DeltaNet 层处理前缀所需的状态更新计算。
 
-![视觉位置增加会影响哪些计算](../assets/07-vision-cost.svg)
+![视觉位置增加会影响哪些计算](../assets/07-vision-cost.svg?rev=20261104-1)
 
 Decode 时通常不会每生成一个 token 就重跑视觉塔。首次处理图片后，语言模型已经把视觉信息写入 KV Cache 和 Gated DeltaNet 状态。后续步骤只送入最新生成的 token，并延续这些请求状态。
 
@@ -352,7 +361,7 @@ MRoPE 的三组编号作用在同一批视觉位置上，不会把序列长度�
 - [Qwen3.5-9B `config.json`，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/config.json)
 - [Qwen3.5-9B 预处理配置，revision c202236](https://huggingface.co/Qwen/Qwen3.5-9B/blob/c202236235762e1c871ad0ccb60c8ee5ba337b9a/preprocessor_config.json)
 - [Qwen3.5-35B-A3B `config.json`，revision 59d61f3](https://huggingface.co/Qwen/Qwen3.5-35B-A3B/blob/59d61f3ce65a6d9863b86d2e96597125219dc754/config.json)
-- [Transformers：Qwen3.5 视觉 Patch、位置 Embedding 与 Vision RoPE 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L839-L1110)
+- [Transformers：Qwen3.5 视觉 Patch、位置 Embedding 与 Vision RoPE 实现，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_5/modeling_qwen3_5.py#L839-L1114)
 - [Transformers：Qwen3VL Processor，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen3_vl/processing_qwen3_vl.py)
 - [Transformers：Qwen2VL 图像处理器，revision 9436284](https://github.com/huggingface/transformers/blob/943628458a1691f8af09c47ea9fc6e314734722f/src/transformers/models/qwen2_vl/image_processing_qwen2_vl.py)
 

@@ -51,3 +51,15 @@ assert selected_experts == [2, 0]
 assert all(abs(actual - expected) < 1e-3 for actual, expected in zip(routing_weights, [0.769, 0.231]))
 assert all(abs(actual - expected) < 1e-3 for actual, expected in zip(routed_output, [1.537, 0.694]))
 assert all(abs(actual - expected) < 1e-3 for actual, expected in zip(moe_output, [1.737, 0.894]))
+
+# 保持专家输出不变，只改合并权重，隔离路由权重对结果的影响。
+equal_weight_routed = weighted_sum([0.5, 0.5], [expert_outputs[2], expert_outputs[0]])
+equal_weight_moe = [routed + shared for routed, shared in zip(equal_weight_routed, gated_shared_output)]
+assert equal_weight_routed == [1.0, 1.5]
+assert equal_weight_moe == [1.2, 1.7]
+assert equal_weight_moe != moe_output
+
+# 专家分组可以改变执行顺序，但归并时必须把权重与对应专家保持配对。
+reordered_output = weighted_sum(list(reversed(routing_weights)), [expert_outputs[0], expert_outputs[2]])
+assert reordered_output == routed_output
+print("同样的专家，改为等权合并：", equal_weight_moe)

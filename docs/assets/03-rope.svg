@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
   <title id="title">RoPE 为什么使用旋转</title>
-  <desc id="desc">RoPE 让较后当前位置的查询和较前历史位置的键按各自 token 位置旋转。两个 token 一起移动时，共同旋转会在点积中抵消，保留下来的位置影响只与相对距离有关。</desc>
+  <desc id="desc">固定原始 q=k=[1,0]，每个位置旋转30度。位置3和2分别旋转90度和60度；位置改为13和12后分别旋转390度和360度，两者夹角仍为30度，点积不变。</desc>
   <defs>
     <marker id="blue-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M0 0L10 5L0 10z" fill="#2563EB"/>
@@ -24,7 +24,7 @@
   </defs>
   <rect width="1200" height="700" fill="#FFFFFF"/>
   <text x="60" y="58" class="title">RoPE 如何把相对位置写入 Q/K 点积</text>
-  <text x="60" y="94" class="note">位置决定各自旋转多少；Attention 比较 Q 和 K 时，真正留下的是两次旋转的差。</text>
+  <text x="60" y="94" class="note">保持原始 Q/K 不变，只改变位置编号，观察旋转如何影响点积。</text>
 
   <rect x="45" y="125" width="340" height="455" rx="18" class="panel"/>
   <text x="70" y="165" class="panel-title">1. 先明确目标</text>
@@ -47,11 +47,11 @@
     <line x1="0" y1="0" x2="0" y2="-108" class="q"/>
     <line x1="0" y1="0" x2="54" y2="-94" class="k"/>
     <path d="M45 -78 A90 90 0 0 0 0 -90" class="arc"/>
-    <text x="-129" y="-100" class="label" fill="#2563EB">Q：位置 3</text>
-    <text x="74" y="-100" class="label" fill="#EA580C">K：位置 2</text>
+    <text x="-125" y="-115" class="label" style="fill:#2563EB">Q：位置 3</text>
+    <text x="40" y="70" class="label" style="fill:#EA580C">K：位置 2</text>
   </g>
-  <text x="600" y="500" text-anchor="middle" class="note">假设每前进 1 个位置多转 θ</text>
-  <text x="600" y="531" text-anchor="middle" class="note">两根箭头的夹角就是 θ</text>
+  <text x="600" y="500" text-anchor="middle" class="note">原始 q=k=[1,0]；θ=30°</text>
+  <text x="600" y="531" text-anchor="middle" class="note">旋转后夹角为 30°</text>
 
   <rect x="815" y="125" width="340" height="455" rx="18" class="panel"/>
   <text x="840" y="165" class="panel-title">3. 一起移动，关系不变</text>
@@ -60,13 +60,13 @@
     <line x1="-132" y1="0" x2="132" y2="0" class="axis"/>
     <line x1="0" y1="132" x2="0" y2="-132" class="axis"/>
     <line x1="0" y1="0" x2="94" y2="-54" class="q"/>
-    <line x1="0" y1="0" x2="54" y2="-94" class="k"/>
-    <path d="M71 -41 A82 82 0 0 0 41 -71" class="arc"/>
-    <text x="42" y="76" class="label" fill="#2563EB">Q：位置 13</text>
-    <text x="56" y="-100" class="label" fill="#EA580C">K：位置 12</text>
+    <line x1="0" y1="0" x2="108" y2="0" class="k"/>
+    <path d="M90 0 A90 90 0 0 0 78 -45" class="arc"/>
+    <text x="-125" y="-115" class="label" style="fill:#2563EB">Q：位置 13</text>
+    <text x="43" y="65" class="label" style="fill:#EA580C">K：位置 12</text>
   </g>
-  <text x="985" y="500" text-anchor="middle" class="note">绝对角度都变了</text>
-  <text x="985" y="531" text-anchor="middle" class="note">夹角仍是 θ</text>
+  <text x="985" y="500" text-anchor="middle" class="note">仅将位置编号同时加 10</text>
+  <text x="985" y="531" text-anchor="middle" class="note">夹角仍为 30°，点积不变</text>
 
   <rect x="45" y="612" width="1110" height="58" rx="12" fill="#EEF2FF" stroke="#A5B4FC"/>
   <text x="600" y="649" text-anchor="middle" class="label">转置是反向旋转：R(m)ᵀ = R(-m)；连续旋转角度相加：R(-m)R(n) = R(n−m)</text>

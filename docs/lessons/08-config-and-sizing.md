@@ -1,6 +1,6 @@
 # 第 8 课：模型配置与资源估算
 
-拿到一个新模型，名称只能告诉我们大致规模。要判断它能否放进显存、每个 token 要经过多少计算、长上下文会增加多少状态，还得读 `config.json`。先回答五个问题：
+判断一个模型需要多少显存和计算，先读 `config.json`，再核对实际加载的权重和运行时实现。需要分别确认：
 
 1. 模型由哪些层组成？
 2. 权重和状态用什么 dtype 保存？
@@ -8,7 +8,7 @@
 4. 一个 token 实际经过多少计算？
 5. 一个请求还要保存多少运行状态？
 
-这五个问题都不能只靠模型名称回答。“9B”“35B”“A3B”都是便于交流的取整名，不是完整的显存和计算说明。
+“9B”“35B”“A3B”是便于交流的取整名，不能代替上述信息。
 
 后面的计算使用两个真实检查点：
 
@@ -16,6 +16,8 @@
 Qwen3.5-9B：       Dense FFN，32 个语言 Decoder Layer
 Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 ```
+
+首次阅读可先读第 1～3 节，分清配置、数据类型和统计口径，再从[第 6 节的权重容量](#6-权重容量估算)读到[第 11 节的 Roofline](#11-算术强度与-roofline)。第 4～5 节用于逐项核对参数，第 7.3 节的 TP 头复制用于多卡部署时查阅；读完后用第 14 节检验自己能否区分逻辑容量和实际分配。
 
 ## 1. 从 `config.json` 还原模型结构
 
@@ -34,9 +36,9 @@ Qwen3.5-35B-A3B： MoE FFN，40 个语言 Decoder Layer
 }
 ```
 
-这些字段不是一串孤立数字。把它们代回前几课的结构，就能还原出 Embedding、层数、Attention 头和 Dense FFN 的主要 shape：
+这些字段分别决定 Embedding、层数、Attention 头和 Dense FFN 的主要 shape：
 
-![从 Qwen3.5-9B 配置还原文本模型结构](../assets/08-config-to-questions.svg?rev=20260809-2)
+![从 Qwen3.5-9B 配置还原文本模型结构](../assets/08-config-to-questions.svg?rev=20261104-1)
 
 `hidden_size=4096` 规定了三处公共宽度：Embedding 的输出、层与层之间的接口，以及 LM Head 的输入。
 
@@ -123,7 +125,7 @@ FLOPs：这次前向做了多少次浮点运算
 
 这里的 `M` 不是请求已经缓存的历史 token 总数。一个请求可以有很长的 KV Cache，但单步 Decode 只给当前轮增加一个位置；Chunked Prefill 则会让本轮 `M` 明显增大。
 
-实现方式会改变哪些中间张量真正写入显存。算子融合可以让部分结果留在片上，FlashAttention 避免长期保存完整的 Attention 分数矩阵，LM Head 也可以只处理需要输出 Logits 的位置。
+实现方式会改变哪些中间张量真正写入显存。算子融合可以让部分结果留在片上，FlashAttention 避免把完整的 Attention 分数矩阵写入 HBM，LM Head 也可以只处理需要输出 Logits 的位置。
 
 运行时还会申请公式外的显存。集合通信需要收发 Buffer，部分 Kernel 需要临时工作区（Workspace），CUDA Graph 可能为固定执行图保留内存。缓存分配器也会把已经释放的显存块留在内存池中，等待后续复用。
 
@@ -473,7 +475,7 @@ Qwen3.5-35B-A3B： 约 5.9 GFLOPs/token
 
 ## 10. Attention 的上下文长度项
 
-Decode 时，一个 Query 需要读取长度为 `T` 的历史 K/V。单个 Full Attention 层的 QK 和 AV 约为：
+Decode 时，一个 Query 对本轮可见的 K/V 计算 Attention。本节用 `T` 表示这些位置的总数，即第 6 课的 `T_kv`，包含当前位置。单个 Full Attention 层的 QK 和 AV 约为：
 
 $$
 FLOPs_{attn}\approx4N_qDT
@@ -492,7 +494,7 @@ $$
 35B-A3B： 163,840 × T FLOPs
 ```
 
-| 历史长度 `T` | 9B Attention 长度项 | 35B-A3B Attention 长度项 |
+| 可见 K/V 长度 `T` | 9B Attention 长度项 | 35B-A3B Attention 长度项 |
 | ---: | ---: | ---: |
 | 4,096 | 0.54 GFLOPs | 0.67 GFLOPs |
 | 131,072 | 17.18 GFLOPs | 21.47 GFLOPs |
@@ -525,7 +527,7 @@ $$
 AI=\frac{FLOPs}{搬运字节}
 $$
 
-硬件的峰值计算吞吐除以峰值内存带宽，得到这台设备的 Machine Balance。若一个算子的算术强度明显低于 Machine Balance，它更容易受带宽限制；明显高于时，计算吞吐更可能成为限制。这只是理论边界，Kernel Launch、缓存命中、通信和实现效率仍会增加实际时间。
+硬件的峰值计算吞吐除以峰值内存带宽，得到这台设备的 Machine Balance。若一个算子的算术强度明显低于 Machine Balance，它更容易受带宽限制；明显高于时，计算吞吐更可能成为限制。实际时间还受 Kernel Launch、通信和实现效率影响。缓存命中则可能减少 HBM 搬运字节，计算算术强度时要使用相应存储层级的流量。
 
 以一个输入宽度为 `H_in`、输出宽度为 `H_out` 的 BF16 Linear 为例。Batch 为 1 且主要权重只读取一次时：
 

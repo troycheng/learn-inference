@@ -39,3 +39,8 @@ for index, value in enumerate(updated_branches, start=1):
 
 assert mixed_input == [1.7, 1.3]
 assert updated_branches == [[2.9, 2.5], [6.24, 1.6]]
+
+# A larger gate does not necessarily mean a larger contribution.
+assert read_gates[0][0] > read_gates[1][0]
+assert gated_branches[0][0] < gated_branches[1][0]
+print("First coordinate: gate 0.8 > 0.3, but contribution 1.6 < 1.8")

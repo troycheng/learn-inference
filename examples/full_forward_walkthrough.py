@@ -4,6 +4,7 @@
 列表省略 B=1 的批次轴；每层 Cache 使用 [头, 位置, 头内维度]。
 """
 
+from argparse import ArgumentParser
 from math import cos, exp, sin, sqrt
 
 
@@ -195,7 +196,32 @@ def check_equivalence():
     return largest_error
 
 
-def main():
+def check_input_contrasts():
+    """固定权重与位置编号，分别改变前文和追加未来位置。"""
+    original_ids, changed_ids = [0, 1, 2], [4, 5, 2]
+    original, original_cache, original_trace = forward(original_ids)
+    changed, _, changed_trace = forward(changed_ids)
+    # 两段输入的末位置都是 ID 2，Embedding 相同，前文不同。
+    assert original_trace[0][1] == changed_trace[0][1] == [0, 0, 1, 0]
+    assert max_error(original_trace[-3][1], changed_trace[-3][1]) > 1e-5
+    assert max_error(original[-1], changed[-1]) > 1e-5
+    expected_changed = [-0.163507, 0.806940, -0.261768, 0.708679, -0.295274, 0.610419]
+    assert max_error(changed[-1], expected_changed) < 5.1e-7
+    # Logits 已改变，但这个例子的最大项仍相同，不能只比较生成 ID。
+    assert greedy(original[-1]) == greedy(changed[-1]) == 1
+
+    extended, extended_cache, _ = forward(original_ids + [4])
+    prefix_error = max_error(original, extended[:len(original_ids)])
+    assert prefix_error < 1e-10
+    for before, after in zip(original_cache, extended_cache):
+        for name in ("k", "v"):
+            for head in range(HEADS):
+                assert max_error(before[name][head],
+                                 after[name][head][:len(original_ids)]) < 1e-10
+    return original[-1], changed[-1], prefix_error
+
+
+def main(show_trace=False):
     history = [0, 1, 2]
     pending = history[:]
     cache = None
@@ -219,15 +245,23 @@ def main():
               f"K/V=[1,2,{len(history)},2], Logits=[1,{len(pending)},6]")
         print("  Logits:", [round(v, 6) for v in logits[-1]])
         print(f"  next_id={chosen}, cache_length={len(cache[0]['k'][0])}, error={error:.2e}")
-        if step == 0:
+        if step == 0 and show_trace:
             print("  最后输入位置的逐层结果：")
             for name, row in trace:
                 print(f"    {name}: {[round(v, 6) for v in row]}")
         history.append(chosen)
         pending = [chosen]
+    original, changed, prefix_error = check_input_contrasts()
+    print("改变前文，末位置 Embedding 均为 [0,0,1,0]：")
+    print("  [0,1,2] 末位置 Logits:", [round(v, 6) for v in original])
+    print("  [4,5,2] 末位置 Logits:", [round(v, 6) for v in changed])
+    print("  两者贪心选择均为 ID 1，但 Logits 不同")
+    print(f"追加未来 token 后，原有位置 Logits 最大误差: {prefix_error:.2e}")
     print(f"16 种切分的 Logits 与缓存最大误差: {check_equivalence():.2e}")
-    print("缓存等价性、因果遮罩、缓存损坏检测: PASS")
+    print("前文影响、因果约束、缓存等价性、缓存损坏检测: PASS")
 
 
 if __name__ == "__main__":
-    main()
+    parser = ArgumentParser(description=__doc__)
+    parser.add_argument("--trace", action="store_true", help="同时打印 Prefill 最后位置的逐层数值")
+    main(show_trace=parser.parse_args().trace)

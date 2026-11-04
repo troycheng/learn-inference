@@ -25,22 +25,22 @@
   </defs>
 
   <rect width="1200" height="1430" fill="#FFFFFF"/>
-  <text x="54" y="58" class="title">Qwen3.5-9B：从输入 X 到 Attention 子层输出</text>
+  <text x="54" y="58" class="title">Qwen3.5-9B：从输入 x 到 Attention 子层输出</text>
   <text x="54" y="92" class="note"><tspan fill="#2563EB">蓝色</tspan>是 Attention 主计算，<tspan fill="#7C3AED">紫色</tspan>是输出门控，<tspan fill="#64748B">灰色</tspan>是保留原输入的残差路径。</text>
 
   <!-- section backgrounds: reserve a header row above every group of nodes -->
-  <rect id="projection-group" data-graph-role="container" x="54" y="320" width="1092" height="165" rx="14" class="group"/>
+  <rect id="projection-group" data-graph-role="container" x="54" y="320" width="1092" height="175" rx="14" class="group"/>
   <text x="78" y="350" class="head">三组投影</text>
   <rect id="head-shape-group" data-graph-role="container" x="54" y="515" width="1092" height="145" rx="14" class="group"/>
   <text x="78" y="545" class="head">按头整理</text>
   <rect id="single-head-group" data-graph-role="container" x="54" y="690" width="1092" height="205" rx="14" class="group"/>
-  <text x="78" y="720" class="head">每个查询头完成同一套计算</text>
+  <text x="78" y="720" class="head">各查询头的计算</text>
   <text x="78" y="875" class="note">GQA 映射：h1～h4 使用 g1，h5～h8 使用 g2，依此类推</text>
 
   <!-- connectors are behind nodes and keep the two side rails outside section titles -->
   <path d="M600 188 V220" class="blue-line"/>
   <path d="M600 284 V305 M250 305 H950" class="blue-route"/>
-  <path d="M250 305 V370" class="blue-line"/>
+  <path d="M250 305 V360" class="blue-line"/>
   <path d="M600 305 V370" class="blue-line"/>
   <path d="M950 305 V370" class="blue-line"/>
   <path d="M250 475 V570" class="blue-line"/>
@@ -58,16 +58,16 @@
   <path d="M600 1225 V1250" class="blue-line"/>
   <path d="M600 1310 V1330" class="blue-line"/>
 
-  <path d="M327.5 462 V495 H30 V1084 H465" class="purple-line"/>
+  <path d="M327.5 462 V505 H30 V1084 H465" class="purple-line"/>
   <path d="M690 154 H1170 V1280 H630" class="gray-line"/>
 
   <!-- input and normalization -->
   <rect data-graph-role="node" data-node-id="input-x" x="510" y="120" width="180" height="68" rx="10" class="input"/>
-  <text x="600" y="148" text-anchor="middle" class="head">输入 X</text>
+  <text x="600" y="148" text-anchor="middle" class="head">输入 x</text>
   <text x="600" y="173" text-anchor="middle" class="note">[B,T,4096]</text>
   <rect data-graph-role="node" data-node-id="rmsnorm" x="510" y="220" width="180" height="64" rx="10" class="input"/>
-  <text x="600" y="259" text-anchor="middle" class="head">RMSNorm</text>
-  <text x="936" y="143" class="note">残差路径保留原输入 X</text>
+  <text x="600" y="259" text-anchor="middle" class="label">X = RMSNorm(x)</text>
+  <text x="936" y="143" class="note">残差路径保留原输入 x</text>
 
   <!-- projections -->
   <rect data-graph-role="node" data-node-id="q-proj" x="90" y="360" width="320" height="115" rx="10" fill="#FFFFFF" stroke="#2563EB" stroke-width="2"/>
@@ -99,7 +99,7 @@
   <rect data-graph-role="node" data-node-id="score" x="130" y="755" width="300" height="90" rx="10" class="process"/>
   <text x="280" y="785" text-anchor="middle" class="label">① Q(h) 与对应的 K(g) 打分</text>
   <text x="280" y="813" text-anchor="middle" class="note">Q(h) · K(g)ᵀ / √256 + M</text>
-  <text x="280" y="836" text-anchor="middle" class="note">Score [B,16,T,T]</text>
+  <text x="280" y="836" text-anchor="middle" class="note">各头 Score [B,T,T]</text>
   <rect data-graph-role="node" data-node-id="softmax" x="490" y="755" width="170" height="90" rx="10" class="process"/>
   <text x="575" y="788" text-anchor="middle" class="label">② Softmax</text>
   <text x="575" y="817" text-anchor="middle" class="note">每行变成权重</text>
@@ -123,8 +123,8 @@
   <text x="600" y="1211" text-anchor="middle" class="note">[B,T,4096]</text>
   <circle data-graph-role="node" data-node-id="residual-add" cx="600" cy="1280" r="30" fill="#F0FDF4" stroke="#16A34A" stroke-width="3"/>
   <text x="600" y="1290" text-anchor="middle" font-size="31" font-weight="700">+</text>
-  <text x="660" y="1264" class="note">与原输入 X 逐元素相加</text>
+  <text x="660" y="1264" class="note">与原输入 x 逐元素相加</text>
   <rect data-graph-role="node" data-node-id="output-y" x="500" y="1330" width="200" height="56" rx="10" class="value"/>
-  <text x="600" y="1354" text-anchor="middle" class="head">子层输出 Y</text>
+  <text x="600" y="1354" text-anchor="middle" class="head">子层输出 y</text>
   <text x="600" y="1376" text-anchor="middle" class="note">[B,T,4096]</text>
 </svg>

@@ -10,15 +10,15 @@
   </style>
   <defs><marker id="blue-arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto"><polygon points="0 0,10 3.5,0 7" fill="#2563eb"/></marker></defs>
   <rect width="1200" height="650" fill="#ffffff"/>
-  <text x="40" y="42" class="title">一个 token 怎样穿过 SwiGLU</text>
-  <text x="40" y="68" class="sub">此图与第 8 节共用 y_norm=[1,2]、三组权重和每一个中间向量。省略 bias。</text>
+  <text x="40" y="42" class="title">SwiGLU：从输入向量到 FFN 输出</text>
+  <text x="40" y="68" class="sub">与第 8 节使用同一组输入和权重，省略 bias；图中数值保留三位小数，计算使用未舍入值。</text>
 
   <!-- Arrows are behind cards. -->
   <path d="M188 316 H228 V190 H270" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#blue-arrow)"/>
   <path d="M188 316 H228 V452 H270" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#blue-arrow)"/>
   <path d="M490 190 H530" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#blue-arrow)"/>
-  <path d="M710 190 H755 V278" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#blue-arrow)"/>
-  <path d="M490 452 H755 V350" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#blue-arrow)"/>
+  <path d="M710 190 H785 V284" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#blue-arrow)"/>
+  <path d="M490 452 H725 V314 H755" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#blue-arrow)"/>
   <path d="M815 314 H850" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#blue-arrow)"/>
   <path d="M1030 314 H1060" fill="none" stroke="#2563eb" stroke-width="2.5" marker-end="url(#blue-arrow)"/>
 
@@ -31,10 +31,10 @@
   <g transform="translate(270,112)">
     <rect width="220" height="156" rx="8" fill="#faf5ff" stroke="#c084fc" stroke-width="1.5"/>
     <text x="110" y="29" text-anchor="middle" class="label">gate_proj：H → I</text>
-    <text x="110" y="55" text-anchor="middle" class="mono">W_gate = [[1,0],[0,1],[1,1]]</text>
-    <text x="110" y="83" text-anchor="middle" class="mono">[1,2] → [1,2,3]</text>
-    <text x="110" y="112" text-anchor="middle" class="sub">三个点积，shape=[I]=[3]</text>
-    <text x="110" y="136" text-anchor="middle" class="sub">gate = [1,2,3]</text>
+    <text x="110" y="55" text-anchor="middle" class="mono">W_gate</text>
+    <text x="110" y="77" text-anchor="middle" class="mono">[[1,0],[0,1],[1,1]]</text>
+    <text x="110" y="106" text-anchor="middle" class="mono">[1,2] → [1,2,3]</text>
+    <text x="110" y="135" text-anchor="middle" class="sub">三个点积，shape=[I]=[3]</text>
   </g>
   <g transform="translate(530,112)">
     <rect width="180" height="156" rx="8" fill="#fff7ed" stroke="#fdba74" stroke-width="1.5"/>
@@ -47,10 +47,10 @@
   <g transform="translate(270,374)">
     <rect width="220" height="156" rx="8" fill="#f0fdf4" stroke="#86efac" stroke-width="1.5"/>
     <text x="110" y="29" text-anchor="middle" class="label">up_proj：H → I</text>
-    <text x="110" y="55" text-anchor="middle" class="mono">W_up = [[1,1],[1,-1],[0,1]]</text>
-    <text x="110" y="83" text-anchor="middle" class="mono">[1,2] → [3,-1,2]</text>
-    <text x="110" y="112" text-anchor="middle" class="sub">三个点积，shape=[I]=[3]</text>
-    <text x="110" y="136" text-anchor="middle" class="sub">up = [3,-1,2]</text>
+    <text x="110" y="55" text-anchor="middle" class="mono">W_up</text>
+    <text x="110" y="77" text-anchor="middle" class="mono">[[1,1],[1,-1],[0,1]]</text>
+    <text x="110" y="106" text-anchor="middle" class="mono">[1,2] → [3,-1,2]</text>
+    <text x="110" y="135" text-anchor="middle" class="sub">三个点积，shape=[I]=[3]</text>
   </g>
   <g transform="translate(755,274)">
     <circle cx="30" cy="40" r="30" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5"/>
@@ -62,7 +62,7 @@
     <text x="90" y="31" text-anchor="middle" class="label">中间向量 m</text>
     <text x="90" y="60" text-anchor="middle" class="mono">[0.731,1.762,2.858]</text>
     <text x="90" y="84" text-anchor="middle" class="mono">⊙ [3,-1,2]</text>
-    <text x="90" y="113" text-anchor="middle" class="mono">= [2.193,-1.762,5.716]</text>
+    <text x="90" y="113" text-anchor="middle" class="mono">≈ [2.193,-1.762,5.715]</text>
   </g>
   <g transform="translate(1060,212)">
     <rect width="115" height="204" rx="8" fill="#eff6ff" stroke="#93c5fd" stroke-width="1.5"/>
