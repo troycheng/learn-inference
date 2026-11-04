@@ -36,15 +36,17 @@
   <rect x="480" y="180" width="360" height="230" rx="18" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
   <text x="660" y="222" text-anchor="middle" class="lane-title">2-gram：token t-1 与 t</text>
   <rect x="525" y="260" width="270" height="90" rx="12" fill="#ffffff" stroke="#fdba74" stroke-width="1.8"/>
-  <text x="660" y="293" text-anchor="middle" class="node-title">8 组乘数、异或、取余</text>
-  <text x="660" y="322" text-anchor="middle" class="node-sub">得到 8 个不同的行号</text>
+  <text x="660" y="284" text-anchor="middle" class="node-title">乘数混合、异或</text>
+  <text x="660" y="311" text-anchor="middle" class="node-sub">同一整数按 8 个表长取余</text>
+  <text x="660" y="338" text-anchor="middle" class="node-sub">得到各表的行号</text>
   <text x="660" y="380" text-anchor="middle" class="node-sub">8 个哈希头，表长各不相同</text>
 
   <rect x="480" y="440" width="360" height="230" rx="18" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/>
   <text x="660" y="482" text-anchor="middle" class="lane-title">3-gram：token t-2、t-1 与 t</text>
   <rect x="525" y="520" width="270" height="90" rx="12" fill="#ffffff" stroke="#c4b5fd" stroke-width="1.8"/>
-  <text x="660" y="553" text-anchor="middle" class="node-title">8 组乘数、异或、取余</text>
-  <text x="660" y="582" text-anchor="middle" class="node-sub">得到另外 8 个行号</text>
+  <text x="660" y="544" text-anchor="middle" class="node-title">乘数混合、异或</text>
+  <text x="660" y="571" text-anchor="middle" class="node-sub">同一整数按另 8 个表长取余</text>
+  <text x="660" y="598" text-anchor="middle" class="node-sub">得到各表的行号</text>
   <text x="660" y="640" text-anchor="middle" class="node-sub">多张表降低同时碰撞概率</text>
 
   <path d="M840 295 H920" class="main"/>

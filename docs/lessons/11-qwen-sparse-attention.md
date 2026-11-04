@@ -2,7 +2,7 @@
 
 第 3 课中的 Full Attention 让当前位置与所有可见位置计算 QK 分数，再用 Softmax 权重汇总 V。它保留了完整历史，但上下文越长，每个 Query 需要读取和比较的 Key 越多。
 
-Qwen Sparse Attention，简称 QSA，没有修改 Attention 最终的 QK、Softmax 和 V 加权求和。它在正式 Attention 前增加一个轻量索引器，先选出优先读取的位置，正式 Attention 只计算这些位置。
+Qwen Sparse Attention，简称 QSA，在正式 Attention 前增加一个轻量索引器，先选出候选位置，再对这些位置执行 QK 点积、Softmax 和 V 加权求和。计算步骤与 Full Attention 相同，但参与计算的位置少了，结果不保证与读取全部历史时相同。
 
 索引器负责选位置，核心 Attention 负责计算这些位置对输出的贡献。两者使用各自的投影参数。
 
@@ -47,11 +47,13 @@ k3 = [1, 3]
 k4 = [3, 1]
 ```
 
-代入 `b=1、r=2`，取到的就是 `k3、k4`。暂时忽略 RMSNorm，平均结果为：
+代入 `b=1、r=2`，取到的就是 `k3、k4`。先只计算平均值：
 
 $$
-\overline k_1=\frac{[1,3]+[3,1]}{2}=[2,2]
+\frac{[1,3]+[3,1]}{2}=[2,2]
 $$
+
+平均结果还要经过 RMSNorm。若暂时忽略 epsilon、学习缩放取 1，均方根为 2，归一化结果就是 `[1,1]`。后面的索引分数和正式 Attention 分数作为已知输入给出，用于演示选块和汇总，并非由这一对 Key 推导得到。
 
 本次打分使用四条微块 Key，原始的八条索引 Key 仍保存在请求缓存中。真实配置 `r=4`，索引器比较的 Key 数量约为可见位置数的四分之一；状态保存方式见第 9 节。
 
@@ -73,7 +75,7 @@ QSA 采用下面的顺序：
 
 ## 4. 第二步：Query 为每个微块打分
 
-索引器有多个 Query 头和一个共享 Key 头。每个 Query 头分别与微块 Key 点积，负数经过 ReLU 变成 0，再把各头分数相加：
+索引器有多个 Query 头和一个共享 Key 头。Query 经 RMSNorm 和 Partial RoPE 后，与完成前节变换的微块 Key 点积；负数经过 ReLU 变成 0，再把各头分数相加。下式中的 Q/K 均指这些变换后的向量：
 
 $$
 I_{i,b}=\frac{1}{\sqrt{D_{idx}}}\sum_h\mathrm{ReLU}\left(q_i^{(h)}\cdot\overline k_b\right)
@@ -264,7 +266,7 @@ $$
 
 一条索引 Key 是 `128×2=256 Byte`。因此原始索引 Key 为 `131072×256=32 MiB`；四条合成一条后，微块 Key 为 `32768×256=8 MiB`。
 
-课程引用的 [Transformers 参考实现](https://github.com/huggingface/transformers/blob/281dd533060988a1de8d063c4c1ea72b304a2bb8/src/transformers/models/qwen4_exp/modeling_qwen4_exp.py#L675-L701) 每次从原始索引 Key 计算微块平均，再打分选块。因此分析这份实现时，不能只计算 8 MiB 微块 Key 和 4 MiB 候选 K/V，漏掉前面的 32 MiB 原始索引 Key。
+课程引用的 [Transformers 参考实现](https://github.com/huggingface/transformers/blob/281dd533060988a1de8d063c4c1ea72b304a2bb8/src/transformers/models/qwen4_exp/modeling_qwen4_exp.py#L654-L702) 每次从原始索引 Key 计算微块平均，再打分选块。因此分析这份实现时，不能只计算 8 MiB 微块 Key 和 4 MiB 候选 K/V，漏掉前面的 32 MiB 原始索引 Key。
 
 这几个数也不能直接相加作为 HBM 流量。中间张量可能被缓存或融合，参考实现还包含 FP32 转换和临时结果；正式 Attention 是否真正只读取候选 K/V，也取决于稀疏内核。若另一个实现增量保存已完成微块的 Key，它可能避免每步重新计算历史微块，但需要核对缓存布局和更新代码，不能把这种优化预先算进参考实现。
 
@@ -289,6 +291,7 @@ QSA 减少的是正式 Attention 需要处理的历史位置，代价是新增�
 5. QSA 为什么不能把 KV Cache 直接缩小到 2048 个位置？
 6. 报告中的 Attention Kernel 加速能否直接当作端到端服务加速？
 7. `T_kv=131072` 时，为什么不能把 8 MiB 微块 Key 与 4 MiB 候选 K/V 的和当成索引器和 Attention 的实测 HBM 流量？
+8. 固定正式 Attention 的 Q/K/V 和候选位置集合，只改变索引器分数的数值，但没有改变 Top-K 结果，正式 Attention 输出会改变吗？
 
 <details>
 <summary>参考答案</summary>
@@ -300,6 +303,7 @@ QSA 减少的是正式 Attention 需要处理的历史位置，代价是新增�
 5. 每个 Query 可能选择不同位置，完整历史 K/V 仍需保留；2048 是完整微块展开后的 token 预算，不是 Cache 的保存上限。
 6. 不能。端到端时间还包含其他模型层、通信、调度、采样和服务开销。
 7. 参考实现还要从 32 MiB 原始索引 Key 计算微块平均；各阶段的逻辑张量大小不等于 HBM 流量，缓存、融合、精度转换和实际 Attention 内核都会影响读写次数。
+8. 不会。索引器向正式 Attention 提供的是候选位置编号，分数本身不参与最终 Softmax。候选位置及正式 Q/K/V 都没变，数学输出就不变。
 
 </details>
 

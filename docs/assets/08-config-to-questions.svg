@@ -25,7 +25,7 @@
   <text x="52" y="85" class="subtitle">以 Qwen3.5-9B 的文本模型为例：字段值最终会落实到层数、头数和每张权重矩阵的 shape</text>
 
   <rect x="52" y="125" width="500" height="690" rx="18" fill="#0f172a"/>
-  <text x="82" y="165" class="panel-title" fill="#ffffff">text_config 关键字段（layer_types 已缩写）</text>
+  <text x="82" y="165" class="panel-title" style="fill:#ffffff">text_config 关键字段（layer_types 已缩写）</text>
 
   <rect x="78" y="195" width="448" height="74" rx="10" fill="#172554"/>
   <text x="98" y="225" class="code code-light">&quot;vocab_size&quot;: 248320,</text>
@@ -58,7 +58,7 @@
 
   <rect x="650" y="125" width="700" height="150" rx="18" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
   <text x="680" y="160" class="card-title">Embedding、层间接口和 LM Head</text>
-  <text x="680" y="193" class="body">词表有 248320 个候选；每个 token 在语言模型中始终用 4096 个数表示。</text>
+  <text x="680" y="193" class="body">词表有 248320 个候选；每个 token 的层间隐藏状态包含 4096 个数。</text>
   <text x="680" y="228" class="shape">Embedding [248320,4096]　→　隐藏状态 [B,T,4096]</text>
   <text x="680" y="254" class="shape">LM Head [248320,4096]　→　Logits [B,T,248320]</text>
 

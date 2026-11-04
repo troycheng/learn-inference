@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 850" width="1600" height="850" role="img" aria-labelledby="title desc">
   <title id="title">N-gram Embedding 通过 PLE 写入四条残差支路</title>
-  <desc id="desc">N-gram 向量分别投影为每支路 Key 和共享 Value，四条残差支路归一化后作为 Query，与 Key 点积产生四个门控，门控后的 Value 与因果卷积结果相加并写入对应支路。</desc>
+  <desc id="desc">N-gram 向量分别投影为每支路 Key 和共享 Value。Key 与四条残差支路分别归一化后点积，变换分数并执行 Sigmoid 得到四个门控。门控后的 Value 经 RMSNorm、因果卷积和 SiLU，再与直接门控结果相加并写入对应支路。Decode 还需保存卷积输入的局部历史。</desc>
   <style>
     text { font-family: 'Helvetica Neue', Helvetica, Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif; fill: #111827; }
     .title { font-size: 34px; font-weight: 700; }
@@ -15,7 +15,7 @@
     <marker id="arrow-purple" markerWidth="11" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 11 4, 0 8" fill="#9333ea"/></marker>
   </defs>
   <rect width="1600" height="850" fill="#ffffff"/>
-  <text x="60" y="68" class="title">PLE 让四条残差支路分别判断 N-gram 信息是否有用</text>
+  <text x="60" y="68" class="title">PLE：N-gram 向量的门控与残差注入</text>
   <text x="60" y="104" class="subtitle">Key 用于匹配，Value 提供写入内容；四条支路共享 Value，但使用不同门控系数。</text>
 
   <rect x="70" y="190" width="220" height="100" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
@@ -24,9 +24,10 @@
 
   <path d="M290 220 H360 V185 H420" class="main"/>
   <path d="M290 260 H340 V125 H1315 V160" class="main"/>
-  <rect x="420" y="145" width="230" height="100" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/>
-  <text x="535" y="184" text-anchor="middle" class="node-title">key_proj</text>
-  <text x="535" y="214" text-anchor="middle" class="node-sub">每支路一条 Key [4,H]</text>
+  <rect x="420" y="145" width="230" height="115" rx="12" fill="#faf5ff" stroke="#a78bfa" stroke-width="2"/>
+  <text x="535" y="177" text-anchor="middle" class="node-title">key_proj</text>
+  <text x="535" y="206" text-anchor="middle" class="node-sub">按支路 RMSNorm</text>
+  <text x="535" y="235" text-anchor="middle" class="node-sub">每支路一条 Key [4,H]</text>
   <rect x="1190" y="160" width="250" height="100" rx="12" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/>
   <text x="1315" y="199" text-anchor="middle" class="node-title">value_proj</text>
   <text x="1315" y="229" text-anchor="middle" class="node-sub">共享 Value v [H]</text>
@@ -53,10 +54,11 @@
   <text x="1315" y="445" text-anchor="middle" class="node-sub">[4,H]</text>
 
   <path d="M1315 465 V520" class="main"/>
-  <rect x="1190" y="520" width="250" height="105" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
-  <text x="1315" y="558" text-anchor="middle" class="node-title">局部因果卷积</text>
-  <text x="1315" y="588" text-anchor="middle" class="node-sub">只读取当前和左侧位置</text>
-  <text x="1315" y="614" text-anchor="middle" class="node-sub">与直接门控结果相加</text>
+  <rect x="1190" y="520" width="250" height="140" rx="12" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+  <text x="1315" y="549" text-anchor="middle" class="node-title">归一化与局部卷积</text>
+  <text x="1315" y="578" text-anchor="middle" class="node-sub">RMSNorm → 因果卷积 → SiLU</text>
+  <text x="1315" y="607" text-anchor="middle" class="node-sub">与直接门控结果相加</text>
+  <text x="1315" y="638" text-anchor="middle" class="node-sub">状态：最近 9 个卷积输入</text>
 
   <path d="M1190 575 H1085 V690 H1015" class="main"/>
   <rect x="705" y="650" width="310" height="105" rx="12" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>

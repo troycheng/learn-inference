@@ -34,6 +34,9 @@ assert blocks[1] == [3, 4]
 raw_keys = {3: [1, 3], 4: [3, 1]}
 pooled_key = [sum(raw_keys[position][axis] for position in blocks[1]) / block_size for axis in range(2)]
 assert pooled_key == [2, 2]  # Before RMSNorm.
+pooled_rms = math.sqrt(sum(value * value for value in pooled_key) / len(pooled_key))
+normalized_key = [value / pooled_rms for value in pooled_key]
+assert normalized_key == [1, 1]  # Teaching example: epsilon=0, learned scale=1.
 
 block_budget = token_budget // block_size
 selected_block_ids = sorted(
@@ -55,6 +58,24 @@ assert selected_block_ids == [1, 3]
 assert selected_token_ids == [3, 4, 7, 8]
 assert [round(value, 5) for value in attention_weights] == [0.19716, 0.43879, 0.09791, 0.26614]
 assert [round(value, 3) for value in output] == [0.827, 0.975]
+
+# Indexer scores select positions; only the main Attention scores weight V.
+main_score_by_position = dict(zip(selected_token_ids, attention_scores))
+value_by_position = dict(zip(selected_token_ids, values))
+
+
+def output_for_indexer_scores(scores):
+    chosen_blocks = sorted(range(len(scores)), key=lambda index: scores[index], reverse=True)[:block_budget]
+    chosen_positions = [position for block_id in chosen_blocks for position in blocks[block_id]]
+    weights = softmax([main_score_by_position[position] for position in chosen_positions])
+    return chosen_positions, weighted_sum(weights, [value_by_position[position] for position in chosen_positions])
+
+
+changed_indexer_scores = [score * 2 + 0.1 for score in indexer_scores]
+chosen_positions, changed_output = output_for_indexer_scores(changed_indexer_scores)
+assert chosen_positions == selected_token_ids
+assert changed_output == output
+print("Changed indexer scores, unchanged selected positions: main Attention output unchanged")
 
 # Check short contexts, every tail length, and a context beyond the block budget.
 for visible_length in range(12):

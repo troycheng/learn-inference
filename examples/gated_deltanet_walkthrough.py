@@ -1,4 +1,4 @@
-"""复算第 4 课的三次 Gated DeltaNet 状态更新。"""
+"""复算第 4 课的状态更新，并检查衰减与误差写入的分工。"""
 
 from math import sqrt
 
@@ -71,3 +71,23 @@ assert state_2 == [[5.0, 1.0], [0.0, 0.0]]
 assert state_3 == [[2.75, 1.75], [0.0, 0.0]]
 assert all(abs(actual - expected) < 1e-3 for actual, expected in zip(readout, [1.945, 1.237]))
 assert all(abs(actual - expected) < 1e-3 for actual, expected in zip(gated_output, [0.597, 0.607]))
+
+# β=0 只停止误差写入；α 的衰减仍然生效。0/1 用于检查极限情况。
+decay_only, _, _ = update(state_2, [1.0, 0.0], [3.0, 3.0], alpha=0.5, beta=0.0)
+unchanged, _, _ = update(state_2, [1.0, 0.0], [3.0, 3.0], alpha=1.0, beta=0.0)
+assert decay_only == [[2.5, 0.5], [0.0, 0.0]]
+assert unchanged == state_2
+assert state_2 == [[5.0, 1.0], [0.0, 0.0]]  # 试算没有改写输入状态。
+print("β=0、α=0.5 时状态仍衰减：", decay_only)
+
+# 课后练习：同一个输入，分别保留和关闭误差写入。
+exercise_state = [[2.0, 1.0], [0.0, 3.0]]
+exercise_updated, exercise_old, _ = update(
+    exercise_state, [1.0, 0.0], [4.0, 2.0], alpha=0.5, beta=0.5
+)
+exercise_decay_only, _, _ = update(
+    exercise_state, [1.0, 0.0], [4.0, 2.0], alpha=0.5, beta=0.0
+)
+assert exercise_old == [1.0, 0.5]
+assert exercise_updated == [[2.5, 1.25], [0.0, 1.5]]
+assert exercise_decay_only == [[1.0, 0.5], [0.0, 1.5]]

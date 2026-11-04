@@ -17,8 +17,8 @@
   </style>
 
   <rect width="960" height="550" fill="#ffffff"/>
-  <text x="40" y="48" class="title">α、β、z 分别作用在哪里</text>
-  <text x="40" y="78" class="sub">α 和 β 改变状态更新；z 不改状态，只调节当前 token 的输出。</text>
+  <text x="40" y="48" class="title">α、β、z：状态更新与输出门控</text>
+  <text x="40" y="78" class="sub">α 和 β 更新本层状态；z 调节读出结果，不参与本层当前步的状态更新。</text>
 
   <!-- State update arrows -->
   <path d="M170 180 H210" class="flow" stroke="#16a34a" marker-end="url(#arrow-green)"/>
@@ -64,15 +64,15 @@
   <text x="105" y="416" class="head">新状态</text>
   <text x="105" y="442" class="body">S<tspan baseline-shift="sub" font-size="11">t</tspan></text>
   <text x="280" y="407" class="head">Query 读取</text>
-  <text x="280" y="435" class="body">o = qS<tspan baseline-shift="sub" font-size="11">t</tspan></text>
+  <text x="280" y="435" class="body">o = qS<tspan baseline-shift="sub" font-size="11">t</tspan> / √D<tspan baseline-shift="sub" font-size="11">k</tspan></text>
   <text x="280" y="457" class="small">状态本身不再改变</text>
   <text x="455" y="416" class="head">RMSNorm</text>
   <text x="455" y="443" class="small">稳定输出尺度</text>
   <text x="655" y="405" class="head">z</text>
   <text x="655" y="432" class="body">逐元素乘 SiLU(z)</text>
   <text x="655" y="456" class="small">调节本次输出特征</text>
-  <text x="855" y="416" class="head">层输出</text>
+  <text x="855" y="416" class="head">门控后输出</text>
   <text x="855" y="443" class="small">送入 out_proj</text>
 
-  <text x="480" y="520" text-anchor="middle" class="sub">记忆方法：α 管过去，β 管这次写入，z 管这次输出。</text>
+  <text x="480" y="520" text-anchor="middle" class="sub">α、β 更新本层状态；z 调节本轮读出的结果。</text>
 </svg>

@@ -19,7 +19,7 @@
 
   <rect width="1200" height="650" fill="#FFFFFF"/>
   <text x="54" y="58" class="title">前面的手算，就是多头 Attention 中的一个头</text>
-  <text x="54" y="92" class="note">每个头读取同一组 token 位置，但使用不同的投影权重，因此会得到不同的匹配分数和输出。</text>
+  <text x="54" y="92" class="note">每个头读取同一组 token 位置，但使用不同的投影权重，因此可以得到不同的匹配分数和输出。</text>
 
   <rect x="54" y="270" width="185" height="108" rx="12" class="input"/>
   <text x="146" y="309" text-anchor="middle" class="head">同一组隐藏状态</text>

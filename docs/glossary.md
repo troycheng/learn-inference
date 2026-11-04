@@ -171,7 +171,8 @@
 | 微块 | Micro-block | 索引器中由若干连续 token 组成的压缩单位；选中后会展开回原始 token 位置 |
 | QSA Token 预算 | Token Budget / `indexer_budget` | 选中完整微块展开后的 token 数上限；不足一块的尾部另行保留，不限制 KV Cache 容量 |
 | N-gram Embedding | N-gram Embedding | 用当前位置和左侧若干 Token ID 的哈希组合查表，取得局部词组向量 |
-| 逐层嵌入注入模块 | Per-Layer Embedding / PLE | 把 N-gram 查表向量按门控写入指定 Decoder Layer 的残差支路 |
+| 逐层嵌入注入模块 | Per-Layer Embedding / PLE | 对 N-gram 查表向量做门控与因果卷积，再写入指定 Decoder Layer 的残差支路 |
+| PLE 卷积状态 | PLE Convolution State | 保存卷积所需的局部向量历史，供后续生成步骤复用；不同于 N-gram 查表使用的 Token ID 历史 |
 
 ## 多模态输入
 

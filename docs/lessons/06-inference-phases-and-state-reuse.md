@@ -72,7 +72,7 @@ Prefill 和 Decode 不使用两套模型。权重相同，Decoder Layer 的结�
 
 | Decoder Layer 中的模块 | Prefill | Decode |
 | --- | --- | --- |
-| Full Attention | 处理 Prompt 中多个已知位置，建立各层 KV Cache | 为当前 token 计算 Q/K/V，用新 Q 读取历史 K/V，再追加新 K/V |
+| Full Attention | 处理 Prompt 中多个已知位置，建立各层 KV Cache | 计算当前 Q/K/V，新 K/V 并入缓存，新 Q 读取历史及当前位置的 K/V |
 | Gated DeltaNet | 沿 Prompt 更新卷积状态和递归状态 | 用当前 token 继续更新这两类状态 |
 | Dense FFN | 对本轮每个 token 位置执行同一组 FFN 权重 | 对当前 token 执行同一组 FFN 权重 |
 | MoE | 每个 token 经过 Router，再进入选中的专家 | 当前 token 同样经过 Router 和选中专家 |
@@ -105,18 +105,21 @@ p4 读取 p1、p2、p3、p4
 
 ## 3. KV Cache 复用历史 K/V 的依据
 
-先只看一个 Full Attention 层。过去位置的 K/V 由当时的隐藏状态计算得到：
+先只看一个 Full Attention 层。位置 `i` 的层输入为 `x_i`，先经过子层前的 RMSNorm，再进行 K/V 投影：
 
 ```text
-k_i = Linear_K(x_i)
-v_i = Linear_V(x_i)
+X_i = RMSNorm(x_i)
+k_raw_i = Linear_K(X_i)
+v_i = Linear_V(X_i)
 ```
 
-因果遮罩保证位置 `i` 只能读取位置 `1...i`。未来的 `y1` 到来后，过去位置当时看到的内容不会改变，因此已经算出的 `k_i` 和 `v_i` 也不需要重算。
+Qwen3.5 还会对 `k_raw_i` 做头内 RMSNorm 和 RoPE，得到实际缓存的 `k_i`。这些操作使用该位置的向量和位置编号，也不会读取未来 token。
+
+因果遮罩保证位置 `i` 只能读取位置 `1...i`。在模型参数、已有前缀和位置编号不变的前提下，追加 `y1` 不会改变过去位置的输入，因此已经算出的 `k_i` 和 `v_i` 也不需要重算。
 
 这就是 KV Cache 正确性的依据：它复用的是因果模型中已经完成、以后不会被未来 token 改写的中间结果。
 
-KV Cache 按 Full Attention 层保存，而不是整个模型只有一份。第 3 层的 K/V 来自第 3 层输入，第 7 层的 K/V 来自第 7 层输入，两者不能混用。
+KV Cache 按 Full Attention 层保存，而不是整个模型只有一份。按从 1 开始的层编号，Qwen3.5-9B 第 4 层和第 8 层都是 Full Attention：各自的 K/V 来自各自的层输入，两者不能混用。
 
 ### 3.1 K/V 需要保留，Q 只在当前步使用
 
@@ -233,6 +236,13 @@ Qwen3.5-9B 有 32 个 Decoder Layer，其中 8 层使用 Full Attention，24 层
 
 第 4 课已经解释 Gated DeltaNet 的状态更新。本课只关心它在两类前向中的生命周期：Prefill 处理 Prompt 时建立状态，Decode 每轮读取旧状态并写回新状态。
 
+追加 token 和修改旧输入要分开考虑。假设已经处理 `p1 p2 p3 p4`，现在把 `p3` 改为另一个 token，模型参数和位置编号不变：
+
+- Full Attention 可以保留各层中 `p1 p2` 的 K/V。从 `p3` 开始的缓存应当作废并重算，不能只替换 `p3` 的 K/V 后继续使用旧 `p4`，因为 `p4` 原来读取过旧前缀。
+- Gated DeltaNet 需要恢复到处理完 `p2` 时的卷积状态和递归状态，再处理新 `p3` 与 `p4`。如果没有保存那个时刻的状态，就要重新计算前缀。最终状态矩阵的行代表特征坐标，不对应 token，不能删掉某一行来撤销 `p3`。
+
+这些是状态可以复用的数学条件；实际框架还需要支持相应的缓存裁剪或状态快照。
+
 ## 6. KV Cache 沿 token 轴增长
 
 一个 Full Attention 层的 K Cache 和 V Cache 都可以写成：
@@ -276,6 +286,7 @@ Prompt 是 `p1 p2 p3 p4`，模型最终生成 `y1 y2 y3`。补全下表：
 1. Decode 第 2 轮结束后，Full Attention 的 KV Cache 中有几个位置？`y3` 是否已经写入？
 2. KV Cache 为什么不能让同一请求一次确定 `y1 y2 y3`？
 3. 使用 KV Cache 后，为什么 Full Attention 的单步 Decode 成本仍可能随上下文增长？
+4. 如果把旧 Prompt 中的 `p3` 改掉，为什么不能只重算 `p3`，却保留 `p4` 及其后的旧缓存？
 
 <details>
 <summary>查看答案</summary>
@@ -289,6 +300,7 @@ Prompt 是 `p1 p2 p3 p4`，模型最终生成 `y1 y2 y3`。补全下表：
 1. Decode 第 2 轮结束后，Cache 中有 6 个位置。`y3` 刚从 Logits 中选出，还没有进入下一次模型前向，因此不在 Cache 中。
 2. KV Cache 只能复用已经算出的历史状态。`y2` 取决于实际选中的 `y1`，`y3` 又取决于 `y2`，所以三个 token 仍要依次确定。
 3. 每个新 Query 仍要读取历史 K/V。上下文越长，需要读取和参与 Attention 计算的位置越多。
+4. `p4` 和后续位置的隐藏状态可能依赖旧 `p3`，对应的 K/V 也可能改变。应从首个改变的位置重新计算，并让所有层的请求状态对应同一个有效前缀。Gated DeltaNet 还需要该前缀末尾的状态快照，不能按 token 位置裁剪最终状态矩阵。
 
 </details>
 
